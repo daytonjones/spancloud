@@ -5,7 +5,7 @@
 [![GitHub watchers](https://img.shields.io/github/watchers/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/watchers)
 [![GitHub issues](https://img.shields.io/github/issues/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/issues)
 [![GitHub license](https://img.shields.io/github/license/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/blob/main/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.14+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![Python](https://img.shields.io/badge/python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=D7FF64)](https://docs.astral.sh/ruff/)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue?style=flat-square)](https://mypy-lang.org/)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey?style=flat-square)]()
@@ -32,7 +32,7 @@ Skyforge provides a unified interface to discover, inspect, and manage infrastru
 
 ## Installation
 
-Requires Python 3.14+.
+Requires Python 3.12+ (tested on 3.12, 3.13, 3.14).
 
 ```bash
 # Development install (editable, with dev tools)

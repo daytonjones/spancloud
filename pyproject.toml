@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Multi-cloud infrastructure orchestrator — an all-seeing eye into AWS, GCP, Azure, Digital Ocean, and Vultr"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 authors = [
     { name = "Dayton Jones", email = "jones.dayton@gmail.com" },
 ]
@@ -19,6 +19,8 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: System :: Systems Administration",
 ]
@@ -87,7 +89,7 @@ Repository = "https://github.com/daytonjones/skyforge"
 packages = ["src/skyforge"]
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
 
@@ -95,7 +97,7 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
