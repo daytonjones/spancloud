@@ -273,11 +273,22 @@ skyforge -G prod-analytics resource list gcp compute
 Under the hood, Skyforge uses each provider's native credential chain:
 
 ### AWS
-Uses the standard boto3 credential chain:
+Uses the standard boto3 credential chain with a smart fallback:
 - Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-- Shared credentials file (`~/.aws/credentials`)
-- AWS SSO / IAM Identity Center
+- Shared credentials file (`~/.aws/credentials`) — access-key profiles
+- AWS Config file (`~/.aws/config`) — SSO profiles, assume-role profiles
 - IAM roles (EC2 instance metadata, ECS task roles)
+
+When the default chain doesn't produce working credentials and no
+explicit profile was requested, Skyforge walks every configured
+profile — SSO first, then access-keys, then assume-role — looking for
+one that returns a valid STS response. This means a plain
+`~/.aws/credentials` entry works out of the box; you don't need SSO
+configured to use the TUI.
+
+The CLI `skyforge auth login aws` flow detects your situation and
+offers all four options: SSO login, SSO multi-account setup, access
+keys, or switch to an existing profile.
 
 ### GCP
 Uses Application Default Credentials:

@@ -253,50 +253,103 @@ class AuthScreen(ModalScreen[bool]):
             self.dismiss(True)
 
     async def _auth_aws(self, log: RichLog) -> bool:
-        """Run AWS SSO login."""
+        """Authenticate AWS — try existing credentials, fall back to SSO.
+
+        Order of preference:
+          1. Whatever boto3's default chain resolves (env vars, ~/.aws/credentials
+             default, instance profile, etc). AWSAuth.verify() walks every
+             configured profile — SSO and access-key — looking for one that
+             produces a valid STS response.
+          2. If nothing works and there are SSO profiles on disk, run
+             `aws sso login` for the first SSO profile.
+          3. Otherwise print a helpful message pointing the user at the full
+             interactive CLI flow or `aws configure`.
+        """
         import shutil
 
-        if not shutil.which("aws"):
-            log.write("[red]AWS CLI not found. Install it first.[/red]")
-            return False
+        from skyforge.providers.aws.login import (
+            _get_existing_profiles,
+            _get_sso_profiles,
+        )
 
-        from skyforge.providers.aws.login import _get_sso_profiles
-
-        sso_profiles = _get_sso_profiles()
-        if not sso_profiles:
-            log.write("[yellow]No SSO profiles configured.[/yellow]")
-            log.write("Run [bold]aws configure sso[/bold] in a terminal first.")
-            return False
-
-        profile = sso_profiles[0]
-        if hasattr(self._provider, "_auth") and hasattr(
-            self._provider._auth, "active_profile"
-        ):
-            active = self._provider._auth.active_profile
-            if active in sso_profiles:
-                profile = active
-
-        log.write(f"SSO profile: [bold]{profile}[/bold]")
-        log.write("Opening browser...\n")
-
-        def _run() -> tuple[int, str]:
-            result = subprocess.run(
-                ["aws", "sso", "login", "--profile", profile],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            return result.returncode, result.stdout + result.stderr
-
+        # Step 1: try existing credentials first. verify() will iterate through
+        # every configured profile looking for one that works.
+        log.write("[cyan]Checking existing AWS credentials...[/cyan]")
         try:
-            returncode, output = await asyncio.to_thread(_run)
-            for line in output.strip().split("\n"):
-                if line.strip():
-                    log.write(line)
-            return returncode == 0
-        except subprocess.TimeoutExpired:
-            log.write("[yellow]Login timed out (2 minutes).[/yellow]")
+            if await self._provider.authenticate():
+                info = await self._provider._auth.get_identity()
+                log.write(
+                    f"[green]Already authenticated![/green]\n"
+                    f"  Profile: [bold]{info.get('profile', '')}[/bold]\n"
+                    f"  Account: [bold]{info.get('account', '')}[/bold]\n"
+                    f"  ARN:     [bold]{info.get('arn', '')}[/bold]"
+                )
+                return True
+        except Exception as exc:
+            log.write(f"[dim]verify() raised: {exc}[/dim]")
+
+        log.write("[yellow]No working credentials found in the default chain.[/yellow]\n")
+
+        # Step 2: SSO fallback, if available
+        sso_profiles = _get_sso_profiles() if shutil.which("aws") else []
+        if sso_profiles:
+            profile = sso_profiles[0]
+            if hasattr(self._provider, "_auth") and hasattr(
+                self._provider._auth, "active_profile"
+            ):
+                active = self._provider._auth.active_profile
+                if active in sso_profiles:
+                    profile = active
+
+            log.write(f"SSO profile: [bold]{profile}[/bold]")
+            log.write("Opening browser...\n")
+
+            def _run() -> tuple[int, str]:
+                result = subprocess.run(
+                    ["aws", "sso", "login", "--profile", profile],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                return result.returncode, result.stdout + result.stderr
+
+            try:
+                returncode, output = await asyncio.to_thread(_run)
+                for line in output.strip().split("\n"):
+                    if line.strip():
+                        log.write(line)
+                if returncode == 0:
+                    # Pin the profile we just logged into so the follow-up
+                    # verify() picks the freshly-cached SSO tokens.
+                    if hasattr(self._provider, "_auth"):
+                        self._provider._auth.set_profile(profile)
+                    return True
+            except subprocess.TimeoutExpired:
+                log.write("[yellow]SSO login timed out (2 minutes).[/yellow]")
             return False
+
+        # Step 3: nothing to do here — tell the user what options they have.
+        existing = _get_existing_profiles()
+        log.write(
+            "[yellow]AWS credentials not found.[/yellow]\n"
+            "Options (any one of):\n"
+            "  \u2022 Set env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY\n"
+            "  \u2022 Run [bold]aws configure[/bold] in a terminal to store access keys\n"
+            "  \u2022 Run [bold]aws configure sso[/bold] to set up SSO\n"
+            "  \u2022 Run [bold]skyforge auth login aws[/bold] for the full "
+            "interactive flow (SSO / access keys / profile switch)"
+        )
+        if existing:
+            log.write(
+                f"\n[dim]Profiles in ~/.aws/: {', '.join(existing)} — "
+                "none of them had valid credentials.[/dim]"
+            )
+        if not shutil.which("aws"):
+            log.write(
+                "\n[dim]AWS CLI is not installed; only access keys via env "
+                "vars or ~/.aws/credentials will work without it.[/dim]"
+            )
+        return False
 
     async def _auth_gcp(self, log: RichLog) -> bool:
         """Run GCP application-default login."""

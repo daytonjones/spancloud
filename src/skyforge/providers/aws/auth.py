@@ -64,11 +64,23 @@ class AWSAuth:
         self._active_profile = profile_name
         self._session = None  # Force re-creation on next access
 
+    # Profile type priority when falling back — SSO tends to be "newer + fresh
+    # tokens", access_keys are long-lived, assume_role needs a working source.
+    _PROFILE_FALLBACK_ORDER = {
+        "sso": 0,
+        "access_keys": 1,
+        "assume_role": 2,
+        "config": 3,
+    }
+
     async def verify(self) -> bool:
         """Verify that credentials are valid by calling STS GetCallerIdentity.
 
-        If the current profile has no credentials, automatically tries
-        available SSO profiles as a fallback.
+        If the current profile has no credentials, iterates every configured
+        profile — SSO first, then access-key profiles from ~/.aws/credentials,
+        then assume-role profiles — until one works. Only falls back when no
+        explicit profile was asked for (don't silently swap profiles on
+        someone who passed --profile).
 
         Returns:
             True if credentials are valid and usable.
@@ -84,26 +96,35 @@ class AWSAuth:
             )
             return True
         except (NoCredentialsError, ClientError, BotoCoreError) as exc:
-            logger.debug("Default auth failed (%s), trying SSO profiles...", exc)
+            logger.debug(
+                "Default auth failed (%s), trying configured profiles...", exc
+            )
 
-        # Fallback: try SSO profiles if no explicit profile was set
+        # Fallback: walk every configured profile if no explicit profile was set
         if not self._active_profile:
-            for prof in self.list_configured_profiles():
-                if prof.get("type") == "sso":
-                    try:
-                        self.set_profile(prof["name"])
-                        sts = self.session.client("sts")
-                        identity = await asyncio.to_thread(sts.get_caller_identity)
-                        logger.info(
-                            "AWS authenticated via SSO profile '%s' (account %s)",
-                            prof["name"],
-                            identity.get("Account", "unknown"),
-                        )
-                        return True
-                    except (NoCredentialsError, ClientError, BotoCoreError):
-                        continue
+            profiles = self.list_configured_profiles()
+            profiles.sort(
+                key=lambda p: self._PROFILE_FALLBACK_ORDER.get(
+                    p.get("type", "config"), 9
+                )
+            )
 
-            # Reset if nothing worked
+            for prof in profiles:
+                try:
+                    self.set_profile(prof["name"])
+                    sts = self.session.client("sts")
+                    identity = await asyncio.to_thread(sts.get_caller_identity)
+                    logger.info(
+                        "AWS authenticated via profile '%s' (type=%s, account %s)",
+                        prof["name"],
+                        prof.get("type", "?"),
+                        identity.get("Account", "unknown"),
+                    )
+                    return True
+                except (NoCredentialsError, ClientError, BotoCoreError):
+                    continue
+
+            # Reset if nothing worked — don't leave the last-tried profile set
             self._active_profile = ""
             self._session = None
 
