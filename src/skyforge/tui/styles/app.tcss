@@ -1,0 +1,152 @@
+/* Skyforge TUI Stylesheet — Tabbed Provider Layout */
+
+Screen {
+    background: $surface;
+}
+
+/* Tabbed content fills the screen */
+#provider-tabs {
+    height: 1fr;
+}
+
+/* Tab panes must stretch to fill */
+TabPane {
+    padding: 0;
+    height: 1fr;
+}
+
+ContentSwitcher {
+    height: 1fr;
+}
+
+/* Overview tab */
+#overview-title {
+    padding: 0 0 1 0;
+}
+
+OverviewTab {
+    padding: 1 2;
+    height: 1fr;
+}
+
+/* Provider tab layout: sidebar + content area side-by-side */
+ProviderTab {
+    height: 1fr;
+    width: 1fr;
+}
+
+/* Resource type sidebar */
+ResourceTypeSidebar {
+    width: 30;
+    height: 1fr;
+    border-right: solid $primary;
+    padding: 0;
+}
+
+ResourceTypeSidebar .sidebar-header {
+    padding: 1 1;
+    text-align: center;
+    background: $primary-background;
+}
+
+ResourceTypeSidebar .auth-status {
+    padding: 0 1;
+    height: 1;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+ResourceTypeSidebar Select {
+    width: 100%;
+    margin: 0 1 1 1;
+}
+
+ResourceTypeSidebar ListView {
+    height: 1fr;
+    background: $surface;
+}
+
+ResourceTypeSidebar ListItem {
+    padding: 0 1;
+    height: 2;
+}
+
+ResourceTypeSidebar ListItem:hover {
+    background: $primary-background;
+}
+
+/* Resource content area (search + table + detail) */
+ResourceContentArea {
+    height: 1fr;
+    width: 1fr;
+    margin: 0 0 0 1;
+}
+
+#search-input {
+    height: 3;
+    margin: 0 0 0 0;
+    dock: top;
+}
+
+#status-bar {
+    height: 1;
+    dock: top;
+    padding: 0 1;
+    background: $panel;
+    color: $text-muted;
+}
+
+#resource-table {
+    height: 1fr;
+}
+
+#detail-panel {
+    height: 14;
+    max-height: 20;
+    dock: bottom;
+    border-top: solid $accent;
+    padding: 1 2;
+    background: $surface-darken-1;
+}
+
+#detail-content {
+    height: auto;
+}
+
+/* Analysis panel fills remaining space */
+AnalysisPanel {
+    height: 1fr;
+    width: 1fr;
+    padding: 1 2;
+}
+
+/* Provider status cards (overview) */
+ProviderStatusCard {
+    width: 100%;
+    height: auto;
+    min-height: 4;
+    margin: 0 0 1 0;
+    padding: 1 2;
+    border: solid $primary;
+}
+
+ProviderStatusCard.authenticated {
+    border: solid $success;
+}
+
+ProviderStatusCard.error {
+    border: solid $error;
+}
+
+ProviderStatusCard.stub {
+    border: dashed $surface-lighten-2;
+}
+
+ProviderStatusCard:hover {
+    border: double $accent;
+}
+
+#quit-button {
+    margin: 1 0 0 0;
+    width: auto;
+}
