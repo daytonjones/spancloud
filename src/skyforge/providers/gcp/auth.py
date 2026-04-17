@@ -70,6 +70,63 @@ class GCPAuth:
             )
             return False
 
+    def set_project(self, project_id: str) -> None:
+        """Switch the active GCP project for subsequent calls.
+
+        Does not invalidate credentials (ADC credentials are project-agnostic),
+        just swaps which project ID the provider's resource clients target.
+        """
+        self._project_id = project_id or ""
+
+    async def list_accessible_projects(self) -> list[dict[str, str]]:
+        """List every GCP project the current identity can see.
+
+        Uses the Cloud Resource Manager v1 API via the generic
+        google-api-python-client (already a dependency). Returns active
+        projects only; empty list on any error.
+        """
+        if self._credentials is None and not await self.verify():
+            return []
+
+        return await asyncio.to_thread(self._sync_list_projects)
+
+    def _sync_list_projects(self) -> list[dict[str, str]]:
+        try:
+            from googleapiclient import discovery
+        except ImportError:
+            logger.warning("google-api-python-client not available for project list")
+            return []
+
+        try:
+            service = discovery.build(
+                "cloudresourcemanager",
+                "v1",
+                credentials=self._credentials,
+                cache_discovery=False,
+            )
+            projects: list[dict[str, str]] = []
+            request = service.projects().list()
+            while request is not None:
+                response = request.execute()
+                for p in response.get("projects", []):
+                    if p.get("lifecycleState") != "ACTIVE":
+                        continue
+                    projects.append(
+                        {
+                            "project_id": p.get("projectId", ""),
+                            "name": p.get("name", "") or p.get("projectId", ""),
+                            "project_number": str(p.get("projectNumber", "")),
+                        }
+                    )
+                request = service.projects().list_next(
+                    previous_request=request, previous_response=response
+                )
+            projects.sort(key=lambda x: x["project_id"])
+            return projects
+        except Exception as exc:
+            logger.warning("Could not list GCP projects: %s", exc)
+            return []
+
     async def get_identity(self) -> dict[str, str]:
         """Return details about the authenticated GCP identity."""
         return {

@@ -63,6 +63,7 @@ The TUI provides:
 - **Tabbed layout** — Overview tab + one tab per enabled provider (AWS, GCP, Vultr, DigitalOcean, Azure, OCI, Alibaba)
 - **Region selector** — every provider tab has a region dropdown in the sidebar
 - **AWS profile switcher** — extra dropdown on the AWS tab for multi-account users
+- **GCP project switcher** — extra dropdown on the GCP tab populated from Cloud Resource Manager; swap between every project the signed-in identity can see
 - **Resource type sidebar** — emoji-labeled resource types + analysis tools, click or Enter to load
 - **Resource detail panel** — click any row to see full metadata, tags, and state in a bottom panel
 - **State-colored rows** — green=running, red=stopped, yellow=pending, dim=terminated
@@ -262,6 +263,11 @@ skyforge profile show production               # Inspect a specific profile
 skyforge resource list aws compute --profile production
 skyforge cost show aws --profile staging
 skyforge audit run aws --profile dev-account
+
+# --gcp-project / -G switches the active GCP project for the run
+# (overrides SKYFORGE_GCP_PROJECT_ID and the ADC default)
+skyforge --gcp-project my-other-proj cost show gcp
+skyforge -G prod-analytics resource list gcp compute
 ```
 
 Under the hood, Skyforge uses each provider's native credential chain:

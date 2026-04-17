@@ -88,6 +88,15 @@ class ProfileChanged(Message):
         super().__init__()
 
 
+class ProjectChanged(Message):
+    """Emitted when the GCP project picker changes selection."""
+
+    def __init__(self, project_id: str, provider: BaseProvider) -> None:
+        self.project_id = project_id
+        self.provider = provider
+        super().__init__()
+
+
 class SettingsRequested(Message):
     """Emitted when sidebar settings is clicked."""
 
@@ -245,6 +254,16 @@ class ResourceTypeSidebar(Vertical):
                     allow_blank=False,
                 )
 
+        # GCP project picker — populated lazily in on_mount once auth is up
+        if self._provider.name == "gcp":
+            yield Select(
+                [("loading...", "")],
+                prompt="\U0001f5c2 Project",
+                id=f"project-select-{self._provider.name}",
+                allow_blank=False,
+                disabled=True,
+            )
+
         # Region selector
         region_options = {
             "aws": _AWS_REGIONS,
@@ -354,10 +373,54 @@ class ResourceTypeSidebar(Vertical):
                     except Exception:
                         pass
                 status.update(f"[green]authenticated[/green]{profile}")
+
+                # GCP: populate the project picker from the resource-manager API
+                if self._provider.name == "gcp":
+                    await self._populate_gcp_projects()
             else:
                 status.update("[red]not authenticated[/red]")
         except Exception:
             status.update("[red]auth error[/red]")
+
+    async def _populate_gcp_projects(self) -> None:
+        """Fetch the caller's visible GCP projects and fill the picker."""
+        try:
+            select = self.query_one(
+                f"#project-select-{self._provider.name}", Select
+            )
+        except Exception:
+            return
+
+        try:
+            projects = await self._provider._auth.list_accessible_projects()
+        except Exception:
+            projects = []
+
+        if not projects:
+            active = getattr(self._provider._auth, "project_id", "") or "(none)"
+            select.set_options([(active, active)])
+            select.disabled = True
+            return
+
+        active = getattr(self._provider._auth, "project_id", "")
+        options = [
+            (
+                f"{p['project_id']}"
+                + (f"  — {p['name']}" if p["name"] != p["project_id"] else ""),
+                p["project_id"],
+            )
+            for p in projects
+        ]
+        # Ensure the active project is selectable even if the API didn't list it
+        if active and not any(v == active for _, v in options):
+            options.insert(0, (active, active))
+        import contextlib
+
+        select.set_options(options)
+        select.disabled = False
+        if active:
+            with contextlib.suppress(Exception):
+                select.value = active
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if not event.value or event.value == Select.BLANK:
@@ -365,6 +428,8 @@ class ResourceTypeSidebar(Vertical):
         select_id = event.select.id or ""
         if select_id.startswith("profile-select-"):
             self.post_message(ProfileChanged(str(event.value), self._provider))
+        elif select_id.startswith("project-select-"):
+            self.post_message(ProjectChanged(str(event.value), self._provider))
         elif select_id.startswith("region-select-"):
             self.post_message(RegionChanged(str(event.value), self._provider))
 
@@ -1268,6 +1333,23 @@ class ProviderTab(Horizontal):
                 f"Switched to profile: {event.profile_name}", timeout=3
             )
             self._reload_active_pane()
+
+    def on_project_changed(self, event: ProjectChanged) -> None:
+        auth = getattr(event.provider, "_auth", None)
+        if auth is None or not hasattr(auth, "set_project"):
+            return
+        if event.project_id == getattr(auth, "project_id", ""):
+            return
+        auth.set_project(event.project_id)
+        sidebar = self.query_one(ResourceTypeSidebar)
+        sidebar.run_worker(
+            sidebar._check_auth(),
+            name=f"reauth-{event.provider.name}",
+        )
+        self.app.notify(
+            f"Switched to project: {event.project_id}", timeout=3
+        )
+        self._reload_active_pane()
 
     def on_region_changed(self, event: RegionChanged) -> None:
         content = self.query_one(ResourceContentArea)

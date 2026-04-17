@@ -68,6 +68,10 @@ def main_callback(
         None, "--profile", "-P",
         help="AWS profile name for multi-account access (overrides SKYFORGE_AWS_PROFILE).",
     ),
+    gcp_project: str | None = typer.Option(
+        None, "--gcp-project", "-G",
+        help="GCP project ID (overrides SKYFORGE_GCP_PROJECT_ID and ADC default).",
+    ),
 ) -> None:
     """Skyforge — an all-seeing eye into your multi-cloud infrastructure."""
     if verbose:
@@ -79,14 +83,20 @@ def main_callback(
 
         setup_logging("WARNING")
 
-    # Apply AWS profile override if specified
-    if profile:
+    # Apply provider overrides if specified (registered once here so every
+    # subcommand sees the swap).
+    if profile or gcp_project:
         import skyforge.providers  # noqa: F401
         from skyforge.core.registry import registry
 
-        aws = registry.get("aws")
-        if aws:
-            aws._auth.set_profile(profile)
+        if profile:
+            aws = registry.get("aws")
+            if aws:
+                aws._auth.set_profile(profile)
+        if gcp_project:
+            gcp = registry.get("gcp")
+            if gcp:
+                gcp._auth.set_project(gcp_project)
 
     # Launch TUI if no subcommand was given
     if ctx.invoked_subcommand is None:

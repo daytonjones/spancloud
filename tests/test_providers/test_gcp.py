@@ -89,6 +89,64 @@ class TestGCPProvider:
         assert result[0].name == "tagged"
 
 
+class TestGCPAuth:
+    """Tests for GCPAuth helpers."""
+
+    def test_set_project(self) -> None:
+        from skyforge.providers.gcp.auth import GCPAuth
+
+        auth = GCPAuth()
+        auth.set_project("my-other-project")
+        assert auth.project_id == "my-other-project"
+        auth.set_project("")
+        assert auth.project_id == ""
+
+    def test_sync_list_projects_filters_inactive(self) -> None:
+        """_sync_list_projects should skip non-ACTIVE projects and sort the rest."""
+        from unittest.mock import MagicMock, patch
+
+        from skyforge.providers.gcp.auth import GCPAuth
+
+        auth = GCPAuth()
+        auth._credentials = MagicMock()
+
+        # Fake the googleapiclient discovery chain
+        list_request = MagicMock()
+        list_request.execute.return_value = {
+            "projects": [
+                {
+                    "projectId": "zeta-prod",
+                    "name": "Zeta Prod",
+                    "projectNumber": 1,
+                    "lifecycleState": "ACTIVE",
+                },
+                {
+                    "projectId": "archived-001",
+                    "name": "Archived",
+                    "projectNumber": 2,
+                    "lifecycleState": "DELETE_REQUESTED",
+                },
+                {
+                    "projectId": "alpha-dev",
+                    "name": "alpha-dev",
+                    "projectNumber": 3,
+                    "lifecycleState": "ACTIVE",
+                },
+            ],
+        }
+        projects_api = MagicMock()
+        projects_api.list.return_value = list_request
+        projects_api.list_next.return_value = None
+        service = MagicMock()
+        service.projects.return_value = projects_api
+
+        with patch("googleapiclient.discovery.build", return_value=service):
+            out = auth._sync_list_projects()
+
+        ids = [p["project_id"] for p in out]
+        assert ids == ["alpha-dev", "zeta-prod"]  # sorted, DELETE_REQUESTED dropped
+
+
 class TestNetworkResources:
     """Tests for VPC network resource mapping."""
 
