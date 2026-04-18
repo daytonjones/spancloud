@@ -19,6 +19,7 @@ from spancloud.cli.commands.provider import provider_app
 from spancloud.cli.commands.resource import resource_app
 from spancloud.cli.commands.s3 import s3_app
 from spancloud.cli.commands.status import status_app
+from spancloud.cli.commands.gui import launch_gui
 from spancloud.cli.commands.tui import launch_tui
 from spancloud.cli.commands.unused import unused_app
 from spancloud.cli.commands.vultr_storage import vultr_app
@@ -54,6 +55,12 @@ app.add_typer(vultr_app, name="vultr", help="Vultr storage details.")
 def tui() -> None:
     """Launch the Spancloud TUI dashboard."""
     launch_tui()
+
+
+@app.command()
+def gui() -> None:
+    """Launch the Spancloud desktop GUI (requires PySide6)."""
+    launch_gui()
 
 
 @app.command()

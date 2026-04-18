@@ -12,6 +12,7 @@
 [![Architecture](https://img.shields.io/badge/architecture-multi--cloud-blueviolet?style=flat-square)]()
 [![Providers](https://img.shields.io/badge/providers-AWS%20%7C%20GCP%20%7C%20Azure%20%7C%20OCI%20%7C%20Alibaba%20%7C%20DO%20%7C%20Vultr-orange?style=flat-square)]()
 [![TUI](https://img.shields.io/badge/TUI-Textual-1F6FEB?style=flat-square)](https://textual.textualize.io/)
+[![GUI](https://img.shields.io/badge/GUI-PySide6%20%28Qt6%29-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython/)
 [![Works on my machine](https://img.shields.io/badge/works-on%20my%20machine-brightgreen?style=flat-square)]()
 
 Multi-cloud infrastructure orchestrator — an all-seeing eye into your cloud resources.
@@ -43,12 +44,48 @@ pip install build
 python -m build                    # Creates dist/spancloud-0.1.0-py3-none-any.whl
 pip install dist/spancloud-0.1.0-py3-none-any.whl
 
-# After install, 'spancloud' is available as a command
-spancloud                           # Launches TUI
+# After install, both entry points are available
+spancloud                           # Launches TUI (default)
+sc                                  # Short alias — identical to spancloud
+spancloud gui                       # Launches desktop GUI (requires PySide6)
 spancloud --help                    # Shows all commands
 ```
 
 ## Quick Start
+
+### Desktop GUI
+
+The GUI requires PySide6 (Qt6). Install it separately:
+
+```bash
+pip install PySide6
+```
+
+Then launch:
+
+```bash
+spancloud gui           # Launch desktop GUI
+sc gui                  # Short alias
+```
+
+The desktop GUI provides a native Qt6 window with:
+
+- **Full-width toolbar** — icon, app name, current context breadcrumb, refresh and settings buttons
+- **Resizable sidebar** — provider list with colour-coded connection status dots; drag the splitter handle to adjust width
+- **Overview dashboard** — provider cards in a 3-column grid showing resource count, connection state, and a colour-coded breakdown bar by resource type
+- **Per-provider view** — inner nav sidebar with RESOURCES (Compute, Storage, …) and ANALYSIS (Cost Summary, Security Audit, …) sections, each with resource count badges
+- **Resource table** — Name / ID / State / Region / Type columns; State column colour-coded (green=running, red=stopped, yellow=pending)
+- **Right-side detail drawer** — click any table row to open a scrollable key-value panel; close with ✕ or by clicking another resource type
+- **Analysis panels** — cost breakdown, security findings, unused resources, monitoring alerts
+- **Status bar** — active context on the left, total provider/resource count on the right
+
+> **Note:** The GUI is currently a visual mockup — backend wiring (real authentication, live resource loading) is in progress.
+
+#### Screenshots
+
+| Overview | Resource Table + Detail Drawer |
+|---|---|
+| *(screenshot)* | *(screenshot)* |
 
 ### TUI Dashboard
 
