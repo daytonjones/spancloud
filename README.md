@@ -517,7 +517,7 @@ Per-provider resource coverage highlights:
 - [ ] **Notifications / scheduled scans** — Cron-style monitoring with Slack/email alerts
 - [ ] **Vultr monitoring** — Only if/when Vultr publishes a public alerts API
 - [ ] **Additional Azure monitoring types** — Activity-log + scheduled-query alerts (currently metric alerts only)
-- [ ] **GUI** — Web dashboard (likely Django/Gunicorn) on top of the same core
+- [ ] **GUI** — PySide6 desktop application (Qt6) on top of the same core layer, giving spancloud a full CLI + TUI + GUI triple interface
 ## Development
 
 ```bash
