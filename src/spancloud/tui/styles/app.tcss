@@ -120,12 +120,50 @@ AnalysisPanel {
     padding: 1 2;
 }
 
+/* Provider grid layout (overview) */
+#provider-grid {
+    layout: grid;
+    grid-size: 3;
+    grid-gutter: 1 2;
+    height: auto;
+    margin: 1 0;
+}
+
+#available-grid {
+    layout: grid;
+    grid-size: 3;
+    grid-gutter: 1 2;
+    height: auto;
+    margin: 1 0;
+}
+
+#stub-grid {
+    layout: grid;
+    grid-size: 4;
+    grid-gutter: 1 2;
+    height: auto;
+    margin: 1 0;
+}
+
+ProviderCell {
+    height: auto;
+    min-height: 8;
+}
+
+ProviderCell.available {
+    opacity: 0.6;
+}
+
+ProviderCell.available:hover {
+    opacity: 1.0;
+}
+
 /* Provider status cards (overview) */
 ProviderStatusCard {
     width: 100%;
     height: auto;
-    min-height: 4;
-    margin: 0 0 1 0;
+    min-height: 5;
+    margin: 0;
     padding: 1 2;
     border: solid $primary;
 }
@@ -144,9 +182,4 @@ ProviderStatusCard.stub {
 
 ProviderStatusCard:hover {
     border: double $accent;
-}
-
-#quit-button {
-    margin: 1 0 0 0;
-    width: auto;
 }

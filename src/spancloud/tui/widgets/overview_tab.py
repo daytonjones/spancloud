@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from textual import work
-from textual.containers import VerticalScroll
-from textual.widgets import Button, Checkbox, Static
+from textual.containers import Grid, Vertical, VerticalScroll
+from textual.message import Message
+from textual.widgets import Checkbox, Static
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -132,8 +133,38 @@ class ProviderStatusCard(Static):
             hint.update(f"  [red]{exc}[/red] — click to authenticate")
 
 
+class ProviderCell(Vertical):
+    """Checkbox + status card bundled as a single grid cell."""
+
+    def __init__(self, provider: BaseProvider, enabled: bool) -> None:
+        super().__init__(id=f"provider-cell-{provider.name}")
+        self._provider = provider
+        self._enabled = enabled
+
+    def compose(self) -> ComposeResult:
+        yield Checkbox(
+            f" {self._provider.display_name}",
+            value=self._enabled,
+            id=f"enable-{self._provider.name}",
+            name=self._provider.name,
+        )
+        yield ProviderStatusCard(self._provider)
+
+    def on_mount(self) -> None:
+        if not self._enabled:
+            self.add_class("available")
+
+
 class OverviewTab(VerticalScroll):
     """Overview tab showing all providers and their status."""
+
+    class ProviderToggled(Message):
+        """Posted when a provider is enabled or disabled via the Overview."""
+
+        def __init__(self, provider_name: str, enabled: bool) -> None:
+            super().__init__()
+            self.provider_name = provider_name
+            self.enabled = enabled
 
     def __init__(self, providers: list[BaseProvider]) -> None:
         super().__init__()
@@ -151,39 +182,49 @@ class OverviewTab(VerticalScroll):
         implemented = [p for p in self._providers if p.supported_resource_types]
         stubs = [p for p in self._providers if not p.supported_resource_types]
 
-        if implemented:
-            yield Static(
-                "[bold]Active Providers[/bold]  "
-                "[dim](click a card to authenticate, "
-                "toggle checkbox to show/hide tab)[/dim]"
-            )
-            for provider in implemented:
-                yield Checkbox(
-                    f" {provider.display_name}",
-                    value=is_provider_enabled(provider.name),
-                    id=f"enable-{provider.name}",
-                    name=provider.name,
-                )
-                yield ProviderStatusCard(provider)
+        active = [p for p in implemented if is_provider_enabled(p.name)]
+        available = [p for p in implemented if not is_provider_enabled(p.name)]
+
+        # Both sections are always in the DOM; visibility is managed at runtime.
+        yield Static(
+            "[bold]Active Providers[/bold]  "
+            "[dim](click a card to authenticate, toggle checkbox to disable)[/dim]",
+            id="active-header",
+        )
+        with Grid(id="provider-grid"):
+            for provider in active:
+                yield ProviderCell(provider, enabled=True)
+
+        yield Static(
+            "[bold]Available Providers[/bold]  "
+            "[dim](toggle checkbox to enable)[/dim]",
+            id="available-header",
+        )
+        with Grid(id="available-grid"):
+            for provider in available:
+                yield ProviderCell(provider, enabled=False)
 
         if stubs:
             yield Static("\n[bold dim]Planned Providers[/bold dim]")
-            for provider in stubs:
-                yield ProviderStatusCard(provider)
+            with Grid(id="stub-grid"):
+                for provider in stubs:
+                    yield ProviderStatusCard(provider)
 
-        yield Static("")
-        yield Button(
-            "\u274c  Quit Spancloud",
-            id="quit-button",
-            variant="error",
-        )
+    def on_mount(self) -> None:
+        self._update_section_visibility()
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "quit-button":
-            self.app.exit()
+    def _update_section_visibility(self) -> None:
+        active_grid = self.query_one("#provider-grid")
+        available_grid = self.query_one("#available-grid")
+        has_active = bool(active_grid.children)
+        has_available = bool(available_grid.children)
+        self.query_one("#active-header").display = has_active
+        active_grid.display = has_active
+        self.query_one("#available-header").display = has_available
+        available_grid.display = has_available
 
-    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
-        """Toggle provider enabled/disabled and save."""
+    async def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """Toggle provider enabled/disabled, move its card, and update tabs."""
         checkbox_id = event.checkbox.id or ""
         if not checkbox_id.startswith("enable-"):
             return
@@ -194,15 +235,28 @@ class OverviewTab(VerticalScroll):
 
         from spancloud.config.sidebar import get_enabled_providers, set_enabled_providers
 
-        enabled = get_enabled_providers()
+        enabled_set = get_enabled_providers()
         if event.value:
-            enabled.add(provider_name)
+            enabled_set.add(provider_name)
         else:
-            enabled.discard(provider_name)
+            enabled_set.discard(provider_name)
+        set_enabled_providers(enabled_set)
 
-        set_enabled_providers(enabled)
-        self.app.notify(
-            f"{provider_name}: {'enabled' if event.value else 'disabled'} "
-            f"— restart TUI to update tabs",
-            timeout=4,
-        )
+        # Remove the existing cell and remount a fresh one in the correct grid.
+        provider = next((p for p in self._providers if p.name == provider_name), None)
+        if provider is None:
+            return
+
+        try:
+            old_cell = self.query_one(f"#provider-cell-{provider_name}", ProviderCell)
+            await old_cell.remove()
+        except Exception:
+            pass
+
+        if event.value:
+            await self.query_one("#provider-grid").mount(ProviderCell(provider, enabled=True))
+        else:
+            await self.query_one("#available-grid").mount(ProviderCell(provider, enabled=False))
+
+        self._update_section_visibility()
+        self.post_message(OverviewTab.ProviderToggled(provider_name, event.value))

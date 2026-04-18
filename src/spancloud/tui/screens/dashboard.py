@@ -12,7 +12,7 @@ import spancloud.providers  # noqa: F401
 from spancloud.config.sidebar import is_provider_enabled
 from spancloud.core.registry import registry
 from spancloud.tui.widgets.overview_tab import OverviewTab
-from spancloud.tui.widgets.provider_tab import ProviderTab
+from spancloud.tui.widgets.provider_tab import ProviderTab  # noqa: F401 — used in compose + handler
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -52,6 +52,30 @@ class DashboardScreen(Screen):
                     yield ProviderTab(provider)
 
         yield Footer()
+
+    async def on_overview_tab_provider_toggled(
+        self, event: OverviewTab.ProviderToggled
+    ) -> None:
+        """Add or remove a provider tab when the user toggles it in the Overview."""
+        tabs = self.query_one("#provider-tabs", TabbedContent)
+        pane_id = f"tab-{event.provider_name}"
+
+        if event.enabled:
+            provider = next(
+                (p for p in registry.list_providers() if p.name == event.provider_name),
+                None,
+            )
+            if provider and provider.supported_resource_types:
+                await tabs.add_pane(
+                    TabPane(provider.display_name, ProviderTab(provider), id=pane_id)
+                )
+                self.app.notify(f"{provider.display_name} tab added", timeout=3)
+        else:
+            try:
+                await tabs.remove_pane(pane_id)
+                self.app.notify(f"{event.provider_name} tab removed", timeout=3)
+            except Exception:
+                pass
 
     def refresh_data(self) -> None:
         """Refresh the currently active tab."""
