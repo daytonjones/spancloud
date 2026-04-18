@@ -149,6 +149,27 @@ _RESOURCE_TYPES = [
     ("dns",           "🌐 DNS"),
 ]
 
+# Provider-specific overrides for generic resource type labels
+_COMPUTE_LABEL: dict[str, str] = {
+    "aws":          "🖥  Compute (EC2)",
+    "gcp":          "🖥  Compute (GCE)",
+    "azure":        "🖥  Compute (VMs)",
+    "digitalocean": "🖥  Compute (Droplets)",
+    "vultr":        "🖥  Compute (Instances)",
+    "oci":          "🖥  Compute (Instances)",
+    "alibaba":      "🖥  Compute (ECS)",
+}
+
+_STORAGE_LABEL: dict[str, str] = {
+    "aws":          "📦 Storage (S3/EBS)",
+    "gcp":          "📦 Storage (GCS)",
+    "azure":        "📦 Storage (Blobs)",
+    "digitalocean": "📦 Storage (Volumes)",
+    "vultr":        "📦 Storage (Block)",
+    "oci":          "📦 Storage (Object/Block)",
+    "alibaba":      "📦 Storage (OSS)",
+}
+
 _ANALYSIS_ITEMS = [
     ("cost",          "💰 Cost Summary"),
     ("audit",         "🛡  Security Audit"),
@@ -167,47 +188,79 @@ _STATE_COLOR = {
     "unknown":    TEXT_MUTED,
 }
 
-_MOCK_COST = """  Monthly cost estimate
-  ─────────────────────────────────────────────────────
-  EC2 Instances                        $1,240.00 / mo
-    ├ web-prod-01 (t3.medium)              $30.37
-    ├ web-prod-02 (t3.medium)              $30.37
-    ├ api-prod-01 (c6i.large)              $61.20
-    ├ db-replica  (r6i.large)              $91.98
-    └ 2 others                             $26.08
+def _build_cost_text() -> str:
+    M = "  "
+    LW, AW = 42, 14
+    SEP = M + "─" * (LW + AW)
+    def row(label: str, amount: str, indent: str = "") -> str:
+        return f"{M}{indent}{label:<{LW - len(indent)}}{amount:>{AW}}"
+    lines = [
+        row("Monthly cost estimate", ""),
+        SEP,
+        row("EC2 Instances", "$1,240.00 / mo"),
+        row("web-prod-01", "$30.37 / mo",   "  ├─ "),
+        row("web-prod-02", "$30.37 / mo",   "  ├─ "),
+        row("api-prod-01", "$61.20 / mo",   "  ├─ "),
+        row("db-replica",  "$91.98 / mo",   "  ├─ "),
+        row("2 others",    "$26.08 / mo",   "  └─ "),
+        "",
+        row("RDS / ElastiCache",    "$480.00 / mo"),
+        row("S3 Storage",           " $18.40 / mo"),
+        row("Data Transfer",        " $62.00 / mo"),
+        row("Lambda Invocations",   "  $3.20 / mo"),
+        SEP,
+        row("Estimated total",      "$1,803.60 / mo"),
+        "",
+    ]
+    return "\n".join(lines)
 
-  RDS / ElastiCache                      $480.00 / mo
-  S3 Storage                              $18.40 / mo
-  Data Transfer                           $62.00 / mo
-  Lambda Invocations                       $3.20 / mo
-  ─────────────────────────────────────────────────────
-  Estimated total                      $1,803.60 / mo
-"""
 
-_MOCK_AUDIT = """  Security Audit — 6 findings
-  ─────────────────────────────────────────────────────
-  🔴 CRITICAL  S3 bucket prod-assets has public read ACL
-  🔴 CRITICAL  Security group sg-0a1b2c3d allows 0.0.0.0/0:22
-  🟡 MEDIUM    RDS prod-mysql multi-AZ not enabled
-  🟡 MEDIUM    2 EC2 instances missing IMDSv2 enforcement
-  🔵 LOW       3 S3 buckets missing access logging
-  🔵 LOW       Lambda api-handler has overly broad IAM role
-"""
+def _build_audit_text() -> str:
+    M = "  "
+    SEP = M + "─" * 58
+    def row(dot: str, sev: str, finding: str) -> str:
+        return f"{M}{dot}  {sev:<10}  {finding}"
+    lines = [
+        f"{M}Security Audit — 6 findings",
+        SEP,
+        row("🔴", "CRITICAL", "S3 bucket prod-assets has public read ACL"),
+        row("🔴", "CRITICAL", "Security group sg-0a1b2c3d allows 0.0.0.0/0:22"),
+        row("🟡", "MEDIUM",   "RDS prod-mysql multi-AZ not enabled"),
+        row("🟡", "MEDIUM",   "2 EC2 instances missing IMDSv2 enforcement"),
+        row("🔵", "LOW",      "3 S3 buckets missing access logging"),
+        row("🔵", "LOW",      "Lambda api-handler has overly broad IAM role"),
+        "",
+    ]
+    return "\n".join(lines)
 
-_MOCK_UNUSED = """  Unused / Idle Resources
-  ─────────────────────────────────────────────────────
-  dev-sandbox (EC2 t3.small)
-    Stopped for 47 days — est. $8.00/mo if running
 
-  data-archive (S3 Bucket)
-    0 GET requests in 90 days — storage cost $4.20/mo
+def _build_unused_text() -> str:
+    M = "  "
+    NW, TW, IW, SW = 22, 20, 20, 14
+    SEP = M + "─" * (NW + TW + IW + SW)
+    def header() -> str:
+        return f"{M}{'Resource':<{NW}}{'Type':<{TW}}{'Idle':<{IW}}{'Est. Cost':>{SW}}"
+    def row(name: str, rtype: str, idle: str, cost: str) -> str:
+        return f"{M}{name:<{NW}}{rtype:<{TW}}{idle:<{IW}}{cost:>{SW}}"
+    lines = [
+        f"{M}Unused / Idle Resources",
+        SEP,
+        header(),
+        SEP,
+        row("dev-sandbox",    "EC2 t3.small",    "Stopped 47 days",   "$8.00 / mo"),
+        row("data-archive",   "S3 Bucket",        "No GETs in 90 days","$4.20 / mo"),
+        row("vol-0a1b2c3d",   "EBS gp3 500GB",    "Unattached 12 days","$40.00 / mo"),
+        row("scheduled-job",  "Lambda",            "0 invocations 30d", "—"),
+        SEP,
+        row("4 resources", "", "Total waste:", "$52.20 / mo"),
+        "",
+    ]
+    return "\n".join(lines)
 
-  vol-0a1b2c3d (EBS gp3 500GB)
-    Unattached for 12 days — $40.00/mo
 
-  scheduled-job (Lambda)
-    0 invocations in 30 days
-"""
+_MOCK_COST   = _build_cost_text()
+_MOCK_AUDIT  = _build_audit_text()
+_MOCK_UNUSED = _build_unused_text()
 
 # Fields to show in the right-side detail drawer per resource type
 _DETAIL_FIELDS: dict[str, list[str]] = {
@@ -297,11 +350,17 @@ class ProviderViewWidget(QWidget):
         section.setObjectName("sidebar-section")
         v.addWidget(section)
 
-        provider_resources = _MOCK_RESOURCES.get(self._provider["name"], {})
+        pname = self._provider["name"]
+        provider_resources = _MOCK_RESOURCES.get(pname, {})
+        _label_overrides: dict[str, dict[str, str]] = {
+            "compute": _COMPUTE_LABEL,
+            "storage": _STORAGE_LABEL,
+        }
         for rt, label in _RESOURCE_TYPES:
             if rt in provider_resources:
                 count = len(provider_resources[rt])
-                btn = self._make_nav_button(rt, label, count, "rt")
+                display = _label_overrides.get(rt, {}).get(pname, label)
+                btn = self._make_nav_button(rt, display, count, "rt")
                 self._rt_buttons[rt] = btn
                 v.addWidget(btn)
 
