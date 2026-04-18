@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-_ANALYSIS_ITEMS = ["cost", "audit", "unused", "relationships", "alerts"]
+_ANALYSIS_ITEMS = ["cost", "audit", "unused", "relationships", "alerts", "metrics"]
 
 _RT_ICONS: dict[str, str] = {
     "compute": "\U0001f5a5  compute",
@@ -42,6 +42,7 @@ _ANALYSIS_LABELS: dict[str, str] = {
     "unused": "\U0001f5d1  unused resources",
     "relationships": "\U0001f517 relationships",
     "alerts": "\U0001f514 monitoring alerts",
+    "metrics": "\U0001f4ca metrics",
 }
 
 _STATE_STYLES: dict[str, str] = {
@@ -324,9 +325,9 @@ class ResourceTypeSidebar(Vertical):
                 name="_separator",
             )
         )
-        # Skip alerts for Vultr (no monitoring API)
+        # Skip alerts and metrics for Vultr (no monitoring API)
         for key in _ANALYSIS_ITEMS:
-            if key == "alerts" and self._provider.name == "vultr":
+            if key in ("alerts", "metrics") and self._provider.name == "vultr":
                 continue
             items.append(
                 ListItem(
@@ -929,6 +930,8 @@ class AnalysisPanel(VerticalScroll):
             return await self._run_relationships(name)
         elif analysis_type == "alerts":
             return await self._run_alerts(name)
+        elif analysis_type == "metrics":
+            return await self._run_metrics(name)
         return f"[yellow]Unknown analysis: {analysis_type}[/yellow]"
 
     async def _run_cost(self, provider_name: str) -> str:
@@ -1270,6 +1273,72 @@ class AnalysisPanel(VerticalScroll):
             "[yellow]Monitoring alerts not available for this provider."
             "[/yellow]\n[dim]Vultr has no public alerts API.[/dim]"
         )
+
+    async def _run_metrics(self, provider_name: str) -> str:
+        """Fetch and display resource metrics for compute instances."""
+        # List compute resources first to get IDs
+        try:
+            if not await self._provider.is_authenticated():
+                return "[red]Not authenticated[/red]"
+
+            resources = await self._provider.list_resources(ResourceType.COMPUTE)
+        except Exception as exc:
+            return f"[red]Error listing compute resources: {exc}[/red]"
+
+        if not resources:
+            return "[yellow]No compute resources found.[/yellow]"
+
+        # Check if provider supports metrics
+        if not hasattr(self._provider, "get_instance_metrics"):
+            return f"[yellow]Metrics not yet available for {provider_name}.[/yellow]"
+
+        # Fetch metrics for up to 5 instances
+        sample = resources[:5]
+        lines = [
+            f"[bold]Instance Metrics[/bold]  (showing {len(sample)} of {len(resources)} instances)\n"
+        ]
+
+        for resource in sample:
+            lines.append(
+                f"  [bold]{resource.display_name}[/bold]  [dim]{resource.region or '—'}[/dim]"
+            )
+            try:
+                result = await self._provider.get_instance_metrics(
+                    resource.id, region=resource.region, hours=1
+                )
+                if result and result.metrics:
+                    for metric_name, points in result.metrics.items():
+                        if not points:
+                            continue
+                        vals = [p.value for p in points[-12:]]  # last 12 points
+                        if not vals:
+                            continue
+                        latest = vals[-1]
+                        avg = sum(vals) / len(vals)
+                        # Sparkline
+                        spark_chars = "▁▂▃▄▅▆▇█"
+                        vmin, vmax = min(vals), max(vals)
+                        spread = vmax - vmin if vmax != vmin else 1
+                        spark = "".join(
+                            spark_chars[min(int((v - vmin) / spread * 7), 7)]
+                            for v in vals
+                        )
+                        lines.append(
+                            f"    [cyan]{metric_name:>20}[/cyan]  "
+                            f"latest: {latest:>7.2f}  avg: {avg:>7.2f}  [dim]{spark}[/dim]"
+                        )
+                else:
+                    lines.append("    [dim]No metrics available[/dim]")
+            except Exception as exc:
+                lines.append(f"    [red]Error: {exc}[/red]")
+            lines.append("")
+
+        if len(resources) > 5:
+            lines.append(
+                "[dim]  Use CLI for all instances: spancloud monitor metrics <id>[/dim]"
+            )
+
+        return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ from spancloud.providers.azure.compute import VMResources
 from spancloud.providers.azure.database import CosmosDBResources, SQLResources
 from spancloud.providers.azure.dns import DNSResources
 from spancloud.providers.azure.loadbalancer import LoadBalancerResources
+from spancloud.providers.azure.monitoring import AzureMonitoringAnalyzer, ResourceMetrics
 from spancloud.providers.azure.network import VNetResources
 from spancloud.providers.azure.storage import StorageAccountResources
 from spancloud.utils.logging import get_logger
@@ -31,6 +32,7 @@ class AzureProvider(BaseProvider):
         self._auth = AzureAuth()
         self._vms = VMResources(self._auth)
         self._storage = StorageAccountResources(self._auth)
+        self._monitoring = AzureMonitoringAnalyzer(self._auth)
         self._network = VNetResources(self._auth)
         self._sql = SQLResources(self._auth)
         self._cosmos = CosmosDBResources(self._auth)
@@ -122,6 +124,17 @@ class AzureProvider(BaseProvider):
         raise ProviderError(
             "azure",
             f"get_resource not yet supported for '{resource_type}' on Azure",
+        )
+
+    async def get_instance_metrics(
+        self,
+        resource_id: str,
+        region: str | None = None,
+        hours: int = 1,
+    ) -> ResourceMetrics:
+        """Fetch Azure Monitor metrics for a virtual machine."""
+        return await self._monitoring.get_instance_metrics(
+            resource_id, hours=hours
         )
 
     async def get_status(self) -> dict[str, str]:

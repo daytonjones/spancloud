@@ -18,6 +18,7 @@ from spancloud.cli.commands.profile import profile_app
 from spancloud.cli.commands.provider import provider_app
 from spancloud.cli.commands.resource import resource_app
 from spancloud.cli.commands.s3 import s3_app
+from spancloud.cli.commands.status import status_app
 from spancloud.cli.commands.tui import launch_tui
 from spancloud.cli.commands.unused import unused_app
 from spancloud.cli.commands.vultr_storage import vultr_app
@@ -45,6 +46,7 @@ app.add_typer(gcs_app, name="gcs", help="GCS bucket details and management.")
 app.add_typer(action_app, name="action", help="Resource actions (start/stop/reboot/terminate).")
 app.add_typer(profile_app, name="profile", help="AWS profile management for multi-account access.")
 app.add_typer(config_app, name="config", help="Manage Spancloud configuration.")
+app.add_typer(status_app, name="status", help="Show authentication status for all providers.")
 app.add_typer(vultr_app, name="vultr", help="Vultr storage details.")
 
 

@@ -487,15 +487,15 @@ All seven providers now have full feature parity across resource discovery,
 cost, audit, unused detection, relationships, monitoring alerts, and
 lifecycle actions. The matrix below captures the current state:
 
-|              | resources | cost | audit | unused | relationships | alerts | actions |
-|--------------|:---------:|:----:|:-----:|:------:|:-------------:|:------:|:-------:|
-| AWS          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| GCP          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| Azure        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| DigitalOcean |    ✓      |  ✓*  |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| Vultr        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   —**  |    ✓    |
-| OCI          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| Alibaba      |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
+|              | resources | cost | audit | unused | relationships | alerts | actions | serverless | metrics |
+|--------------|:---------:|:----:|:-----:|:------:|:-------------:|:------:|:-------:|:----------:|:-------:|
+| AWS          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| GCP          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Azure        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| DigitalOcean |    ✓      |  ✓*  |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Vultr        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   —**  |    ✓    |     —      |    —    |
+| OCI          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Alibaba      |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
 
 \* DO cost requires an account with the **Billing** team role — full-access PATs on a Member account return 403.
 \** Vultr has no public alerts API; monitoring is dashboard-only.
@@ -504,13 +504,15 @@ Per-provider resource coverage highlights:
 - **AWS:** EC2, EBS, S3, VPC/Subnet/SG, RDS/Aurora, Lambda, ALB/NLB/CLB, EKS, Route53, IAM, CloudWatch, Cost Explorer
 - **GCP:** GCE, GCS, VPC/Subnet/Firewall, Cloud SQL, Cloud Functions, Cloud Run, GKE, Load Balancers, Cloud DNS, Cloud Monitoring, Billing API
 - **Azure:** VMs, Blob Storage, VNet/Subnet/NSG/Public IP, Azure SQL + Cosmos DB, App Service + Functions, AKS, Load Balancers, DNS, Azure Monitor, Cost Management
-- **DigitalOcean:** Droplets, Volumes, Spaces CDN, VPCs, Firewalls, Managed DBs, DOKS, Load Balancers, DNS, Monitoring Alerts, Balance / Billing History
+- **DigitalOcean:** Droplets, Volumes, Spaces CDN, VPCs, Firewalls, Managed DBs, DOKS, Load Balancers, DNS, App Platform (serverless apps), Functions, Monitoring Alerts, Balance / Billing History
 - **Vultr:** Instances + Bare Metal, Block + Object Storage, VPCs, Firewalls, Managed DBs, VKE, Load Balancers, DNS, Billing History
-- **OCI:** Compute Instances, Object Storage + Block Volumes, VCN/Subnet/Security List/NSG, Autonomous DB + DB Systems, OKE, LB + NLB, DNS Zones, Monitoring Alarms, Usage API
-- **Alibaba Cloud:** ECS, OSS + Disks, VPC/VSwitch/Security Group, RDS, ACK, SLB, Alidns, CloudMonitor, BSS OpenAPI
+- **OCI:** Compute Instances, Object Storage + Block Volumes, VCN/Subnet/Security List/NSG, Autonomous DB + DB Systems, OKE, Oracle Functions, LB + NLB, DNS Zones, Monitoring Alarms, Usage API
+- **Alibaba Cloud:** ECS, OSS + Disks, VPC/VSwitch/Security Group, RDS, ACK, Function Compute (FC), SLB, Alidns, CloudMonitor, BSS OpenAPI
 
 ### Next up
 
+- [ ] **IAM for GCP** — Service accounts, custom roles, workload identity pools
+- [ ] **IAM for Azure** — RBAC role assignments, managed identities, app registrations
 - [ ] **Resource diffing** — Snapshot + compare "what changed since" per provider
 - [ ] **Tag compliance** — Find resources missing required tags
 - [ ] **Cross-provider search** — Query `"prod-*"` across every authed provider in parallel

@@ -66,6 +66,7 @@ dependencies = [
     "alibabacloud-alidns20150109>=3.0.0",
     "alibabacloud-bssopenapi20171214>=4.0.0",
     "alibabacloud-cms20190101>=2.0.0",
+    "alibabacloud-fc3-20230330>=1.0.0",
     "oss2>=2.19.0",
 ]
 

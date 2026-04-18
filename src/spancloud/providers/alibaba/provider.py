@@ -11,7 +11,9 @@ from spancloud.providers.alibaba.container import ACKResources
 from spancloud.providers.alibaba.database import RDSResources
 from spancloud.providers.alibaba.dns import DNSResources
 from spancloud.providers.alibaba.loadbalancer import SLBResources
+from spancloud.providers.alibaba.monitoring import AlibabaMonitoringAnalyzer, ResourceMetrics
 from spancloud.providers.alibaba.network import NetworkResources
+from spancloud.providers.alibaba.serverless import AlibabaFCResources
 from spancloud.providers.alibaba.storage import DiskResources, OSSResources
 from spancloud.utils.logging import get_logger
 
@@ -36,6 +38,8 @@ class AlibabaCloudProvider(BaseProvider):
         self._ack = ACKResources(self._auth)
         self._slb = SLBResources(self._auth)
         self._dns = DNSResources(self._auth)
+        self._serverless = AlibabaFCResources(self._auth)
+        self._monitoring = AlibabaMonitoringAnalyzer(self._auth)
         self._authenticated = False
 
     @property
@@ -54,6 +58,7 @@ class AlibabaCloudProvider(BaseProvider):
             ResourceType.NETWORK,
             ResourceType.DATABASE,
             ResourceType.CONTAINER,
+            ResourceType.SERVERLESS,
             ResourceType.LOAD_BALANCER,
             ResourceType.DNS,
         ]
@@ -88,6 +93,8 @@ class AlibabaCloudProvider(BaseProvider):
                 resources = await self._slb.list_load_balancers(region=region)
             case ResourceType.DNS:
                 resources = await self._dns.list_domains(region=region)
+            case ResourceType.SERVERLESS:
+                resources = await self._serverless.list_functions(region=region)
             case _:
                 raise ProviderError(
                     "alibaba",
@@ -113,6 +120,26 @@ class AlibabaCloudProvider(BaseProvider):
         raise ProviderError(
             "alibaba",
             f"get_resource not yet supported for '{resource_type}' on Alibaba",
+        )
+
+    async def get_instance_metrics(
+        self,
+        instance_id: str,
+        region: str | None = None,
+        hours: int = 1,
+    ) -> ResourceMetrics:
+        """Return CMS time-series metrics for an ECS instance.
+
+        Args:
+            instance_id: The ECS instance ID (e.g. ``i-bp1234...``).
+            region: Optional region override.
+            hours: Hours of history to retrieve (default 1).
+
+        Returns:
+            ResourceMetrics containing per-metric lists of MetricPoint objects.
+        """
+        return await self._monitoring.get_instance_metrics(
+            instance_id, region=region, hours=hours
         )
 
     async def get_status(self) -> dict[str, str]:

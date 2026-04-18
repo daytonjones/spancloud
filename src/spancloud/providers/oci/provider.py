@@ -11,7 +11,9 @@ from spancloud.providers.oci.container import OKEResources
 from spancloud.providers.oci.database import DatabaseResources
 from spancloud.providers.oci.dns import DNSResources
 from spancloud.providers.oci.loadbalancer import LoadBalancerResources
+from spancloud.providers.oci.monitoring import OCIMonitoringAnalyzer, ResourceMetrics
 from spancloud.providers.oci.network import NetworkResources
+from spancloud.providers.oci.serverless import OCIFunctionsResources
 from spancloud.providers.oci.storage import (
     BlockVolumeResources,
     ObjectStorageResources,
@@ -39,6 +41,8 @@ class OCIProvider(BaseProvider):
         self._oke = OKEResources(self._auth)
         self._loadbalancers = LoadBalancerResources(self._auth)
         self._dns = DNSResources(self._auth)
+        self._serverless = OCIFunctionsResources(self._auth)
+        self._monitoring = OCIMonitoringAnalyzer(self._auth)
         self._authenticated = False
 
     @property
@@ -59,6 +63,7 @@ class OCIProvider(BaseProvider):
             ResourceType.CONTAINER,
             ResourceType.LOAD_BALANCER,
             ResourceType.DNS,
+            ResourceType.SERVERLESS,
         ]
 
     async def authenticate(self) -> bool:
@@ -93,6 +98,8 @@ class OCIProvider(BaseProvider):
                 )
             case ResourceType.DNS:
                 resources = await self._dns.list_zones(region=region)
+            case ResourceType.SERVERLESS:
+                resources = await self._serverless.list_functions(region=region)
             case _:
                 raise ProviderError(
                     "oci",
@@ -118,6 +125,26 @@ class OCIProvider(BaseProvider):
         raise ProviderError(
             "oci",
             f"get_resource not yet supported for '{resource_type}' on OCI",
+        )
+
+    async def get_instance_metrics(
+        self,
+        instance_id: str,
+        region: str | None = None,
+        hours: int = 1,
+    ) -> ResourceMetrics:
+        """Fetch OCI Monitoring metrics for a compute instance.
+
+        Args:
+            instance_id: The OCID of the compute instance.
+            region: Optional region override.
+            hours: Number of hours of history to fetch (default 1).
+
+        Returns:
+            ResourceMetrics with CPU, memory, network, and disk time series.
+        """
+        return await self._monitoring.get_instance_metrics(
+            instance_id=instance_id, region=region, hours=hours
         )
 
     async def get_status(self) -> dict[str, str]:

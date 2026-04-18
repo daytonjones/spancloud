@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from spancloud.core.exceptions import ProviderError
 from spancloud.core.provider import BaseProvider
 from spancloud.core.resource import Resource, ResourceType
@@ -15,6 +17,7 @@ from spancloud.providers.digitalocean.storage import (
     SpacesResources,
     VolumeResources,
 )
+from spancloud.providers.digitalocean.serverless import ServerlessResources
 from spancloud.providers.digitalocean.vpc import FirewallResources, VPCResources
 from spancloud.utils.logging import get_logger
 
@@ -38,6 +41,7 @@ class DigitalOceanProvider(BaseProvider):
         self._kubernetes = KubernetesResources(self._auth)
         self._loadbalancers = LoadBalancerResources(self._auth)
         self._dns = DNSResources(self._auth)
+        self._serverless = ServerlessResources(self._auth)
         self._authenticated = False
 
     @property
@@ -56,6 +60,7 @@ class DigitalOceanProvider(BaseProvider):
             ResourceType.NETWORK,
             ResourceType.DATABASE,
             ResourceType.CONTAINER,
+            ResourceType.SERVERLESS,
             ResourceType.LOAD_BALANCER,
             ResourceType.DNS,
         ]
@@ -97,6 +102,8 @@ class DigitalOceanProvider(BaseProvider):
                 domains = await self._dns.list_domains()
                 records = await self._dns.list_records()
                 resources = domains + records
+            case ResourceType.SERVERLESS:
+                resources = await self._serverless.list_serverless(region=region)
             case _:
                 raise ProviderError(
                     "digitalocean",
@@ -122,6 +129,29 @@ class DigitalOceanProvider(BaseProvider):
             "digitalocean",
             f"get_resource not yet supported for '{resource_type}' on DigitalOcean",
         )
+
+    async def get_instance_metrics(
+        self,
+        resource_id: str,
+        region: str | None = None,
+        hours: int = 1,
+    ) -> Any:
+        """Get monitoring metrics for a Droplet.
+
+        Args:
+            resource_id: Droplet ID (numeric string).
+            region: Ignored — DO metrics API uses host_id, not region.
+            hours: Hours of data to retrieve (default 1).
+
+        Returns:
+            ResourceMetrics with per-metric time series.
+        """
+        from spancloud.providers.digitalocean.monitoring import (
+            DigitalOceanMonitoringAnalyzer,
+        )
+
+        analyzer = DigitalOceanMonitoringAnalyzer(self._auth)
+        return await analyzer.get_instance_metrics(resource_id, hours=hours)
 
     async def get_status(self) -> dict[str, str]:
         base = await super().get_status()
