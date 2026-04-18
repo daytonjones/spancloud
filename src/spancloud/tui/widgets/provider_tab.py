@@ -1320,19 +1320,75 @@ class ProviderTab(Horizontal):
             analysis.reload()
 
     def on_profile_changed(self, event: ProfileChanged) -> None:
-        if hasattr(event.provider, "_auth") and hasattr(
-            event.provider._auth, "set_profile"
-        ):
-            event.provider._auth.set_profile(event.profile_name)
-            sidebar = self.query_one(ResourceTypeSidebar)
-            sidebar.run_worker(
-                sidebar._check_auth(),
-                name=f"reauth-{event.provider.name}",
+        auth = getattr(event.provider, "_auth", None)
+        if not hasattr(auth, "set_profile"):
+            return
+        auth.set_profile(event.profile_name)
+        self.app.notify(f"Switched to profile: {event.profile_name}", timeout=2)
+        self.run_worker(
+            self._verify_after_profile_switch(event.profile_name),
+            name=f"profile-switch-{event.provider.name}",
+        )
+
+    async def _verify_after_profile_switch(self, profile_name: str) -> None:
+        """Verify credentials for the newly selected profile and react accordingly.
+
+        - Success (any type): update sidebar status, persist the choice, reload.
+        - Failure + SSO profile: show the auth modal so the user can run sso login.
+        - Failure + access key profile: show a helpful error notification.
+        """
+        import os
+
+        from spancloud.config import get_settings
+        from spancloud.providers.aws.auth import AWSAuth
+
+        sidebar = self.query_one(ResourceTypeSidebar)
+        status = sidebar.query_one(f"#auth-{self._provider.name}", Static)
+        status.update("[cyan]verifying...[/cyan]")
+
+        success = await self._provider.authenticate()
+
+        if success:
+            active = getattr(
+                getattr(self._provider, "_auth", None), "active_profile", profile_name
             )
-            self.app.notify(
-                f"Switched to profile: {event.profile_name}", timeout=3
-            )
+            status.update(f"[green]authenticated[/green] ({active})")
+            # Persist so the next startup reopens with this profile
+            env_path = get_settings().ensure_config_dir() / "aws.env"
+            env_path.write_text(f"SPANCLOUD_AWS_PROFILE={profile_name}\n")
+            os.environ["SPANCLOUD_AWS_PROFILE"] = profile_name
             self._reload_active_pane()
+            return
+
+        # Auth failed — look up the profile type to decide how to respond
+        profiles = AWSAuth.list_configured_profiles()
+        profile_info = next((p for p in profiles if p["name"] == profile_name), {})
+
+        if profile_info.get("type") == "sso":
+            status.update("[yellow]SSO login required[/yellow]")
+            self.app.notify(
+                f"Profile '{profile_name}' needs SSO login — opening auth dialog",
+                timeout=4,
+            )
+
+            from spancloud.tui.screens.auth import AuthScreen
+
+            def _after_auth(ok: bool | None) -> None:
+                if ok:
+                    status.update(f"[green]authenticated[/green] ({profile_name})")
+                    self._reload_active_pane()
+                else:
+                    status.update("[red]not authenticated[/red]")
+
+            self.app.push_screen(AuthScreen(self._provider), _after_auth)
+        else:
+            status.update("[red]not authenticated[/red]")
+            self.app.notify(
+                f"Profile '{profile_name}': credentials are invalid or expired — "
+                "run 'aws configure' to update them.",
+                severity="error",
+                timeout=6,
+            )
 
     def on_project_changed(self, event: ProjectChanged) -> None:
         auth = getattr(event.provider, "_auth", None)
