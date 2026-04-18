@@ -73,6 +73,7 @@ def version() -> None:
 def main_callback(
     ctx: typer.Context,
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
+    tui: bool = typer.Option(False, "--tui", help="Launch the TUI dashboard instead of the GUI."),
     profile: str | None = typer.Option(
         None, "--profile", "-P",
         help="AWS profile name for multi-account access (overrides SPANCLOUD_AWS_PROFILE).",
@@ -107,6 +108,9 @@ def main_callback(
             if gcp:
                 gcp._auth.set_project(gcp_project)
 
-    # Launch TUI if no subcommand was given
+    # Default (no subcommand): GUI, or TUI if --tui flag passed
     if ctx.invoked_subcommand is None:
-        launch_tui()
+        if tui:
+            launch_tui()
+        else:
+            launch_gui()

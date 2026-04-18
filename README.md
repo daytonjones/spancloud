@@ -45,7 +45,7 @@ python -m build                    # Creates dist/spancloud-0.1.0-py3-none-any.w
 pip install dist/spancloud-0.1.0-py3-none-any.whl
 
 # After install, both entry points are available
-spancloud                           # Launches TUI (default)
+spancloud                           # Launches GUI (default, requires PySide6)
 sc                                  # Short alias — identical to spancloud
 spancloud gui                       # Launches desktop GUI (requires PySide6)
 spancloud --help                    # Shows all commands
@@ -64,8 +64,10 @@ pip install PySide6
 Then launch:
 
 ```bash
-spancloud gui           # Launch desktop GUI
-sc gui                  # Short alias
+spancloud               # Default — launches GUI
+sc                      # Short alias, also launches GUI
+spancloud gui           # Explicit GUI launch
+spancloud --tui         # Launch TUI instead
 ```
 
 The desktop GUI provides a native Qt6 window with:
@@ -92,7 +94,7 @@ The desktop GUI provides a native Qt6 window with:
 Running `spancloud` with no arguments launches the TUI dashboard:
 
 ```bash
-spancloud               # Launches TUI by default
+spancloud --tui         # Launch TUI (GUI is the default)
 spancloud tui           # Also launches TUI explicitly
 ```
 
