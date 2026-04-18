@@ -138,37 +138,6 @@ _MOCK_RESOURCES: dict[str, dict[str, list[dict]]] = {
     },
 }
 
-_RESOURCE_TYPES = [
-    ("compute",       "🖥  Compute"),
-    ("storage",       "📦 Storage"),
-    ("network",       "🌐 Network"),
-    ("database",      "💾 Database"),
-    ("serverless",    "⚡ Serverless"),
-    ("container",     "📦 Container"),
-    ("load_balancer", "⚖  Load Balancer"),
-    ("dns",           "🌐 DNS"),
-]
-
-# Provider-specific overrides for generic resource type labels
-_COMPUTE_LABEL: dict[str, str] = {
-    "aws":          "🖥  Compute (EC2)",
-    "gcp":          "🖥  Compute (GCE)",
-    "azure":        "🖥  Compute (VMs)",
-    "digitalocean": "🖥  Compute (Droplets)",
-    "vultr":        "🖥  Compute (Instances)",
-    "oci":          "🖥  Compute (Instances)",
-    "alibaba":      "🖥  Compute (ECS)",
-}
-
-_STORAGE_LABEL: dict[str, str] = {
-    "aws":          "📦 Storage (S3/EBS)",
-    "gcp":          "📦 Storage (GCS)",
-    "azure":        "📦 Storage (Blobs)",
-    "digitalocean": "📦 Storage (Volumes)",
-    "vultr":        "📦 Storage (Block)",
-    "oci":          "📦 Storage (Object/Block)",
-    "alibaba":      "📦 Storage (OSS)",
-}
 
 _ANALYSIS_ITEMS = [
     ("cost",          "💰 Cost Summary"),
@@ -335,46 +304,94 @@ class ProviderViewWidget(QWidget):
         nav.setObjectName("sidebar")
         nav.setFixedWidth(200)
 
-        v = QVBoxLayout(nav)
-        v.setContentsMargins(0, 0, 0, 8)
-        v.setSpacing(0)
+        self._nav_layout = QVBoxLayout(nav)
+        self._nav_layout.setContentsMargins(0, 0, 0, 0)
+        self._nav_layout.setSpacing(0)
 
         # ── Region / profile / project controls ─────────────────────────
         self._controls = ProviderControls(self._provider["name"])
         self._controls.region_changed.connect(self._on_region_changed)
         self._controls.profile_changed.connect(self._on_profile_changed)
         self._controls.project_changed.connect(self._on_project_changed)
-        v.addWidget(self._controls)
+        self._nav_layout.addWidget(self._controls)
 
-        section = QLabel("RESOURCES")
-        section.setObjectName("sidebar-section")
-        v.addWidget(section)
+        self._nav_resources_label = QLabel("RESOURCES")
+        self._nav_resources_label.setObjectName("sidebar-section")
+        self._nav_layout.addWidget(self._nav_resources_label)
 
-        pname = self._provider["name"]
-        provider_resources = _MOCK_RESOURCES.get(pname, {})
-        _label_overrides: dict[str, dict[str, str]] = {
-            "compute": _COMPUTE_LABEL,
-            "storage": _STORAGE_LABEL,
-        }
-        for rt, label in _RESOURCE_TYPES:
-            if rt in provider_resources:
-                count = len(provider_resources[rt])
-                display = _label_overrides.get(rt, {}).get(pname, label)
-                btn = self._make_nav_button(rt, display, count, "rt")
-                self._rt_buttons[rt] = btn
-                v.addWidget(btn)
+        # Dynamic resource-type button area
+        self._nav_rt_container = QWidget()
+        self._nav_rt_layout = QVBoxLayout(self._nav_rt_container)
+        self._nav_rt_layout.setContentsMargins(0, 0, 0, 0)
+        self._nav_rt_layout.setSpacing(0)
+        self._nav_layout.addWidget(self._nav_rt_container)
 
         section2 = QLabel("ANALYSIS")
         section2.setObjectName("sidebar-section")
-        v.addWidget(section2)
+        self._nav_layout.addWidget(section2)
 
         for key, label in _ANALYSIS_ITEMS:
             btn = self._make_nav_button(key, label, None, "analysis")
             self._analysis_buttons[key] = btn
-            v.addWidget(btn)
+            self._nav_layout.addWidget(btn)
 
-        v.addStretch()
+        self._nav_layout.addStretch()
+
+        # ── Settings button at the bottom ───────────────────────────────
+        settings_btn = QPushButton("⚙  Configure Sidebar")
+        settings_btn.setFlat(True)
+        settings_btn.setStyleSheet(f"""
+            QPushButton {{
+                color: {TEXT_MUTED};
+                font-size: 11px;
+                text-align: left;
+                padding: 6px 16px;
+                border: none;
+                border-top: 1px solid {BORDER_SUBTLE};
+            }}
+            QPushButton:hover {{
+                color: {TEXT_PRIMARY};
+                background: rgba(255,255,255,0.05);
+            }}
+        """)
+        settings_btn.clicked.connect(self._open_sidebar_settings)
+        self._nav_layout.addWidget(settings_btn)
+
+        self._rebuild_rt_buttons()
         return nav
+
+    def _rebuild_rt_buttons(self) -> None:
+        """Rebuild the resource-type nav buttons from the current sidebar config."""
+        from spancloud.config.sidebar import get_sidebar_items
+
+        # Clear existing buttons
+        while self._nav_rt_layout.count():
+            item = self._nav_rt_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._rt_buttons.clear()
+
+        pname = self._provider["name"]
+        provider_resources = _MOCK_RESOURCES.get(pname, {})
+        seen_types: set[str] = set()
+
+        for svc in get_sidebar_items(pname):
+            rt = svc["type"]
+            if rt in seen_types or rt not in provider_resources:
+                continue
+            seen_types.add(rt)
+            count = len(provider_resources[rt])
+            btn = self._make_nav_button(rt, svc["label"], count, "rt")
+            self._rt_buttons[rt] = btn
+            self._nav_rt_layout.addWidget(btn)
+
+    def _open_sidebar_settings(self) -> None:
+        from spancloud.gui.widgets.sidebar_settings_dialog import SidebarSettingsDialog
+        dlg = SidebarSettingsDialog(
+            self._provider["name"], self._provider["display"], self
+        )
+        if dlg.exec():
+            self._rebuild_rt_buttons()
 
     def _make_nav_button(
         self, key: str, label: str, count: int | None, kind: str
@@ -447,6 +464,8 @@ class ProviderViewWidget(QWidget):
         self._table.setColumnCount(5)
         self._table.setHeaderLabels(["Name", "ID", "State", "Region", "Type"])
         self._table.header().setStretchLastSection(True)
+        self._table.header().setSectionsClickable(True)
+        self._table.setSortingEnabled(True)
         self._table.setColumnWidth(0, 190)
         self._table.setColumnWidth(1, 210)
         self._table.setColumnWidth(2, 85)
