@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
 
 if TYPE_CHECKING:
-    from skyforge.core.registry import ProviderRegistry
+    from spancloud.core.registry import ProviderRegistry
 
 
 class FakeProvider(BaseProvider):

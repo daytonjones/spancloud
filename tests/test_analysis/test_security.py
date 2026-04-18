@@ -9,13 +9,13 @@ class TestAWSSecurityAuditor:
     """Tests for AWS security audit checks."""
 
     def _make_auditor(self):
-        from skyforge.providers.aws.security import AWSSecurityAuditor
+        from spancloud.providers.aws.security import AWSSecurityAuditor
 
         auth = MagicMock()
         return AWSSecurityAuditor(auth)
 
     def test_sensitive_ports_defined(self) -> None:
-        from skyforge.providers.aws.security import _SENSITIVE_PORTS
+        from spancloud.providers.aws.security import _SENSITIVE_PORTS
 
         assert 22 in _SENSITIVE_PORTS
         assert 3389 in _SENSITIVE_PORTS
@@ -27,7 +27,7 @@ class TestGCPSecurityAuditor:
     """Tests for GCP security audit port parsing and checks."""
 
     def _make_auditor(self):
-        from skyforge.providers.gcp.security import GCPSecurityAuditor
+        from spancloud.providers.gcp.security import GCPSecurityAuditor
 
         auth = MagicMock()
         return GCPSecurityAuditor(auth)
@@ -46,7 +46,7 @@ class TestGCPSecurityAuditor:
         assert start <= 22 <= end
 
     def test_sensitive_ports_defined(self) -> None:
-        from skyforge.providers.gcp.security import _SENSITIVE_PORTS
+        from spancloud.providers.gcp.security import _SENSITIVE_PORTS
 
         assert 22 in _SENSITIVE_PORTS
         assert 5432 in _SENSITIVE_PORTS
@@ -56,7 +56,7 @@ class TestAWSCostAnalyzer:
     """Tests for AWS cost analyzer initialization."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.cost import AWSCostAnalyzer
+        from spancloud.providers.aws.cost import AWSCostAnalyzer
 
         auth = MagicMock()
         analyzer = AWSCostAnalyzer(auth)
@@ -67,7 +67,7 @@ class TestGCPCostAnalyzer:
     """Tests for GCP cost analyzer initialization."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.cost import GCPCostAnalyzer
+        from spancloud.providers.gcp.cost import GCPCostAnalyzer
 
         auth = MagicMock()
         analyzer = GCPCostAnalyzer(auth)
@@ -78,7 +78,7 @@ class TestAWSUnusedDetector:
     """Tests for AWS unused detector initialization."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.unused import AWSUnusedDetector
+        from spancloud.providers.aws.unused import AWSUnusedDetector
 
         auth = MagicMock()
         detector = AWSUnusedDetector(auth)
@@ -89,7 +89,7 @@ class TestGCPUnusedDetector:
     """Tests for GCP unused detector initialization."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.unused import GCPUnusedDetector
+        from spancloud.providers.gcp.unused import GCPUnusedDetector
 
         auth = MagicMock()
         detector = GCPUnusedDetector(auth)
@@ -100,7 +100,7 @@ class TestAWSRelationshipMapper:
     """Tests for AWS relationship mapper initialization."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.relationships import AWSRelationshipMapper
+        from spancloud.providers.aws.relationships import AWSRelationshipMapper
 
         auth = MagicMock()
         mapper = AWSRelationshipMapper(auth)
@@ -111,7 +111,7 @@ class TestGCPRelationshipMapper:
     """Tests for GCP relationship mapper initialization."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.relationships import GCPRelationshipMapper
+        from spancloud.providers.gcp.relationships import GCPRelationshipMapper
 
         auth = MagicMock()
         mapper = GCPRelationshipMapper(auth)

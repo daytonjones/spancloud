@@ -4,21 +4,21 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceType
+from spancloud.core.resource import ResourceType
 
 
 class TestCloudMonitoringAnalyzer:
     """Tests for Cloud Monitoring models and analyzer."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.monitoring import CloudMonitoringAnalyzer
+        from spancloud.providers.gcp.monitoring import CloudMonitoringAnalyzer
 
         auth = MagicMock()
         analyzer = CloudMonitoringAnalyzer(auth)
         assert analyzer is not None
 
     def test_alert_info_model(self) -> None:
-        from skyforge.providers.gcp.monitoring import AlertInfo
+        from spancloud.providers.gcp.monitoring import AlertInfo
 
         alert = AlertInfo(
             name="policy-123",
@@ -32,7 +32,7 @@ class TestCloudMonitoringAnalyzer:
         assert alert.conditions_count == 2
 
     def test_resource_metrics_model(self) -> None:
-        from skyforge.providers.gcp.monitoring import MetricPoint, ResourceMetrics
+        from spancloud.providers.gcp.monitoring import MetricPoint, ResourceMetrics
 
         metrics = ResourceMetrics(
             resource_id="12345",
@@ -50,14 +50,14 @@ class TestCloudDNSResources:
     """Tests for Cloud DNS resource discovery."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.dns import CloudDNSResources
+        from spancloud.providers.gcp.dns import CloudDNSResources
 
         auth = MagicMock()
         dns_res = CloudDNSResources(auth)
         assert dns_res is not None
 
     def test_map_records(self) -> None:
-        from skyforge.providers.gcp.dns import CloudDNSResources
+        from spancloud.providers.gcp.dns import CloudDNSResources
 
         auth = MagicMock()
         dns_res = CloudDNSResources(auth)
@@ -80,14 +80,14 @@ class TestGCSDetailAnalyzer:
     """Tests for GCS bucket detail models."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.gcs_details import GCSDetailAnalyzer
+        from spancloud.providers.gcp.gcs_details import GCSDetailAnalyzer
 
         auth = MagicMock()
         analyzer = GCSDetailAnalyzer(auth)
         assert analyzer is not None
 
     def test_bucket_details_model(self) -> None:
-        from skyforge.providers.gcp.gcs_details import BucketDetails, LifecycleRule
+        from spancloud.providers.gcp.gcs_details import BucketDetails, LifecycleRule
 
         details = BucketDetails(
             name="my-bucket",
@@ -112,7 +112,7 @@ class TestGCSDetailAnalyzer:
         assert details.lifecycle_rules[0].age_days == 30
 
     def test_lifecycle_rule_defaults(self) -> None:
-        from skyforge.providers.gcp.gcs_details import LifecycleRule
+        from spancloud.providers.gcp.gcs_details import LifecycleRule
 
         rule = LifecycleRule()
         assert rule.action == ""
@@ -123,21 +123,21 @@ class TestGCEActions:
     """Tests for GCE resource actions."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.gcp.actions import GCEActions
+        from spancloud.providers.gcp.actions import GCEActions
 
         auth = MagicMock()
         actions = GCEActions(auth)
         assert actions is not None
 
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.gcp.actions import ActionVerb
+        from spancloud.providers.gcp.actions import ActionVerb
 
         assert ActionVerb.START == "start"
         assert ActionVerb.STOP == "stop"
         assert ActionVerb.RESET == "reset"
 
     def test_action_result_model(self) -> None:
-        from skyforge.providers.gcp.actions import ActionResult
+        from spancloud.providers.gcp.actions import ActionResult
 
         result = ActionResult(
             success=True,
@@ -151,7 +151,7 @@ class TestGCEActions:
         assert result.provider == "gcp"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.gcp.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.gcp.actions import _VALID_STATES, ActionVerb
 
         assert "TERMINATED" in _VALID_STATES[ActionVerb.START]
         assert "SUSPENDED" in _VALID_STATES[ActionVerb.START]
@@ -163,7 +163,7 @@ class TestGCPProviderTier3Integration:
     """Tests that DNS is wired into GCPProvider."""
 
     def test_dns_in_supported_types(self) -> None:
-        from skyforge.providers.gcp.provider import GCPProvider
+        from spancloud.providers.gcp.provider import GCPProvider
 
         provider = GCPProvider()
         assert ResourceType.DNS in provider.supported_resource_types

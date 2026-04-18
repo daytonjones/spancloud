@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.resource import Resource, ResourceState, ResourceType
-from skyforge.providers.gcp.provider import GCPProvider
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.resource import Resource, ResourceState, ResourceType
+from spancloud.providers.gcp.provider import GCPProvider
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ class TestGCPAuth:
     """Tests for GCPAuth helpers."""
 
     def test_set_project(self) -> None:
-        from skyforge.providers.gcp.auth import GCPAuth
+        from spancloud.providers.gcp.auth import GCPAuth
 
         auth = GCPAuth()
         auth.set_project("my-other-project")
@@ -105,7 +105,7 @@ class TestGCPAuth:
         """_sync_list_projects should skip non-ACTIVE projects and sort the rest."""
         from unittest.mock import MagicMock, patch
 
-        from skyforge.providers.gcp.auth import GCPAuth
+        from spancloud.providers.gcp.auth import GCPAuth
 
         auth = GCPAuth()
         auth._credentials = MagicMock()
@@ -151,7 +151,7 @@ class TestNetworkResources:
     """Tests for VPC network resource mapping."""
 
     def test_map_network(self) -> None:
-        from skyforge.providers.gcp.vpc import NetworkResources
+        from spancloud.providers.gcp.vpc import NetworkResources
 
         auth = MagicMock()
         nr = NetworkResources(auth)
@@ -176,7 +176,7 @@ class TestNetworkResources:
         assert resource.metadata["resource_subtype"] == "vpc"
 
     def test_map_network_auto_mode(self) -> None:
-        from skyforge.providers.gcp.vpc import NetworkResources
+        from spancloud.providers.gcp.vpc import NetworkResources
 
         auth = MagicMock()
         nr = NetworkResources(auth)
@@ -198,7 +198,7 @@ class TestSubnetResources:
     """Tests for subnet resource mapping."""
 
     def test_map_subnet(self) -> None:
-        from skyforge.providers.gcp.vpc import SubnetResources
+        from spancloud.providers.gcp.vpc import SubnetResources
 
         auth = MagicMock()
         sr = SubnetResources(auth)
@@ -225,7 +225,7 @@ class TestFirewallResources:
     """Tests for firewall rule resource mapping."""
 
     def test_map_firewall(self) -> None:
-        from skyforge.providers.gcp.vpc import FirewallResources
+        from spancloud.providers.gcp.vpc import FirewallResources
 
         auth = MagicMock()
         fr = FirewallResources(auth)
@@ -252,7 +252,7 @@ class TestFirewallResources:
         assert resource.metadata["resource_subtype"] == "firewall"
 
     def test_disabled_firewall_is_stopped(self) -> None:
-        from skyforge.providers.gcp.vpc import FirewallResources
+        from spancloud.providers.gcp.vpc import FirewallResources
 
         auth = MagicMock()
         fr = FirewallResources(auth)
@@ -277,7 +277,7 @@ class TestCloudSQLResources:
     """Tests for Cloud SQL resource mapping."""
 
     def test_map_instance(self) -> None:
-        from skyforge.providers.gcp.cloudsql import CloudSQLResources
+        from spancloud.providers.gcp.cloudsql import CloudSQLResources
 
         auth = MagicMock()
         cs = CloudSQLResources(auth)
@@ -314,7 +314,7 @@ class TestGKEResources:
     """Tests for GKE resource mapping."""
 
     def test_map_cluster(self) -> None:
-        from skyforge.providers.gcp.gke import GKEResources
+        from spancloud.providers.gcp.gke import GKEResources
 
         auth = MagicMock()
         gke = GKEResources(auth)
@@ -345,7 +345,7 @@ class TestGKEResources:
         assert resource.metadata["resource_subtype"] == "gke_cluster"
 
     def test_map_node_pool(self) -> None:
-        from skyforge.providers.gcp.gke import GKEResources
+        from spancloud.providers.gcp.gke import GKEResources
 
         auth = MagicMock()
         gke = GKEResources(auth)
@@ -377,7 +377,7 @@ class TestCloudFunctionsResources:
     """Tests for Cloud Functions resource mapping."""
 
     def test_map_function(self) -> None:
-        from skyforge.providers.gcp.functions import CloudFunctionsResources
+        from spancloud.providers.gcp.functions import CloudFunctionsResources
 
         auth = MagicMock()
         cf = CloudFunctionsResources(auth)
@@ -406,7 +406,7 @@ class TestCloudFunctionsResources:
         assert resource.metadata["resource_subtype"] == "cloud_function"
 
     def test_extract_region(self) -> None:
-        from skyforge.providers.gcp.functions import CloudFunctionsResources
+        from spancloud.providers.gcp.functions import CloudFunctionsResources
 
         auth = MagicMock()
         cf = CloudFunctionsResources(auth)
@@ -421,7 +421,7 @@ class TestCloudRunResources:
     """Tests for Cloud Run resource mapping."""
 
     def test_map_service_ready(self) -> None:
-        from skyforge.providers.gcp.cloudrun import CloudRunResources
+        from spancloud.providers.gcp.cloudrun import CloudRunResources
 
         auth = MagicMock()
         cr = CloudRunResources(auth)
@@ -453,7 +453,7 @@ class TestCloudRunResources:
         assert resource.metadata["resource_subtype"] == "cloud_run_service"
 
     def test_reconciling_service_is_pending(self) -> None:
-        from skyforge.providers.gcp.cloudrun import CloudRunResources
+        from spancloud.providers.gcp.cloudrun import CloudRunResources
 
         auth = MagicMock()
         cr = CloudRunResources(auth)
@@ -467,7 +467,7 @@ class TestCloudRunResources:
         assert state == ResourceState.PENDING
 
     def test_extract_region(self) -> None:
-        from skyforge.providers.gcp.cloudrun import CloudRunResources
+        from spancloud.providers.gcp.cloudrun import CloudRunResources
 
         auth = MagicMock()
         cr = CloudRunResources(auth)
@@ -480,7 +480,7 @@ class TestLoadBalancerResources:
     """Tests for load balancer resource mapping."""
 
     def test_map_forwarding_rule(self) -> None:
-        from skyforge.providers.gcp.loadbalancer import LoadBalancerResources
+        from spancloud.providers.gcp.loadbalancer import LoadBalancerResources
 
         auth = MagicMock()
         lb = LoadBalancerResources(auth)
@@ -509,7 +509,7 @@ class TestLoadBalancerResources:
         assert resource.metadata["resource_subtype"] == "forwarding_rule"
 
     def test_classify_lb_types(self) -> None:
-        from skyforge.providers.gcp.loadbalancer import LoadBalancerResources
+        from spancloud.providers.gcp.loadbalancer import LoadBalancerResources
 
         auth = MagicMock()
         lb = LoadBalancerResources(auth)

@@ -4,21 +4,21 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceType
+from spancloud.core.resource import ResourceType
 
 
 class TestCloudWatchAnalyzer:
     """Tests for CloudWatch alarm and metric models."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.cloudwatch import CloudWatchAnalyzer
+        from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
 
         auth = MagicMock()
         analyzer = CloudWatchAnalyzer(auth)
         assert analyzer is not None
 
     def test_alarm_info_model(self) -> None:
-        from skyforge.providers.aws.cloudwatch import AlarmInfo
+        from spancloud.providers.aws.cloudwatch import AlarmInfo
 
         alarm = AlarmInfo(
             name="high-cpu",
@@ -33,7 +33,7 @@ class TestCloudWatchAnalyzer:
         assert alarm.dimensions["InstanceId"] == "i-123"
 
     def test_resource_metrics_model(self) -> None:
-        from skyforge.providers.aws.cloudwatch import MetricPoint, ResourceMetrics
+        from spancloud.providers.aws.cloudwatch import MetricPoint, ResourceMetrics
 
         metrics = ResourceMetrics(
             resource_id="i-123",
@@ -53,7 +53,7 @@ class TestRoute53Resources:
     """Tests for Route53 resource discovery."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.route53 import Route53Resources
+        from spancloud.providers.aws.route53 import Route53Resources
 
         auth = MagicMock()
         r53 = Route53Resources(auth)
@@ -64,14 +64,14 @@ class TestS3DetailAnalyzer:
     """Tests for S3 bucket detail models."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.s3_details import S3DetailAnalyzer
+        from spancloud.providers.aws.s3_details import S3DetailAnalyzer
 
         auth = MagicMock()
         analyzer = S3DetailAnalyzer(auth)
         assert analyzer is not None
 
     def test_bucket_details_model(self) -> None:
-        from skyforge.providers.aws.s3_details import BucketDetails, LifecycleRule
+        from spancloud.providers.aws.s3_details import BucketDetails, LifecycleRule
 
         details = BucketDetails(
             name="my-bucket",
@@ -96,7 +96,7 @@ class TestS3DetailAnalyzer:
         assert details.lifecycle_rules[0].expiration_days == 365
 
     def test_lifecycle_rule_defaults(self) -> None:
-        from skyforge.providers.aws.s3_details import LifecycleRule
+        from spancloud.providers.aws.s3_details import LifecycleRule
 
         rule = LifecycleRule()
         assert rule.id == ""
@@ -108,28 +108,28 @@ class TestIAMResources:
     """Tests for IAM resource discovery."""
 
     def test_user_resources_can_create(self) -> None:
-        from skyforge.providers.aws.iam import IAMUserResources
+        from spancloud.providers.aws.iam import IAMUserResources
 
         auth = MagicMock()
         users = IAMUserResources(auth)
         assert users is not None
 
     def test_role_resources_can_create(self) -> None:
-        from skyforge.providers.aws.iam import IAMRoleResources
+        from spancloud.providers.aws.iam import IAMRoleResources
 
         auth = MagicMock()
         roles = IAMRoleResources(auth)
         assert roles is not None
 
     def test_policy_resources_can_create(self) -> None:
-        from skyforge.providers.aws.iam import IAMPolicyResources
+        from spancloud.providers.aws.iam import IAMPolicyResources
 
         auth = MagicMock()
         policies = IAMPolicyResources(auth)
         assert policies is not None
 
     def test_extract_trusted_entities(self) -> None:
-        from skyforge.providers.aws.iam import IAMRoleResources
+        from spancloud.providers.aws.iam import IAMRoleResources
 
         auth = MagicMock()
         roles = IAMRoleResources(auth)
@@ -151,7 +151,7 @@ class TestIAMResources:
         assert "root" in result
 
     def test_extract_trusted_entities_empty(self) -> None:
-        from skyforge.providers.aws.iam import IAMRoleResources
+        from spancloud.providers.aws.iam import IAMRoleResources
 
         auth = MagicMock()
         roles = IAMRoleResources(auth)
@@ -162,14 +162,14 @@ class TestEC2Actions:
     """Tests for EC2 resource actions."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.aws.actions import EC2Actions
+        from spancloud.providers.aws.actions import EC2Actions
 
         auth = MagicMock()
         actions = EC2Actions(auth)
         assert actions is not None
 
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.aws.actions import ActionVerb
+        from spancloud.providers.aws.actions import ActionVerb
 
         assert ActionVerb.START == "start"
         assert ActionVerb.STOP == "stop"
@@ -177,7 +177,7 @@ class TestEC2Actions:
         assert ActionVerb.TERMINATE == "terminate"
 
     def test_action_result_model(self) -> None:
-        from skyforge.providers.aws.actions import ActionResult
+        from spancloud.providers.aws.actions import ActionResult
 
         result = ActionResult(
             success=True,
@@ -193,7 +193,7 @@ class TestEC2Actions:
         assert result.previous_state == "running"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.aws.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.aws.actions import _VALID_STATES, ActionVerb
 
         assert "stopped" in _VALID_STATES[ActionVerb.START]
         assert "running" in _VALID_STATES[ActionVerb.STOP]
@@ -206,13 +206,13 @@ class TestAWSProviderTier3Integration:
     """Tests that new resource types are wired into AWSProvider."""
 
     def test_dns_in_supported_types(self) -> None:
-        from skyforge.providers.aws.provider import AWSProvider
+        from spancloud.providers.aws.provider import AWSProvider
 
         provider = AWSProvider()
         assert ResourceType.DNS in provider.supported_resource_types
 
     def test_iam_in_supported_types(self) -> None:
-        from skyforge.providers.aws.provider import AWSProvider
+        from spancloud.providers.aws.provider import AWSProvider
 
         provider = AWSProvider()
         assert ResourceType.IAM in provider.supported_resource_types

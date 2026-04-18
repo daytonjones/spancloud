@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from skyforge.core.export import to_csv, to_json, to_yaml
-from skyforge.core.resource import Resource, ResourceState, ResourceType
+from spancloud.core.export import to_csv, to_json, to_yaml
+from spancloud.core.resource import Resource, ResourceState, ResourceType
 
 
 def _sample_resources() -> list[Resource]:

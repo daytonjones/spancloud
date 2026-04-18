@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import (
+from spancloud.core.exceptions import (
     AuthenticationError,
     ProviderError,
     ProviderNotImplementedError,
     ResourceNotFoundError,
-    SkyforgeError,
+    SpancloudError,
 )
 
 
 class TestExceptions:
     """Tests for the exception hierarchy."""
 
-    def test_skyforge_error_is_base(self) -> None:
-        assert issubclass(ProviderError, SkyforgeError)
+    def test_spancloud_error_is_base(self) -> None:
+        assert issubclass(ProviderError, SpancloudError)
         assert issubclass(AuthenticationError, ProviderError)
         assert issubclass(ResourceNotFoundError, ProviderError)
-        assert issubclass(ProviderNotImplementedError, SkyforgeError)
+        assert issubclass(ProviderNotImplementedError, SpancloudError)
 
     def test_provider_error_includes_provider_name(self) -> None:
         err = ProviderError("aws", "something broke")

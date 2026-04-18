@@ -1,10 +1,10 @@
-# Skyforge
+# Spancloud
 
-[![GitHub stars](https://img.shields.io/github/stars/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/network/members)
-[![GitHub watchers](https://img.shields.io/github/watchers/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/watchers)
-[![GitHub issues](https://img.shields.io/github/issues/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/issues)
-[![GitHub license](https://img.shields.io/github/license/daytonjones/skyforge?style=flat-square)](https://github.com/daytonjones/skyforge/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/watchers)
+[![GitHub issues](https://img.shields.io/github/issues/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/issues)
+[![GitHub license](https://img.shields.io/github/license/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=D7FF64)](https://docs.astral.sh/ruff/)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue?style=flat-square)](https://mypy-lang.org/)
@@ -16,7 +16,7 @@
 
 Multi-cloud infrastructure orchestrator — an all-seeing eye into your cloud resources.
 
-Skyforge provides a unified interface to discover, inspect, and manage infrastructure across multiple cloud providers from a single CLI or TUI dashboard.
+Spancloud provides a unified interface to discover, inspect, and manage infrastructure across multiple cloud providers from a single CLI or TUI dashboard.
 
 ## Supported Providers
 
@@ -40,23 +40,23 @@ pip install -e ".[dev]"
 
 # Build and install locally (like a real user would)
 pip install build
-python -m build                    # Creates dist/skyforge-0.1.0-py3-none-any.whl
-pip install dist/skyforge-0.1.0-py3-none-any.whl
+python -m build                    # Creates dist/spancloud-0.1.0-py3-none-any.whl
+pip install dist/spancloud-0.1.0-py3-none-any.whl
 
-# After install, 'skyforge' is available as a command
-skyforge                           # Launches TUI
-skyforge --help                    # Shows all commands
+# After install, 'spancloud' is available as a command
+spancloud                           # Launches TUI
+spancloud --help                    # Shows all commands
 ```
 
 ## Quick Start
 
 ### TUI Dashboard
 
-Running `skyforge` with no arguments launches the TUI dashboard:
+Running `spancloud` with no arguments launches the TUI dashboard:
 
 ```bash
-skyforge               # Launches TUI by default
-skyforge tui           # Also launches TUI explicitly
+spancloud               # Launches TUI by default
+spancloud tui           # Also launches TUI explicitly
 ```
 
 The TUI provides:
@@ -70,8 +70,8 @@ The TUI provides:
 - **Search/filter** — press `/` to search across name, type, region, metadata; filters live as you type
 - **Export** — `e` on any loaded table writes JSON / CSV / YAML to disk
 - **Analysis views** — cost summary, security audit, unused resources, relationships, and monitoring alerts inline per provider
-- **Settings screen** — click the Settings sidebar item to pick which resource types appear; matches `skyforge config sidebar`
-- **Provider enable/disable** — `skyforge config providers` (or the settings screen) hides tabs you don't use
+- **Settings screen** — click the Settings sidebar item to pick which resource types appear; matches `spancloud config sidebar`
+- **Provider enable/disable** — `spancloud config providers` (or the settings screen) hides tabs you don't use
 - **Animated progress** — slow analysis runs show a spinner + elapsed timer so you know Vultr / large Azure subs are still working
 - **Auth modals** — click any unauthenticated provider tile on the Overview tab to log in; Vultr / DO / Alibaba save tokens to the OS keychain for the next session
 - **Keyboard navigation** — Tab/Shift+Tab providers, Up/Down sidebar, Enter to load, `/` search, `e` export, Escape close, `?` help, `q` quit
@@ -83,7 +83,7 @@ For the best TUI experience, configure your terminal:
 
 **iTerm2 (macOS):**
 - **Profiles > Terminal > Enable mouse reporting** — must be checked for mouse/click support
-- **Profiles > General > Title** — set to "Session Name" or include "Terminal Title" to see `Skyforge :: <provider>` in the tab
+- **Profiles > General > Title** — set to "Session Name" or include "Terminal Title" to see `Spancloud :: <provider>` in the tab
 
 **Terminal.app (macOS):**
 - **Profiles > Window > Title** — check "Active process name"
@@ -92,118 +92,118 @@ For the best TUI experience, configure your terminal:
 
 ```bash
 # Authenticate with a cloud provider (interactive)
-skyforge auth login aws                         # SSO, access keys, or profile selection
-skyforge auth login gcp                         # Application Default Credentials + project setup
-skyforge auth login vultr                       # API key
-skyforge auth login digitalocean                # Personal Access Token
-skyforge auth login azure                       # Wraps 'az login' + subscription selection
-skyforge auth login oci                         # Reads ~/.oci/config or shells to 'oci setup config'
-skyforge auth login alibaba                     # AccessKey ID + Secret
+spancloud auth login aws                         # SSO, access keys, or profile selection
+spancloud auth login gcp                         # Application Default Credentials + project setup
+spancloud auth login vultr                       # API key
+spancloud auth login digitalocean                # Personal Access Token
+spancloud auth login azure                       # Wraps 'az login' + subscription selection
+spancloud auth login oci                         # Reads ~/.oci/config or shells to 'oci setup config'
+spancloud auth login alibaba                     # AccessKey ID + Secret
 
 # Check auth status for all providers at once
-skyforge auth status
+spancloud auth status
 
 # List all registered providers
-skyforge provider list
+spancloud provider list
 
 # Check detailed status for a single provider
-skyforge provider status aws
-skyforge provider status gcp
+spancloud provider status aws
+spancloud provider status gcp
 
 # List resources by type
-skyforge resource list aws compute
-skyforge resource list aws storage
-skyforge resource list aws network              # VPCs, subnets, security groups
-skyforge resource list aws database             # RDS instances + Aurora clusters
-skyforge resource list aws serverless           # Lambda functions
-skyforge resource list aws load_balancer        # ALB, NLB, Classic ELBs
-skyforge resource list aws container            # EKS clusters, node groups, Fargate profiles
+spancloud resource list aws compute
+spancloud resource list aws storage
+spancloud resource list aws network              # VPCs, subnets, security groups
+spancloud resource list aws database             # RDS instances + Aurora clusters
+spancloud resource list aws serverless           # Lambda functions
+spancloud resource list aws load_balancer        # ALB, NLB, Classic ELBs
+spancloud resource list aws container            # EKS clusters, node groups, Fargate profiles
 
 # Filter by region
-skyforge resource list aws compute --region us-west-2
-skyforge resource list gcp compute --region us-central1
-skyforge resource list gcp network              # VPC networks, subnets, firewall rules
-skyforge resource list gcp database             # Cloud SQL instances
-skyforge resource list gcp serverless           # Cloud Functions + Cloud Run services
-skyforge resource list gcp container            # GKE clusters + node pools
-skyforge resource list gcp load_balancer        # Forwarding rules + backend services
+spancloud resource list aws compute --region us-west-2
+spancloud resource list gcp compute --region us-central1
+spancloud resource list gcp network              # VPC networks, subnets, firewall rules
+spancloud resource list gcp database             # Cloud SQL instances
+spancloud resource list gcp serverless           # Cloud Functions + Cloud Run services
+spancloud resource list gcp container            # GKE clusters + node pools
+spancloud resource list gcp load_balancer        # Forwarding rules + backend services
 
 # Scan ALL regions at once
-skyforge resource list aws compute --all-regions
+spancloud resource list aws compute --all-regions
 
 # Filter by tags
-skyforge resource list aws compute --tag env=prod
-skyforge resource list aws compute --tag env=prod --tag team=platform
+spancloud resource list aws compute --tag env=prod
+spancloud resource list aws compute --tag env=prod --tag team=platform
 
 # Combine filters
-skyforge resource list aws compute --all-regions --tag env=prod
+spancloud resource list aws compute --all-regions --tag env=prod
 
 # Show details for a specific resource
-skyforge resource show aws compute i-0abc123def --region us-east-1
+spancloud resource show aws compute i-0abc123def --region us-east-1
 
 # Export to JSON / CSV / YAML (to stdout or a file)
-skyforge resource list aws compute --export json
-skyforge resource list aws compute --export csv -o ec2.csv
-skyforge resource list gcp compute --export yaml
+spancloud resource list aws compute --export json
+spancloud resource list aws compute --export csv -o ec2.csv
+spancloud resource list gcp compute --export yaml
 
 # Show version
-skyforge version
+spancloud version
 
 # Cost analysis (--profile for multi-account)
-skyforge cost show aws                         # 30-day cost summary with daily trend
-skyforge cost show aws --days 7                # Last 7 days
-skyforge cost show aws --profile production    # Costs for a specific account
-skyforge cost show gcp                         # GCP billing info + BigQuery export
+spancloud cost show aws                         # 30-day cost summary with daily trend
+spancloud cost show aws --days 7                # Last 7 days
+spancloud cost show aws --profile production    # Costs for a specific account
+spancloud cost show gcp                         # GCP billing info + BigQuery export
 
 # Security audit
-skyforge audit run aws                         # Scan for misconfigurations
-skyforge audit run aws --region us-west-2      # Region-specific scan
-skyforge audit run gcp                         # GCP firewall, GCS, Cloud SQL checks
+spancloud audit run aws                         # Scan for misconfigurations
+spancloud audit run aws --region us-west-2      # Region-specific scan
+spancloud audit run gcp                         # GCP firewall, GCS, Cloud SQL checks
 
 # Unused resource detection
-skyforge unused scan aws                       # Find idle/orphaned resources
-skyforge unused scan gcp --stopped-days 14     # Custom threshold for stopped VMs
-skyforge unused scan aws --snapshot-days 60    # Snapshots older than 60 days
+spancloud unused scan aws                       # Find idle/orphaned resources
+spancloud unused scan gcp --stopped-days 14     # Custom threshold for stopped VMs
+spancloud unused scan aws --snapshot-days 60    # Snapshots older than 60 days
 
 # Resource relationship mapping
-skyforge map show aws                          # Table of all relationships
-skyforge map show aws --tree                   # Tree view
-skyforge map show aws --resource i-0abc123def  # Relationships for one resource
-skyforge map show gcp --region us-central1     # GCP relationships
+spancloud map show aws                          # Table of all relationships
+spancloud map show aws --tree                   # Tree view
+spancloud map show aws --resource i-0abc123def  # Relationships for one resource
+spancloud map show gcp --region us-central1     # GCP relationships
 
 # --- Resource actions (start / stop / reboot / terminate) ---
 # All seven providers support start/stop/reboot. Only AWS supports terminate.
-skyforge action start i-0abc123 --region us-east-1
-skyforge action start my-vm -p gcp --region us-central1-a
-skyforge action stop <droplet-id> -p digitalocean
-skyforge action reboot web-1 -p azure --region eastus
-skyforge action start <ocid> -p oci --region us-ashburn-1
-skyforge action stop <i-id> -p alibaba --region us-west-1
-skyforge action stop <id> -p vultr
-skyforge action terminate i-0abc123            # AWS only — requires confirmation
-skyforge action start i-0abc123 --yes          # -y skips the confirmation prompt
+spancloud action start i-0abc123 --region us-east-1
+spancloud action start my-vm -p gcp --region us-central1-a
+spancloud action stop <droplet-id> -p digitalocean
+spancloud action reboot web-1 -p azure --region eastus
+spancloud action start <ocid> -p oci --region us-ashburn-1
+spancloud action stop <i-id> -p alibaba --region us-west-1
+spancloud action stop <id> -p vultr
+spancloud action terminate i-0abc123            # AWS only — requires confirmation
+spancloud action start i-0abc123 --yes          # -y skips the confirmation prompt
 
 # --- Provider-specific detail viewers ---
 
 # S3 / GCS / Vultr Block + Object Storage detail pages
-skyforge s3 info my-bucket                     # Policy, lifecycle, size, encryption
-skyforge gcs info my-bucket                    # IAM, lifecycle, size, encryption
-skyforge vultr block-info <block-id>           # Vultr block storage detail
-skyforge vultr object-info <subscription-id>   # Vultr Object Storage detail
+spancloud s3 info my-bucket                     # Policy, lifecycle, size, encryption
+spancloud gcs info my-bucket                    # IAM, lifecycle, size, encryption
+spancloud vultr block-info <block-id>           # Vultr block storage detail
+spancloud vultr object-info <subscription-id>   # Vultr Object Storage detail
 
 # --- Monitoring ---
 # alerts works on AWS (CloudWatch alarms), GCP / DO / Azure / OCI / Alibaba (alert policies).
 # metrics is AWS + GCP only.
-skyforge monitor alerts aws                    # All CloudWatch alarms
-skyforge monitor alerts aws --state ALARM      # Only firing alarms
-skyforge monitor alerts gcp                    # GCP alert policies
-skyforge monitor alerts digitalocean           # DO droplet alert policies
-skyforge monitor alerts azure                  # Azure metric alerts
-skyforge monitor alerts oci                    # OCI monitoring alarms
-skyforge monitor alerts alibaba                # Alibaba CloudMonitor alarms
+spancloud monitor alerts aws                    # All CloudWatch alarms
+spancloud monitor alerts aws --state ALARM      # Only firing alarms
+spancloud monitor alerts gcp                    # GCP alert policies
+spancloud monitor alerts digitalocean           # DO droplet alert policies
+spancloud monitor alerts azure                  # Azure metric alerts
+spancloud monitor alerts oci                    # OCI monitoring alarms
+spancloud monitor alerts alibaba                # Alibaba CloudMonitor alarms
 
-skyforge monitor metrics i-0abc123 --hours 3                 # AWS EC2 metrics (sparklines)
-skyforge monitor metrics 12345 -p gcp --region us-central1-a # GCE metrics
+spancloud monitor metrics i-0abc123 --hours 3                 # AWS EC2 metrics (sparklines)
+spancloud monitor metrics 12345 -p gcp --region us-central1-a # GCE metrics
 ```
 
 All `cost show`, `audit run`, `unused scan`, `map show`, and `resource list`
@@ -215,28 +215,28 @@ with identical flags.
 # --- Configuration (CLI-side twin of the TUI Settings screen) ---
 
 # Customize which resource types show up in the TUI sidebar for a provider
-skyforge config sidebar aws --available              # List every available service
-skyforge config sidebar aws --add ebs_volumes        # Add an extended service
-skyforge config sidebar aws --remove lambda          # Remove one
-skyforge config sidebar aws --reset                  # Back to defaults
+spancloud config sidebar aws --available              # List every available service
+spancloud config sidebar aws --add ebs_volumes        # Add an extended service
+spancloud config sidebar aws --remove lambda          # Remove one
+spancloud config sidebar aws --reset                  # Back to defaults
 
 # Enable/disable which providers show as TUI tabs
-skyforge config providers                            # Current state
-skyforge config providers --disable alibaba          # Hide a provider tab
-skyforge config providers --enable alibaba           # Re-enable it
+spancloud config providers                            # Current state
+spancloud config providers --disable alibaba          # Hide a provider tab
+spancloud config providers --enable alibaba           # Re-enable it
 
 # --- Credential store management ---
 
-skyforge auth store-info                             # macOS Keychain / Secret Service / file fallback
-skyforge auth logout vultr                           # Forget stored Vultr key
-skyforge auth logout digitalocean
-skyforge auth logout alibaba                         # Clears ID + secret
+spancloud auth store-info                             # macOS Keychain / Secret Service / file fallback
+spancloud auth logout vultr                           # Forget stored Vultr key
+spancloud auth logout digitalocean
+spancloud auth logout alibaba                         # Clears ID + secret
 ```
 
 ### Run as a Python module
 
 ```bash
-python -m skyforge --help
+python -m spancloud --help
 ```
 
 ## Authentication
@@ -244,40 +244,51 @@ python -m skyforge --help
 The easiest way to set up credentials is the interactive login:
 
 ```bash
-skyforge auth login aws           # SSO (multi-account discovery), access keys, or profile selection
-skyforge auth login gcp           # Sets up Application Default Credentials + project
-skyforge auth login vultr         # API key setup and validation
-skyforge auth login digitalocean  # Personal Access Token (saved to OS keychain)
-skyforge auth login azure         # Wraps 'az login' + subscription picker
-skyforge auth login oci           # Loads ~/.oci/config or runs 'oci setup config'
-skyforge auth login alibaba       # AccessKey ID + Secret (saved to OS keychain)
-skyforge auth status              # Check all providers at a glance
+spancloud auth login aws           # SSO (multi-account discovery), access keys, or profile selection
+spancloud auth login gcp           # Sets up Application Default Credentials + project
+spancloud auth login vultr         # API key setup and validation
+spancloud auth login digitalocean  # Personal Access Token (saved to OS keychain)
+spancloud auth login azure         # Wraps 'az login' + subscription picker
+spancloud auth login oci           # Loads ~/.oci/config or runs 'oci setup config'
+spancloud auth login alibaba       # AccessKey ID + Secret (saved to OS keychain)
+spancloud auth status              # Check all providers at a glance
 
 # AWS multi-account profile management
-skyforge profile list                          # List all configured AWS profiles
-skyforge profile list --verify                 # Validate each via STS (shows account IDs)
-skyforge profile show                          # Show current active profile identity
-skyforge profile show production               # Inspect a specific profile
+spancloud profile list                          # List all configured AWS profiles
+spancloud profile list --verify                 # Validate each via STS (shows account IDs)
+spancloud profile show                          # Show current active profile identity
+spancloud profile show production               # Inspect a specific profile
 
 # --profile works on any command for multi-account access
-skyforge resource list aws compute --profile production
-skyforge cost show aws --profile staging
-skyforge audit run aws --profile dev-account
+spancloud resource list aws compute --profile production
+spancloud cost show aws --profile staging
+spancloud audit run aws --profile dev-account
 
 # --gcp-project / -G switches the active GCP project for the run
-# (overrides SKYFORGE_GCP_PROJECT_ID and the ADC default)
-skyforge --gcp-project my-other-proj cost show gcp
-skyforge -G prod-analytics resource list gcp compute
+# (overrides SPANCLOUD_GCP_PROJECT_ID and the ADC default)
+spancloud --gcp-project my-other-proj cost show gcp
+spancloud -G prod-analytics resource list gcp compute
 ```
 
-Under the hood, Skyforge uses each provider's native credential chain:
+Under the hood, Spancloud uses each provider's native credential chain:
 
 ### AWS
-Uses the standard boto3 credential chain:
+Uses the standard boto3 credential chain with a smart fallback:
 - Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-- Shared credentials file (`~/.aws/credentials`)
-- AWS SSO / IAM Identity Center
+- Shared credentials file (`~/.aws/credentials`) — access-key profiles
+- AWS Config file (`~/.aws/config`) — SSO profiles, assume-role profiles
 - IAM roles (EC2 instance metadata, ECS task roles)
+
+When the default chain doesn't produce working credentials and no
+explicit profile was requested, Spancloud walks every configured
+profile — SSO first, then access-keys, then assume-role — looking for
+one that returns a valid STS response. This means a plain
+`~/.aws/credentials` entry works out of the box; you don't need SSO
+configured to use the TUI.
+
+The CLI `spancloud auth login aws` flow detects your situation and
+offers all four options: SSO login, SSO multi-account setup, access
+keys, or switch to an existing profile.
 
 ### GCP
 Uses Application Default Credentials:
@@ -288,37 +299,37 @@ Uses Application Default Credentials:
 
 ### Vultr
 Uses API key authentication:
-- Environment variable (`SKYFORGE_VULTR_API_KEY`)
-- Interactive setup via `skyforge auth login vultr` — verified keys are
+- Environment variable (`SPANCLOUD_VULTR_API_KEY`)
+- Interactive setup via `spancloud auth login vultr` — verified keys are
   saved to the OS keychain (macOS Keychain, Linux Secret Service, Windows
   Credential Locker) and reused on the next run
 - Generate keys at: https://my.vultr.com/settings/#settingsapi
 
 ### DigitalOcean
 Uses Personal Access Token authentication:
-- Environment variable (`SKYFORGE_DIGITALOCEAN_TOKEN`)
-- Interactive setup via `skyforge auth login digitalocean` — tokens are
+- Environment variable (`SPANCLOUD_DIGITALOCEAN_TOKEN`)
+- Interactive setup via `spancloud auth login digitalocean` — tokens are
   saved to the OS keychain and reused on the next run
 - Generate tokens at: https://cloud.digitalocean.com/account/api/tokens
 
 ### Azure
 Uses the standard DefaultAzureCredential chain:
 - Service-principal env vars (`AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`)
-- Azure CLI (`az login`) — `skyforge auth login azure` wraps this plus subscription selection
+- Azure CLI (`az login`) — `spancloud auth login azure` wraps this plus subscription selection
 - Managed Identity (when running in Azure)
-- Subscription ID persisted to `~/.config/skyforge/azure.env`
+- Subscription ID persisted to `~/.config/spancloud/azure.env`
 
 ### Oracle Cloud (OCI)
 Uses the native OCI SDK config file:
 - `~/.oci/config` with a selectable profile (defaults to `DEFAULT`)
-- `skyforge auth login oci` lists existing profiles or shells out to `oci setup config` when none exists
-- Chosen profile is persisted to `~/.config/skyforge/oci.env` for future runs
-- Optional `SKYFORGE_OCI_COMPARTMENT_ID` overrides the tenancy-root compartment
+- `spancloud auth login oci` lists existing profiles or shells out to `oci setup config` when none exists
+- Chosen profile is persisted to `~/.config/spancloud/oci.env` for future runs
+- Optional `SPANCLOUD_OCI_COMPARTMENT_ID` overrides the tenancy-root compartment
 
 ### Alibaba Cloud
 Uses AccessKey ID + Secret authentication:
-- Environment variables (`SKYFORGE_ALIBABA_ACCESS_KEY_ID`, `SKYFORGE_ALIBABA_ACCESS_KEY_SECRET`)
-- Interactive setup via `skyforge auth login alibaba` — keys are saved to
+- Environment variables (`SPANCLOUD_ALIBABA_ACCESS_KEY_ID`, `SPANCLOUD_ALIBABA_ACCESS_KEY_SECRET`)
+- Interactive setup via `spancloud auth login alibaba` — keys are saved to
   the OS keychain and reused on the next run
 - Generate keys at: https://ram.console.aliyun.com/manage/ak (use a RAM sub-user, not root)
 
@@ -327,8 +338,8 @@ Uses AccessKey ID + Secret authentication:
 Vultr, DigitalOcean, and Alibaba API keys are saved via the `keyring`
 library, which writes to the OS-native secret store (macOS Keychain,
 Linux Secret Service, Windows Credential Locker). On headless Linux or
-in containers where no keyring backend is available, Skyforge falls
-back to a Fernet-encrypted file at `~/.config/skyforge/credentials.enc`
+in containers where no keyring backend is available, Spancloud falls
+back to a Fernet-encrypted file at `~/.config/spancloud/credentials.enc`
 with a mode-0600 key file alongside it.
 
 AWS / GCP / Azure / OCI use their own native credential files
@@ -337,41 +348,41 @@ touched by this store.
 
 ```bash
 # Check which backend is in use
-skyforge auth store-info
+spancloud auth store-info
 
 # Remove stored credentials for a provider
-skyforge auth logout vultr
-skyforge auth logout digitalocean
-skyforge auth logout alibaba
+spancloud auth logout vultr
+spancloud auth logout digitalocean
+spancloud auth logout alibaba
 ```
 
 ## Configuration
 
-Skyforge reads configuration from environment variables prefixed with `SKYFORGE_`:
+Spancloud reads configuration from environment variables prefixed with `SPANCLOUD_`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SKYFORGE_LOG_LEVEL` | `INFO` | Logging level |
-| `SKYFORGE_AWS_DEFAULT_REGION` | `us-east-1` | Default AWS region |
-| `SKYFORGE_AWS_PROFILE` | — | AWS CLI profile name |
-| `SKYFORGE_GCP_DEFAULT_REGION` | `us-central1` | Default GCP region |
-| `SKYFORGE_GCP_PROJECT_ID` | — | GCP project ID |
-| `SKYFORGE_VULTR_API_KEY` | — | Vultr API key (falls back to OS keychain) |
-| `SKYFORGE_DIGITALOCEAN_TOKEN` | — | DigitalOcean PAT (falls back to OS keychain) |
-| `SKYFORGE_AZURE_SUBSCRIPTION_ID` | — | Azure subscription ID |
-| `SKYFORGE_AZURE_TENANT_ID` | — | Azure tenant ID (optional) |
-| `SKYFORGE_OCI_CONFIG_FILE` | `~/.oci/config` | Path to OCI SDK config file |
-| `SKYFORGE_OCI_PROFILE` | `DEFAULT` | OCI config profile name |
-| `SKYFORGE_OCI_COMPARTMENT_ID` | — | Compartment OCID (defaults to tenancy root) |
-| `SKYFORGE_OCI_DEFAULT_REGION` | `us-ashburn-1` | Default OCI region |
-| `SKYFORGE_ALIBABA_ACCESS_KEY_ID` | — | Alibaba AccessKey ID (falls back to OS keychain) |
-| `SKYFORGE_ALIBABA_ACCESS_KEY_SECRET` | — | Alibaba AccessKey Secret (falls back to OS keychain) |
-| `SKYFORGE_ALIBABA_DEFAULT_REGION` | `us-west-1` | Default Alibaba region |
+| `SPANCLOUD_LOG_LEVEL` | `INFO` | Logging level |
+| `SPANCLOUD_AWS_DEFAULT_REGION` | `us-east-1` | Default AWS region |
+| `SPANCLOUD_AWS_PROFILE` | — | AWS CLI profile name |
+| `SPANCLOUD_GCP_DEFAULT_REGION` | `us-central1` | Default GCP region |
+| `SPANCLOUD_GCP_PROJECT_ID` | — | GCP project ID |
+| `SPANCLOUD_VULTR_API_KEY` | — | Vultr API key (falls back to OS keychain) |
+| `SPANCLOUD_DIGITALOCEAN_TOKEN` | — | DigitalOcean PAT (falls back to OS keychain) |
+| `SPANCLOUD_AZURE_SUBSCRIPTION_ID` | — | Azure subscription ID |
+| `SPANCLOUD_AZURE_TENANT_ID` | — | Azure tenant ID (optional) |
+| `SPANCLOUD_OCI_CONFIG_FILE` | `~/.oci/config` | Path to OCI SDK config file |
+| `SPANCLOUD_OCI_PROFILE` | `DEFAULT` | OCI config profile name |
+| `SPANCLOUD_OCI_COMPARTMENT_ID` | — | Compartment OCID (defaults to tenancy root) |
+| `SPANCLOUD_OCI_DEFAULT_REGION` | `us-ashburn-1` | Default OCI region |
+| `SPANCLOUD_ALIBABA_ACCESS_KEY_ID` | — | Alibaba AccessKey ID (falls back to OS keychain) |
+| `SPANCLOUD_ALIBABA_ACCESS_KEY_SECRET` | — | Alibaba AccessKey Secret (falls back to OS keychain) |
+| `SPANCLOUD_ALIBABA_DEFAULT_REGION` | `us-west-1` | Default Alibaba region |
 
 ## Project Structure
 
 ```
-src/skyforge/
+src/spancloud/
 ├── cli/                    # Typer-based CLI commands
 │   ├── main.py             # Entry point and top-level commands
 │   └── commands/           # Subcommand groups
@@ -476,15 +487,15 @@ All seven providers now have full feature parity across resource discovery,
 cost, audit, unused detection, relationships, monitoring alerts, and
 lifecycle actions. The matrix below captures the current state:
 
-|              | resources | cost | audit | unused | relationships | alerts | actions |
-|--------------|:---------:|:----:|:-----:|:------:|:-------------:|:------:|:-------:|
-| AWS          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| GCP          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| Azure        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| DigitalOcean |    ✓      |  ✓*  |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| Vultr        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   —**  |    ✓    |
-| OCI          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
-| Alibaba      |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |
+|              | resources | cost | audit | unused | relationships | alerts | actions | serverless | metrics |
+|--------------|:---------:|:----:|:-----:|:------:|:-------------:|:------:|:-------:|:----------:|:-------:|
+| AWS          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| GCP          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Azure        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| DigitalOcean |    ✓      |  ✓*  |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Vultr        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   —**  |    ✓    |     —      |    —    |
+| OCI          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Alibaba      |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
 
 \* DO cost requires an account with the **Billing** team role — full-access PATs on a Member account return 403.
 \** Vultr has no public alerts API; monitoring is dashboard-only.
@@ -493,20 +504,22 @@ Per-provider resource coverage highlights:
 - **AWS:** EC2, EBS, S3, VPC/Subnet/SG, RDS/Aurora, Lambda, ALB/NLB/CLB, EKS, Route53, IAM, CloudWatch, Cost Explorer
 - **GCP:** GCE, GCS, VPC/Subnet/Firewall, Cloud SQL, Cloud Functions, Cloud Run, GKE, Load Balancers, Cloud DNS, Cloud Monitoring, Billing API
 - **Azure:** VMs, Blob Storage, VNet/Subnet/NSG/Public IP, Azure SQL + Cosmos DB, App Service + Functions, AKS, Load Balancers, DNS, Azure Monitor, Cost Management
-- **DigitalOcean:** Droplets, Volumes, Spaces CDN, VPCs, Firewalls, Managed DBs, DOKS, Load Balancers, DNS, Monitoring Alerts, Balance / Billing History
+- **DigitalOcean:** Droplets, Volumes, Spaces CDN, VPCs, Firewalls, Managed DBs, DOKS, Load Balancers, DNS, App Platform (serverless apps), Functions, Monitoring Alerts, Balance / Billing History
 - **Vultr:** Instances + Bare Metal, Block + Object Storage, VPCs, Firewalls, Managed DBs, VKE, Load Balancers, DNS, Billing History
-- **OCI:** Compute Instances, Object Storage + Block Volumes, VCN/Subnet/Security List/NSG, Autonomous DB + DB Systems, OKE, LB + NLB, DNS Zones, Monitoring Alarms, Usage API
-- **Alibaba Cloud:** ECS, OSS + Disks, VPC/VSwitch/Security Group, RDS, ACK, SLB, Alidns, CloudMonitor, BSS OpenAPI
+- **OCI:** Compute Instances, Object Storage + Block Volumes, VCN/Subnet/Security List/NSG, Autonomous DB + DB Systems, OKE, Oracle Functions, LB + NLB, DNS Zones, Monitoring Alarms, Usage API
+- **Alibaba Cloud:** ECS, OSS + Disks, VPC/VSwitch/Security Group, RDS, ACK, Function Compute (FC), SLB, Alidns, CloudMonitor, BSS OpenAPI
 
 ### Next up
 
+- [ ] **IAM for GCP** — Service accounts, custom roles, workload identity pools
+- [ ] **IAM for Azure** — RBAC role assignments, managed identities, app registrations
 - [ ] **Resource diffing** — Snapshot + compare "what changed since" per provider
 - [ ] **Tag compliance** — Find resources missing required tags
 - [ ] **Cross-provider search** — Query `"prod-*"` across every authed provider in parallel
 - [ ] **Notifications / scheduled scans** — Cron-style monitoring with Slack/email alerts
 - [ ] **Vultr monitoring** — Only if/when Vultr publishes a public alerts API
 - [ ] **Additional Azure monitoring types** — Activity-log + scheduled-query alerts (currently metric alerts only)
-- [ ] **GUI** — Web dashboard (likely Django/Gunicorn) on top of the same core
+- [ ] **GUI** — PySide6 desktop application (Qt6) on top of the same core layer, giving spancloud a full CLI + TUI + GUI triple interface
 ## Development
 
 ```bash

@@ -5,24 +5,24 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceState, ResourceType
+from spancloud.core.resource import ResourceState, ResourceType
 
 
 class TestAlibabaProvider:
     def test_name(self) -> None:
-        from skyforge.providers.alibaba.provider import AlibabaCloudProvider
+        from spancloud.providers.alibaba.provider import AlibabaCloudProvider
 
         provider = AlibabaCloudProvider()
         assert provider.name == "alibaba"
 
     def test_display_name(self) -> None:
-        from skyforge.providers.alibaba.provider import AlibabaCloudProvider
+        from spancloud.providers.alibaba.provider import AlibabaCloudProvider
 
         provider = AlibabaCloudProvider()
         assert provider.display_name == "Alibaba Cloud"
 
     def test_supported_resource_types(self) -> None:
-        from skyforge.providers.alibaba.provider import AlibabaCloudProvider
+        from spancloud.providers.alibaba.provider import AlibabaCloudProvider
 
         provider = AlibabaCloudProvider()
         expected = [
@@ -39,14 +39,14 @@ class TestAlibabaProvider:
 
 class TestAlibabaAuth:
     def test_can_create(self) -> None:
-        from skyforge.providers.alibaba.auth import AlibabaAuth
+        from spancloud.providers.alibaba.auth import AlibabaAuth
 
         auth = AlibabaAuth()
         assert auth.access_key_id == ""
         assert auth.region == ""
 
     def test_set_credentials(self) -> None:
-        from skyforge.providers.alibaba.auth import AlibabaAuth
+        from spancloud.providers.alibaba.auth import AlibabaAuth
 
         auth = AlibabaAuth()
         auth.set_credentials("LTAI5t-id", "secret-value")
@@ -55,7 +55,7 @@ class TestAlibabaAuth:
 
 class TestECSResources:
     def test_map_instance(self) -> None:
-        from skyforge.providers.alibaba.compute import ECSResources
+        from spancloud.providers.alibaba.compute import ECSResources
 
         res = ECSResources(MagicMock())
         inst = SimpleNamespace(
@@ -95,7 +95,7 @@ class TestECSResources:
 
 class TestDiskResources:
     def test_map_disk(self) -> None:
-        from skyforge.providers.alibaba.storage import DiskResources
+        from spancloud.providers.alibaba.storage import DiskResources
 
         res = DiskResources(MagicMock())
         d = SimpleNamespace(
@@ -118,7 +118,7 @@ class TestDiskResources:
 
 class TestNetworkResources:
     def test_map_vpc(self) -> None:
-        from skyforge.providers.alibaba.network import NetworkResources
+        from spancloud.providers.alibaba.network import NetworkResources
 
         res = NetworkResources(MagicMock())
         v = SimpleNamespace(
@@ -133,7 +133,7 @@ class TestNetworkResources:
         assert resource.metadata["resource_subtype"] == "vpc"
 
     def test_map_vswitch(self) -> None:
-        from skyforge.providers.alibaba.network import NetworkResources
+        from spancloud.providers.alibaba.network import NetworkResources
 
         res = NetworkResources(MagicMock())
         s = SimpleNamespace(
@@ -148,7 +148,7 @@ class TestNetworkResources:
         assert resource.metadata["resource_subtype"] == "vswitch"
 
     def test_map_sg(self) -> None:
-        from skyforge.providers.alibaba.network import NetworkResources
+        from spancloud.providers.alibaba.network import NetworkResources
 
         res = NetworkResources(MagicMock())
         sg = SimpleNamespace(
@@ -163,7 +163,7 @@ class TestNetworkResources:
 
 class TestRDSResources:
     def test_map_rds(self) -> None:
-        from skyforge.providers.alibaba.database import RDSResources
+        from spancloud.providers.alibaba.database import RDSResources
 
         res = RDSResources(MagicMock())
         inst = SimpleNamespace(
@@ -185,7 +185,7 @@ class TestRDSResources:
 
 class TestSLBResources:
     def test_map_lb(self) -> None:
-        from skyforge.providers.alibaba.loadbalancer import SLBResources
+        from spancloud.providers.alibaba.loadbalancer import SLBResources
 
         res = SLBResources(MagicMock())
         lb = SimpleNamespace(
@@ -206,7 +206,7 @@ class TestSLBResources:
 
 class TestDNSResources:
     def test_map_domain(self) -> None:
-        from skyforge.providers.alibaba.dns import DNSResources
+        from spancloud.providers.alibaba.dns import DNSResources
 
         res = DNSResources(MagicMock())
         d = SimpleNamespace(
@@ -225,7 +225,7 @@ class TestDNSResources:
 
 class TestAlibabaCostAnalyzer:
     def test_can_create(self) -> None:
-        from skyforge.providers.alibaba.cost import AlibabaCostAnalyzer
+        from spancloud.providers.alibaba.cost import AlibabaCostAnalyzer
 
         analyzer = AlibabaCostAnalyzer(MagicMock())
         assert analyzer is not None
@@ -233,7 +233,7 @@ class TestAlibabaCostAnalyzer:
     def test_iter_months(self) -> None:
         from datetime import date
 
-        from skyforge.providers.alibaba.cost import _iter_months
+        from spancloud.providers.alibaba.cost import _iter_months
 
         months = _iter_months(date(2026, 4, 10), date(2026, 6, 5))
         assert months == ["2026-04", "2026-05", "2026-06"]
@@ -241,19 +241,19 @@ class TestAlibabaCostAnalyzer:
 
 class TestAlibabaSecurityAuditor:
     def test_can_create(self) -> None:
-        from skyforge.providers.alibaba.security import AlibabaSecurityAuditor
+        from spancloud.providers.alibaba.security import AlibabaSecurityAuditor
 
         auditor = AlibabaSecurityAuditor(MagicMock())
         assert auditor is not None
 
     def test_port_in_range_all(self) -> None:
-        from skyforge.providers.alibaba.security import _port_in_range
+        from spancloud.providers.alibaba.security import _port_in_range
 
         assert _port_in_range("22", "-1/-1") is True
         assert _port_in_range("3389", "1/65535") is True
 
     def test_port_in_range_specific(self) -> None:
-        from skyforge.providers.alibaba.security import _port_in_range
+        from spancloud.providers.alibaba.security import _port_in_range
 
         assert _port_in_range("22", "22/22") is True
         assert _port_in_range("3389", "22/22") is False
@@ -262,7 +262,7 @@ class TestAlibabaSecurityAuditor:
 
 class TestAlibabaUnusedDetector:
     def test_can_create(self) -> None:
-        from skyforge.providers.alibaba.unused import AlibabaUnusedDetector
+        from spancloud.providers.alibaba.unused import AlibabaUnusedDetector
 
         detector = AlibabaUnusedDetector(MagicMock())
         assert detector is not None
@@ -270,7 +270,7 @@ class TestAlibabaUnusedDetector:
 
 class TestAlibabaRelationshipMapper:
     def test_can_create(self) -> None:
-        from skyforge.providers.alibaba.relationships import (
+        from spancloud.providers.alibaba.relationships import (
             AlibabaRelationshipMapper,
         )
 
@@ -280,7 +280,7 @@ class TestAlibabaRelationshipMapper:
 
 class TestAlibabaMonitoring:
     def test_can_create(self) -> None:
-        from skyforge.providers.alibaba.monitoring import (
+        from spancloud.providers.alibaba.monitoring import (
             AlibabaMonitoringAnalyzer,
         )
 
@@ -288,7 +288,7 @@ class TestAlibabaMonitoring:
         assert analyzer is not None
 
     def test_map_rule(self) -> None:
-        from skyforge.providers.alibaba.monitoring import (
+        from spancloud.providers.alibaba.monitoring import (
             AlibabaMonitoringAnalyzer,
         )
 
@@ -309,14 +309,14 @@ class TestAlibabaMonitoring:
 
 class TestAlibabaActions:
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.alibaba.actions import ActionVerb
+        from spancloud.providers.alibaba.actions import ActionVerb
 
         assert ActionVerb.START == "start"
         assert ActionVerb.STOP == "stop"
         assert ActionVerb.REBOOT == "reboot"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.alibaba.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.alibaba.actions import _VALID_STATES, ActionVerb
 
         assert "Stopped" in _VALID_STATES[ActionVerb.START]
         assert "Running" in _VALID_STATES[ActionVerb.STOP]

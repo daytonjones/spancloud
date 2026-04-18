@@ -1,10 +1,10 @@
-"""Shared test fixtures for Skyforge."""
+"""Shared test fixtures for Spancloud."""
 
 from __future__ import annotations
 
 import pytest
 
-from skyforge.core.registry import ProviderRegistry
+from spancloud.core.registry import ProviderRegistry
 
 
 @pytest.fixture

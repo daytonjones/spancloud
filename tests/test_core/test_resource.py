@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from skyforge.core.resource import Resource, ResourceState, ResourceType
+from spancloud.core.resource import Resource, ResourceState, ResourceType
 
 
 class TestResource:
