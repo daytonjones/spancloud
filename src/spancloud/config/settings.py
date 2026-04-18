@@ -3,10 +3,39 @@
 from __future__ import annotations
 
 import functools
+import os
 from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+
+def _load_persisted_env_files() -> None:
+    """Load persisted provider settings from ~/.config/spancloud/*.env into os.environ.
+
+    Called once before Settings is constructed so that values saved by
+    previous sessions (e.g. SPANCLOUD_AWS_PROFILE) are available to
+    pydantic_settings when it reads environment variables.
+
+    Explicit environment variables always win — we never overwrite a key
+    that is already set in the environment.
+    """
+    config_dir = Path.home() / ".config" / "spancloud"
+    if not config_dir.exists():
+        return
+    for env_file in sorted(config_dir.glob("*.env")):
+        try:
+            for raw in env_file.read_text().splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip()
+                if key and key not in os.environ:
+                    os.environ[key] = val
+        except OSError:
+            pass
 
 
 class ProviderSettings(BaseSettings):
@@ -117,5 +146,10 @@ class Settings(BaseSettings):
 
 @functools.cache
 def get_settings() -> Settings:
-    """Return the cached global settings instance."""
+    """Return the cached global settings instance.
+
+    Loads persisted provider env files the first time so that values saved
+    by previous auth sessions survive restarts.
+    """
+    _load_persisted_env_files()
     return Settings()

@@ -10,7 +10,7 @@ from textual import work
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, RichLog, Static
+from textual.widgets import Button, Input, RichLog, Select, Static
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -60,6 +60,11 @@ class AuthScreen(ModalScreen[bool]):
         margin: 1 0;
     }
 
+    #auth-profile-select {
+        display: none;
+        margin: 1 0;
+    }
+
     #auth-buttons {
         height: 3;
         align: center middle;
@@ -77,6 +82,8 @@ class AuthScreen(ModalScreen[bool]):
         # Tracks which phase the next button press should drive.
         self._azure_phase: str = "idle"  # idle | subscription_pick
         self._azure_subs: list[dict] = []
+        # AWS: populated in on_mount from ~/.aws/config + credentials
+        self._aws_profiles: list[dict] = []
 
     def compose(self) -> ComposeResult:
         with Vertical(id="auth-dialog"):
@@ -89,11 +96,18 @@ class AuthScreen(ModalScreen[bool]):
                 id="auth-log", wrap=True, highlight=True, markup=True
             )
 
-            # API key/token input (shown for Vultr, DigitalOcean)
+            # API key/token input (shown for Vultr, DigitalOcean, Alibaba, Azure)
             yield Input(
                 placeholder="Enter API key / token...",
                 password=True,
                 id="auth-api-key",
+            )
+
+            # Profile selector (shown for AWS when multiple profiles exist)
+            yield Select(
+                options=[],
+                id="auth-profile-select",
+                allow_blank=True,
             )
 
             with Horizontal(id="auth-buttons"):
@@ -109,9 +123,59 @@ class AuthScreen(ModalScreen[bool]):
         name = self._provider.name
 
         if name == "aws":
-            log.write("[bold]AWS SSO Authentication[/bold]")
-            log.write("This will open your browser for SSO login.")
-            log.write("Press [bold]Start[/bold] to begin.\n")
+            from spancloud.providers.aws.auth import AWSAuth
+
+            all_profiles = AWSAuth.list_configured_profiles()
+            self._aws_profiles = all_profiles
+            sso = [p for p in all_profiles if p.get("type") == "sso"]
+            keys = [p for p in all_profiles if p.get("type") == "access_keys"]
+
+            log.write("[bold]AWS Authentication[/bold]")
+
+            if not all_profiles:
+                log.write("[yellow]No AWS credentials found.[/yellow]")
+                log.write(
+                    "Options:\n"
+                    "  \u2022 [bold]aws configure[/bold] — store access keys\n"
+                    "  \u2022 [bold]aws configure sso[/bold] — set up SSO\n"
+                    "  \u2022 Set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars"
+                )
+                self.query_one("#auth-start", Button).disabled = True
+            elif sso and not keys:
+                log.write(f"[dim]{len(sso)} SSO profile(s) detected[/dim]")
+                if len(sso) == 1:
+                    log.write(f"Profile: [cyan]{sso[0]['name']}[/cyan]")
+                    log.write("Press [bold]Start[/bold] to open browser for SSO login.")
+                else:
+                    log.write("Multiple SSO profiles — select one:")
+                    sel = self.query_one("#auth-profile-select", Select)
+                    sel.set_options([(p["name"], p["name"]) for p in sso])
+                    sel.display = True
+                    log.write("Then press [bold]Start[/bold] for SSO login.")
+            elif keys and not sso:
+                log.write(f"[dim]{len(keys)} access key profile(s) detected[/dim]")
+                if len(keys) == 1:
+                    log.write(f"Profile: [cyan]{keys[0]['name']}[/cyan]")
+                    log.write("Press [bold]Start[/bold] to verify credentials.")
+                else:
+                    log.write("Multiple access key profiles — select one:")
+                    sel = self.query_one("#auth-profile-select", Select)
+                    sel.set_options([(p["name"], p["name"]) for p in keys])
+                    sel.display = True
+                    log.write("Then press [bold]Start[/bold] to verify credentials.")
+            else:
+                # Mixed SSO + access key profiles
+                log.write(
+                    f"[dim]{len(all_profiles)} profiles detected "
+                    f"({len(sso)} SSO, {len(keys)} access key) — select one:[/dim]"
+                )
+                sel = self.query_one("#auth-profile-select", Select)
+                sel.set_options([
+                    (f"{p['name']}  [{p.get('type', '?')}]", p["name"])
+                    for p in all_profiles
+                ])
+                sel.display = True
+                log.write("Press [bold]Start[/bold] to authenticate.")
         elif name == "gcp":
             log.write("[bold]GCP Authentication[/bold]")
             log.write("This will open your browser for Google auth.")
@@ -252,102 +316,143 @@ class AuthScreen(ModalScreen[bool]):
             await asyncio.sleep(1.5)
             self.dismiss(True)
 
-    async def _auth_aws(self, log: RichLog) -> bool:
-        """Authenticate AWS — try existing credentials, fall back to SSO.
+    @staticmethod
+    def _persist_aws_profile(profile: str) -> None:
+        """Write the chosen AWS profile to aws.env and os.environ.
 
-        Order of preference:
-          1. Whatever boto3's default chain resolves (env vars, ~/.aws/credentials
-             default, instance profile, etc). AWSAuth.verify() walks every
-             configured profile — SSO and access-key — looking for one that
-             produces a valid STS response.
-          2. If nothing works and there are SSO profiles on disk, run
-             `aws sso login` for the first SSO profile.
-          3. Otherwise print a helpful message pointing the user at the full
-             interactive CLI flow or `aws configure`.
+        On the next startup, _load_persisted_env_files() in settings.py
+        reads this file before constructing Settings, so AWSAuth.session
+        will pick up the right profile without asking the user again.
+        """
+        import os
+
+        from spancloud.config import get_settings
+
+        env_path = get_settings().ensure_config_dir() / "aws.env"
+        env_path.write_text(f"SPANCLOUD_AWS_PROFILE={profile}\n")
+        os.environ["SPANCLOUD_AWS_PROFILE"] = profile
+
+    async def _auth_aws(self, log: RichLog) -> bool:
+        """Authenticate AWS using the profile and method detected on modal open.
+
+        - SSO profiles: runs `aws sso login --profile <name>` (browser).
+        - Access key profiles: verifies credentials via STS; shows an error
+          message if the keys are invalid rather than silently falling through.
+        - No credentials: shows setup instructions.
         """
         import shutil
 
-        from spancloud.providers.aws.login import (
-            _get_existing_profiles,
-            _get_sso_profiles,
-        )
+        # --- Resolve which profile to use ---
+        selected_profile: str | None = None
+        try:
+            sel = self.query_one("#auth-profile-select", Select)
+            if sel.display:
+                val = sel.value
+                if val == Select.BLANK:
+                    log.write("[yellow]Please select a profile first.[/yellow]")
+                    start_btn = self.query_one("#auth-start", Button)
+                    start_btn.disabled = False
+                    start_btn.label = "Start"
+                    return False
+                selected_profile = str(val)
+        except Exception:
+            pass
 
-        # Step 1: try existing credentials first. verify() will iterate through
-        # every configured profile looking for one that works.
-        log.write("[cyan]Checking existing AWS credentials...[/cyan]")
+        # Single-profile case: auto-pick from what on_mount detected
+        if not selected_profile and self._aws_profiles:
+            sso = [p for p in self._aws_profiles if p.get("type") == "sso"]
+            keys = [p for p in self._aws_profiles if p.get("type") == "access_keys"]
+            if sso:
+                selected_profile = sso[0]["name"]
+            elif keys:
+                selected_profile = keys[0]["name"]
+
+        # Apply the selected profile to the live auth object
+        if selected_profile and hasattr(self._provider, "_auth"):
+            self._provider._auth.set_profile(selected_profile)
+
+        # Determine the type of the resolved profile
+        profile_type = "unknown"
+        for p in self._aws_profiles:
+            if p["name"] == selected_profile:
+                profile_type = p.get("type", "unknown")
+                break
+
+        # --- Try existing credentials first (may already be valid) ---
+        log.write("[cyan]Checking credentials...[/cyan]")
         try:
             if await self._provider.authenticate():
                 info = await self._provider._auth.get_identity()
                 log.write(
-                    f"[green]Already authenticated![/green]\n"
+                    f"[green]Authenticated![/green]\n"
                     f"  Profile: [bold]{info.get('profile', '')}[/bold]\n"
                     f"  Account: [bold]{info.get('account', '')}[/bold]\n"
                     f"  ARN:     [bold]{info.get('arn', '')}[/bold]"
                 )
+                if selected_profile:
+                    self._persist_aws_profile(selected_profile)
+                    log.write("[dim]Profile saved for future sessions.[/dim]")
                 return True
         except Exception as exc:
-            log.write(f"[dim]verify() raised: {exc}[/dim]")
+            log.write(f"[dim]Credential check: {exc}[/dim]")
 
-        log.write("[yellow]No working credentials found in the default chain.[/yellow]\n")
+        log.write("[yellow]Credentials not valid — attempting login...[/yellow]\n")
 
-        # Step 2: SSO fallback, if available
-        sso_profiles = _get_sso_profiles() if shutil.which("aws") else []
-        if sso_profiles:
-            profile = sso_profiles[0]
-            if hasattr(self._provider, "_auth") and hasattr(
-                self._provider._auth, "active_profile"
-            ):
-                active = self._provider._auth.active_profile
-                if active in sso_profiles:
-                    profile = active
-
-            log.write(f"SSO profile: [bold]{profile}[/bold]")
+        # --- SSO: open browser ---
+        if profile_type == "sso":
+            if not shutil.which("aws"):
+                log.write("[red]AWS CLI is required for SSO login but was not found.[/red]")
+                return False
+            profile = selected_profile or ""
+            log.write(f"Running: aws sso login --profile [bold]{profile}[/bold]")
             log.write("Opening browser...\n")
 
-            def _run() -> tuple[int, str]:
-                result = subprocess.run(
+            def _run_sso() -> tuple[int, str]:
+                r = subprocess.run(
                     ["aws", "sso", "login", "--profile", profile],
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
+                    capture_output=True, text=True, timeout=120,
                 )
-                return result.returncode, result.stdout + result.stderr
+                return r.returncode, r.stdout + r.stderr
 
             try:
-                returncode, output = await asyncio.to_thread(_run)
+                rc, output = await asyncio.to_thread(_run_sso)
                 for line in output.strip().split("\n"):
                     if line.strip():
                         log.write(line)
-                if returncode == 0:
-                    # Pin the profile we just logged into so the follow-up
-                    # verify() picks the freshly-cached SSO tokens.
+                if rc == 0:
                     if hasattr(self._provider, "_auth"):
                         self._provider._auth.set_profile(profile)
+                    self._persist_aws_profile(profile)
+                    log.write("[dim]Profile saved for future sessions.[/dim]")
                     return True
+                log.write("[red]SSO login failed.[/red]")
             except subprocess.TimeoutExpired:
                 log.write("[yellow]SSO login timed out (2 minutes).[/yellow]")
             return False
 
-        # Step 3: nothing to do here — tell the user what options they have.
-        existing = _get_existing_profiles()
-        log.write(
-            "[yellow]AWS credentials not found.[/yellow]\n"
-            "Options (any one of):\n"
-            "  \u2022 Set env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY\n"
-            "  \u2022 Run [bold]aws configure[/bold] in a terminal to store access keys\n"
-            "  \u2022 Run [bold]aws configure sso[/bold] to set up SSO\n"
-            "  \u2022 Run [bold]spancloud auth login aws[/bold] for the full "
-            "interactive flow (SSO / access keys / profile switch)"
-        )
-        if existing:
+        # --- Access keys: already tried verify above, it failed ---
+        if profile_type == "access_keys":
             log.write(
-                f"\n[dim]Profiles in ~/.aws/: {', '.join(existing)} — "
-                "none of them had valid credentials.[/dim]"
+                f"[red]Credentials for profile [bold]{selected_profile}[/bold] "
+                f"are invalid or expired.[/red]\n"
+                "Run [bold]aws configure[/bold] (or "
+                "[bold]aws configure --profile "
+                f"{selected_profile}[/bold]) to update your access keys."
             )
+            return False
+
+        # --- No credentials at all ---
+        log.write(
+            "[yellow]No AWS credentials configured.[/yellow]\n"
+            "Options:\n"
+            "  \u2022 [bold]aws configure[/bold] — store access keys\n"
+            "  \u2022 [bold]aws configure sso[/bold] — set up SSO\n"
+            "  \u2022 Set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars"
+        )
         if not shutil.which("aws"):
             log.write(
-                "\n[dim]AWS CLI is not installed; only access keys via env "
-                "vars or ~/.aws/credentials will work without it.[/dim]"
+                "\n[dim]AWS CLI is not installed; env vars or "
+                "~/.aws/credentials are the only options.[/dim]"
             )
         return False
 
