@@ -100,6 +100,16 @@ class MainWindow(QMainWindow):
         self._provider_views: dict[str, ProviderViewWidget] = {}
         for p in _MOCK_PROVIDERS:
             view = ProviderViewWidget(p)
+            # Forward region/profile/project changes to the toolbar subtitle
+            view._controls.region_changed.connect(
+                lambda region, pname=p["name"]: self._on_context_changed(pname)
+            )
+            view._controls.profile_changed.connect(
+                lambda profile, pname=p["name"]: self._on_context_changed(pname)
+            )
+            view._controls.project_changed.connect(
+                lambda project, pname=p["name"]: self._on_context_changed(pname)
+            )
             self._provider_views[p["name"]] = view
             self._stack.addWidget(view)
 
@@ -145,6 +155,23 @@ class MainWindow(QMainWindow):
             }.get(p["status"], "")
             self._toolbar.set_context(p["display"], status_str)
             self._status_label.setText(f"{p['display']} — {status_str}")
+
+    def _on_context_changed(self, provider_name: str) -> None:
+        """Update toolbar subtitle when region/profile/project changes."""
+        view = self._provider_views.get(provider_name)
+        if view is None or self._stack.currentWidget() is not view:
+            return
+        p = next(p for p in _MOCK_PROVIDERS if p["name"] == provider_name)
+        parts = []
+        if view._current_region:
+            parts.append(view._current_region)
+        if view._current_profile:
+            parts.append(f"profile: {view._current_profile}")
+        if view._current_project:
+            parts.append(f"project: {view._current_project}")
+        if not parts and p["resources"]:
+            parts.append(f"{p['resources']} resources")
+        self._toolbar.set_context(p["display"], "  ·  ".join(parts))
 
     def _on_refresh(self) -> None:
         self._status_label.setText("Refreshing…")

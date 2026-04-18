@@ -33,6 +33,7 @@ from spancloud.gui.theme import (
     TEXT_PRIMARY,
     TEXT_SECONDARY,
 )
+from spancloud.gui.widgets.provider_controls import ProviderControls
 
 # ---------------------------------------------------------------------------
 # Mock data
@@ -229,6 +230,10 @@ class ProviderViewWidget(QWidget):
         self._rt_buttons: dict[str, QPushButton] = {}
         self._analysis_buttons: dict[str, QPushButton] = {}
         self._drawer_open = False
+        self._current_region = ""
+        self._current_profile = ""
+        self._current_project = ""
+        self.region_changed_hint = "All Regions"
         self._build()
 
     def _build(self) -> None:
@@ -278,8 +283,15 @@ class ProviderViewWidget(QWidget):
         nav.setFixedWidth(200)
 
         v = QVBoxLayout(nav)
-        v.setContentsMargins(0, 8, 0, 8)
+        v.setContentsMargins(0, 0, 0, 8)
         v.setSpacing(0)
+
+        # ── Region / profile / project controls ─────────────────────────
+        self._controls = ProviderControls(self._provider["name"])
+        self._controls.region_changed.connect(self._on_region_changed)
+        self._controls.profile_changed.connect(self._on_profile_changed)
+        self._controls.project_changed.connect(self._on_project_changed)
+        v.addWidget(self._controls)
 
         section = QLabel("RESOURCES")
         section.setObjectName("sidebar-section")
@@ -538,6 +550,31 @@ class ProviderViewWidget(QWidget):
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         v.addWidget(hint)
         return w
+
+    # ------------------------------------------------------------------
+    # Region / profile / project signal handlers
+    # ------------------------------------------------------------------
+    def _on_region_changed(self, region: str) -> None:
+        self._current_region = region
+        display = region if region else "All Regions"
+        # Reload current resource type with new region filter (mockup: just refreshes)
+        if self._current_rt:
+            self._load_table(self._current_rt)
+        self._close_drawer()
+        # Bubble up to toolbar via parent chain — toolbar will be updated by MainWindow
+        self.region_changed_hint = display
+
+    def _on_profile_changed(self, profile: str) -> None:
+        self._current_profile = profile
+        if self._current_rt:
+            self._load_table(self._current_rt)
+        self._close_drawer()
+
+    def _on_project_changed(self, project: str) -> None:
+        self._current_project = project
+        if self._current_rt:
+            self._load_table(self._current_rt)
+        self._close_drawer()
 
     # ------------------------------------------------------------------
     # Interaction
