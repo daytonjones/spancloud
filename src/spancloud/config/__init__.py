@@ -1,5 +1,5 @@
-"""Configuration management for Skyforge."""
+"""Configuration management for Spancloud."""
 
-from skyforge.config.settings import Settings, get_settings
+from spancloud.config.settings import Settings, get_settings
 
 __all__ = ["Settings", "get_settings"]

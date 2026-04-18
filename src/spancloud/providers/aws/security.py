@@ -13,13 +13,13 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from skyforge.analysis.models import SecurityAuditResult, SecurityFinding, Severity
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
-from skyforge.utils.throttle import RateLimiter
+from spancloud.analysis.models import SecurityAuditResult, SecurityFinding, Severity
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
+from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
-    from skyforge.providers.aws.auth import AWSAuth
+    from spancloud.providers.aws.auth import AWSAuth
 
 logger = get_logger(__name__)
 

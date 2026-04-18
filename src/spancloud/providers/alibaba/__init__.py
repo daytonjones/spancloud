@@ -1,7 +1,7 @@
-"""Alibaba Cloud provider for Skyforge."""
+"""Alibaba Cloud provider for Spancloud."""
 
-from skyforge.core.registry import registry
-from skyforge.providers.alibaba.provider import AlibabaCloudProvider
+from spancloud.core.registry import registry
+from spancloud.providers.alibaba.provider import AlibabaCloudProvider
 
 _provider = AlibabaCloudProvider()
 registry.register(_provider)

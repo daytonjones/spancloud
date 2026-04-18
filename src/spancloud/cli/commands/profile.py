@@ -8,8 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 profile_app = typer.Typer(
@@ -29,7 +29,7 @@ def list_profiles(
     Shows profile name, type (SSO, access keys, assume role),
     region, and optionally validates each against STS.
     """
-    from skyforge.providers.aws.auth import AWSAuth
+    from spancloud.providers.aws.auth import AWSAuth
 
     profiles = AWSAuth.list_configured_profiles()
 
@@ -37,7 +37,7 @@ def list_profiles(
         console.print("[yellow]No AWS profiles found.[/yellow]")
         console.print(
             "[dim]Configure profiles with 'aws configure' or "
-            "'skyforge auth login aws'.[/dim]"
+            "'spancloud auth login aws'.[/dim]"
         )
         raise typer.Exit(code=0)
 

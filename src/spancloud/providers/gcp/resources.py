@@ -7,17 +7,17 @@ from typing import TYPE_CHECKING, Any
 
 from google.cloud import compute_v1, storage
 
-from skyforge.core.exceptions import ResourceNotFoundError
-from skyforge.core.resource import Resource, ResourceState, ResourceType
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
+from spancloud.core.exceptions import ResourceNotFoundError
+from spancloud.core.resource import Resource, ResourceState, ResourceType
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
 
 if TYPE_CHECKING:
-    from skyforge.providers.gcp.auth import GCPAuth
+    from spancloud.providers.gcp.auth import GCPAuth
 
 logger = get_logger(__name__)
 
-# Map GCP instance statuses to Skyforge ResourceState.
+# Map GCP instance statuses to Spancloud ResourceState.
 _GCE_STATE_MAP: dict[str, ResourceState] = {
     "PROVISIONING": ResourceState.PENDING,
     "STAGING": ResourceState.PENDING,

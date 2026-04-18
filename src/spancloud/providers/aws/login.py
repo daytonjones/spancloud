@@ -16,7 +16,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 console = Console()
@@ -193,7 +193,7 @@ def login_sso() -> str | None:
     if result.returncode == 0:
         console.print(f"\n[green]SSO login successful![/green] Profile: {profile}")
         console.print(
-            f"[dim]Set SKYFORGE_AWS_PROFILE={profile} to use this profile by default.[/dim]"
+            f"[dim]Set SPANCLOUD_AWS_PROFILE={profile} to use this profile by default.[/dim]"
         )
         return profile
 
@@ -224,11 +224,11 @@ def setup_sso_all_accounts() -> bool:
             console.print("[red]No URL provided.[/red]")
             return False
         sso_region = Prompt.ask("SSO region", default="us-east-1")
-        session_name = Prompt.ask("SSO session name", default="skyforge")
+        session_name = Prompt.ask("SSO session name", default="spancloud")
     else:
         start_url = session_info["start_url"]
         sso_region = session_info.get("region", "us-east-1")
-        session_name = session_info.get("session_name", "skyforge")
+        session_name = session_info.get("session_name", "spancloud")
         console.print(f"Using existing SSO session: [bold]{session_name}[/bold]")
         console.print(f"  URL: {start_url}")
         console.print(f"  Region: {sso_region}\n")
@@ -362,7 +362,7 @@ def setup_sso_all_accounts() -> bool:
 
         console.print(f"\n[bold green]{created} profile(s) created![/bold green]")
         console.print(
-            "[dim]Use 'skyforge profile list' to see all profiles, "
+            "[dim]Use 'spancloud profile list' to see all profiles, "
             "or --profile <name> on any command.[/dim]"
         )
         return True
@@ -494,7 +494,7 @@ def login_access_keys() -> str | None:
 
     if profile != "default":
         console.print(
-            f"[dim]Set SKYFORGE_AWS_PROFILE={profile} to use this profile by default.[/dim]"
+            f"[dim]Set SPANCLOUD_AWS_PROFILE={profile} to use this profile by default.[/dim]"
         )
 
     return profile
@@ -522,7 +522,7 @@ def login_profile() -> str | None:
     profile = profiles[int(choice) - 1]
 
     console.print(f"\n[green]Selected profile:[/green] [bold]{profile}[/bold]")
-    console.print(f"Set SKYFORGE_AWS_PROFILE={profile} to use this profile.")
+    console.print(f"Set SPANCLOUD_AWS_PROFILE={profile} to use this profile.")
     console.print(f"Or run: [cyan]export AWS_PROFILE={profile}[/cyan]")
 
     if Confirm.ask("Set AWS_PROFILE for this session via env export hint?", default=True):

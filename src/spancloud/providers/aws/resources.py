@@ -5,17 +5,17 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from skyforge.core.exceptions import ResourceNotFoundError
-from skyforge.core.resource import Resource, ResourceState, ResourceType
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
+from spancloud.core.exceptions import ResourceNotFoundError
+from spancloud.core.resource import Resource, ResourceState, ResourceType
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
 
 if TYPE_CHECKING:
-    from skyforge.providers.aws.auth import AWSAuth
+    from spancloud.providers.aws.auth import AWSAuth
 
 logger = get_logger(__name__)
 
-# Map AWS EC2 instance states to Skyforge ResourceState.
+# Map AWS EC2 instance states to Spancloud ResourceState.
 _EC2_STATE_MAP: dict[str, ResourceState] = {
     "pending": ResourceState.PENDING,
     "running": ResourceState.RUNNING,

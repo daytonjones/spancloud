@@ -30,8 +30,8 @@ async def digitalocean_login() -> bool:
         )
     )
 
-    from skyforge.config import get_settings
-    from skyforge.utils import credentials
+    from spancloud.config import get_settings
+    from spancloud.utils import credentials
 
     settings = get_settings().digitalocean
     existing_token = settings.token
@@ -72,7 +72,7 @@ async def digitalocean_login() -> bool:
 
 def _persist_token(token: str) -> None:
     """Save the verified token to the secure credential store."""
-    from skyforge.utils import credentials
+    from spancloud.utils import credentials
 
     if credentials.save("digitalocean", "token", token):
         console.print(
@@ -82,7 +82,7 @@ def _persist_token(token: str) -> None:
     else:
         console.print(
             "\n[yellow]Could not persist token securely.[/yellow]\n"
-            "[dim]Set SKYFORGE_DIGITALOCEAN_TOKEN in your shell to avoid "
+            "[dim]Set SPANCLOUD_DIGITALOCEAN_TOKEN in your shell to avoid "
             "re-entering it next time.[/dim]"
         )
 

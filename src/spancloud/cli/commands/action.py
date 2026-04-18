@@ -7,8 +7,8 @@ import asyncio
 import typer
 from rich.console import Console
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 action_app = typer.Typer(
@@ -83,13 +83,13 @@ def _run_action(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.actions import EC2Actions
+            from spancloud.providers.aws.actions import EC2Actions
 
             handler = EC2Actions(provider._auth)
             info = await handler.get_instance_state(instance_id, region)
             return handler, info, "aws"
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.actions import GCEActions
+            from spancloud.providers.gcp.actions import GCEActions
 
             if not region:
                 console.print(
@@ -101,31 +101,31 @@ def _run_action(
             info = await handler.get_instance_state(instance_id, region)
             return handler, info, "gcp"
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.actions import VultrActions
+            from spancloud.providers.vultr.actions import VultrActions
 
             handler = VultrActions(provider._auth)
             info = await handler.get_instance_state(instance_id)
             return handler, info, "vultr"
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.actions import DropletActions
+            from spancloud.providers.digitalocean.actions import DropletActions
 
             handler = DropletActions(provider._auth)
             info = await handler.get_droplet_state(instance_id)
             return handler, info, "digitalocean"
         elif provider_name == "azure":
-            from skyforge.providers.azure.actions import VMActions
+            from spancloud.providers.azure.actions import VMActions
 
             handler = VMActions(provider._auth)
             info = await handler.get_instance_state(instance_id, region)
             return handler, info, "azure"
         elif provider_name == "oci":
-            from skyforge.providers.oci.actions import InstanceActions
+            from spancloud.providers.oci.actions import InstanceActions
 
             handler = InstanceActions(provider._auth)
             info = await handler.get_instance_state(instance_id, region)
             return handler, info, "oci"
         else:  # alibaba
-            from skyforge.providers.alibaba.actions import ECSActions
+            from spancloud.providers.alibaba.actions import ECSActions
 
             handler = ECSActions(provider._auth)
             info = await handler.get_instance_state(instance_id, region)
@@ -167,19 +167,19 @@ def _run_action(
     # Execute
     async def _execute():
         if prov == "aws":
-            from skyforge.providers.aws.actions import ActionVerb as AWSVerb
+            from spancloud.providers.aws.actions import ActionVerb as AWSVerb
 
             return await actions_handler.execute(
                 AWSVerb(verb), instance_id, region
             )
         elif prov == "gcp":
-            from skyforge.providers.gcp.actions import ActionVerb as GCPVerb
+            from spancloud.providers.gcp.actions import ActionVerb as GCPVerb
 
             return await actions_handler.execute(
                 GCPVerb(gcp_verb), instance_id, region
             )
         elif prov == "vultr":
-            from skyforge.providers.vultr.actions import ActionVerb as VultrVerb
+            from spancloud.providers.vultr.actions import ActionVerb as VultrVerb
 
             # Map 'stop' to 'halt', 'reboot' stays 'reboot'
             vultr_verb = "halt" if verb == "stop" else verb
@@ -187,7 +187,7 @@ def _run_action(
                 VultrVerb(vultr_verb), instance_id
             )
         elif prov == "digitalocean":
-            from skyforge.providers.digitalocean.actions import (
+            from spancloud.providers.digitalocean.actions import (
                 ActionVerb as DOVerb,
             )
 
@@ -202,7 +202,7 @@ def _run_action(
                 DOVerb(do_verb), instance_id
             )
         elif prov == "azure":
-            from skyforge.providers.azure.actions import (
+            from spancloud.providers.azure.actions import (
                 ActionVerb as AzVerb,
             )
 
@@ -218,7 +218,7 @@ def _run_action(
                 AzVerb(az_verb), instance_id, region
             )
         elif prov == "oci":
-            from skyforge.providers.oci.actions import (
+            from spancloud.providers.oci.actions import (
                 ActionVerb as OCIVerb,
             )
 
@@ -233,7 +233,7 @@ def _run_action(
                 OCIVerb(oci_verb), instance_id, region
             )
         else:  # alibaba
-            from skyforge.providers.alibaba.actions import (
+            from spancloud.providers.alibaba.actions import (
                 ActionVerb as AliVerb,
             )
 

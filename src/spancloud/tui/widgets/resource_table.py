@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from textual.widgets import DataTable
 
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 if TYPE_CHECKING:
-    from skyforge.core.provider import BaseProvider
-    from skyforge.core.resource import Resource
-    from skyforge.tui.widgets.provider_panel import ProviderSelected
+    from spancloud.core.provider import BaseProvider
+    from spancloud.core.resource import Resource
+    from spancloud.tui.widgets.provider_panel import ProviderSelected
 
 logger = get_logger(__name__)
 

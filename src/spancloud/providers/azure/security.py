@@ -5,15 +5,15 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from skyforge.analysis.models import (
+from spancloud.analysis.models import (
     SecurityAuditResult,
     SecurityFinding,
     Severity,
 )
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 if TYPE_CHECKING:
-    from skyforge.providers.azure.auth import AzureAuth
+    from spancloud.providers.azure.auth import AzureAuth
 
 logger = get_logger(__name__)
 

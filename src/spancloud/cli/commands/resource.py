@@ -9,10 +9,10 @@ from rich.console import Console
 from rich.table import Table
 
 # Trigger provider registration.
-import skyforge.providers  # noqa: F401
-from skyforge.core.exceptions import ProviderError, ProviderNotImplementedError
-from skyforge.core.registry import registry
-from skyforge.core.resource import ResourceType
+import spancloud.providers  # noqa: F401
+from spancloud.core.exceptions import ProviderError, ProviderNotImplementedError
+from spancloud.core.registry import registry
+from spancloud.core.resource import ResourceType
 
 console = Console()
 resource_app = typer.Typer(help="Discover and manage cloud resources.", no_args_is_help=True)
@@ -68,7 +68,7 @@ def list_resources(
     ),
 ) -> None:
     """List resources of a given type from a provider."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -110,7 +110,7 @@ def list_resources(
 
     # Export mode — output data and exit
     if export:
-        from skyforge.core.export import to_csv, to_json, to_yaml
+        from spancloud.core.export import to_csv, to_json, to_yaml
 
         format_map = {"json": to_json, "csv": to_csv, "yaml": to_yaml}
         formatter = format_map.get(export.lower())
@@ -191,7 +191,7 @@ def show_resource(
     ),
 ) -> None:
     """Show detailed information about a single resource."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)

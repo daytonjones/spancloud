@@ -8,8 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 unused_app = typer.Typer(help="Find unused and idle cloud resources.", no_args_is_help=True)
@@ -32,7 +32,7 @@ def scan_unused(
     ),
 ) -> None:
     """Scan for unused or idle resources that may be wasting money."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -44,27 +44,27 @@ def scan_unused(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.unused import AWSUnusedDetector
+            from spancloud.providers.aws.unused import AWSUnusedDetector
             detector = AWSUnusedDetector(provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.unused import GCPUnusedDetector
+            from spancloud.providers.gcp.unused import GCPUnusedDetector
             detector = GCPUnusedDetector(provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.unused import VultrUnusedDetector
+            from spancloud.providers.vultr.unused import VultrUnusedDetector
             detector = VultrUnusedDetector(provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.unused import (
+            from spancloud.providers.digitalocean.unused import (
                 DigitalOceanUnusedDetector,
             )
             detector = DigitalOceanUnusedDetector(provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.unused import AzureUnusedDetector
+            from spancloud.providers.azure.unused import AzureUnusedDetector
             detector = AzureUnusedDetector(provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.unused import OCIUnusedDetector
+            from spancloud.providers.oci.unused import OCIUnusedDetector
             detector = OCIUnusedDetector(provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.unused import (
+            from spancloud.providers.alibaba.unused import (
                 AlibabaUnusedDetector,
             )
             detector = AlibabaUnusedDetector(provider._auth)

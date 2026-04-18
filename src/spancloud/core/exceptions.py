@@ -1,11 +1,11 @@
-"""Custom exceptions for Skyforge."""
+"""Custom exceptions for Spancloud."""
 
 
-class SkyforgeError(Exception):
-    """Base exception for all Skyforge errors."""
+class SpancloudError(Exception):
+    """Base exception for all Spancloud errors."""
 
 
-class ProviderError(SkyforgeError):
+class ProviderError(SpancloudError):
     """Error originating from a cloud provider interaction."""
 
     def __init__(self, provider: str, message: str) -> None:
@@ -29,7 +29,7 @@ class ResourceNotFoundError(ProviderError):
         super().__init__(provider, f"{resource_type} '{resource_id}' not found")
 
 
-class ProviderNotImplementedError(SkyforgeError):
+class ProviderNotImplementedError(SpancloudError):
     """Provider exists but is not yet implemented."""
 
     def __init__(self, provider: str) -> None:

@@ -12,8 +12,8 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

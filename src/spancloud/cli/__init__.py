@@ -1,1 +1,1 @@
-"""Skyforge CLI — command-line interface powered by typer."""
+"""Spancloud CLI — command-line interface powered by typer."""

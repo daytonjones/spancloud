@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 map_app = typer.Typer(help="Map relationships between cloud resources.", no_args_is_help=True)
@@ -33,7 +33,7 @@ def show_map(
     ),
 ) -> None:
     """Show resource relationships for a cloud provider."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -45,31 +45,31 @@ def show_map(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.relationships import AWSRelationshipMapper
+            from spancloud.providers.aws.relationships import AWSRelationshipMapper
             mapper = AWSRelationshipMapper(provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.relationships import GCPRelationshipMapper
+            from spancloud.providers.gcp.relationships import GCPRelationshipMapper
             mapper = GCPRelationshipMapper(provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.relationships import VultrRelationshipMapper
+            from spancloud.providers.vultr.relationships import VultrRelationshipMapper
             mapper = VultrRelationshipMapper(provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.relationships import (
+            from spancloud.providers.digitalocean.relationships import (
                 DigitalOceanRelationshipMapper,
             )
             mapper = DigitalOceanRelationshipMapper(provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.relationships import (
+            from spancloud.providers.azure.relationships import (
                 AzureRelationshipMapper,
             )
             mapper = AzureRelationshipMapper(provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.relationships import (
+            from spancloud.providers.oci.relationships import (
                 OCIRelationshipMapper,
             )
             mapper = OCIRelationshipMapper(provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.relationships import (
+            from spancloud.providers.alibaba.relationships import (
                 AlibabaRelationshipMapper,
             )
             mapper = AlibabaRelationshipMapper(provider._auth)

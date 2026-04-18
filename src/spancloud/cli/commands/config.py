@@ -1,4 +1,4 @@
-"""CLI commands for managing Skyforge configuration."""
+"""CLI commands for managing Spancloud configuration."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 console = Console()
-config_app = typer.Typer(help="Manage Skyforge configuration.", no_args_is_help=True)
+config_app = typer.Typer(help="Manage Spancloud configuration.", no_args_is_help=True)
 
 
 @config_app.command("sidebar")
@@ -29,7 +29,7 @@ def manage_sidebar(
     ),
 ) -> None:
     """View or modify which resource types appear in the TUI sidebar."""
-    from skyforge.config.sidebar import (
+    from spancloud.config.sidebar import (
         get_available_services,
         get_sidebar_items,
         reset_sidebar,
@@ -74,7 +74,7 @@ def manage_sidebar(
         if add not in all_services:
             console.print(f"[red]Unknown service:[/red] '{add}'")
             console.print(
-                f"[dim]Run: skyforge config sidebar {provider_name} "
+                f"[dim]Run: spancloud config sidebar {provider_name} "
                 f"--available[/dim]"
             )
             raise typer.Exit(code=1)
@@ -133,12 +133,12 @@ def manage_providers(
     ),
 ) -> None:
     """View or toggle which providers appear as TUI tabs."""
-    import skyforge.providers  # noqa: F401
-    from skyforge.config.sidebar import (
+    import spancloud.providers  # noqa: F401
+    from spancloud.config.sidebar import (
         get_enabled_providers,
         set_enabled_providers,
     )
-    from skyforge.core.registry import registry
+    from spancloud.core.registry import registry
 
     if enable:
         enabled = get_enabled_providers()

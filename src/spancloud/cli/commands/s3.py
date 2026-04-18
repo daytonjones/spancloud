@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 s3_app = typer.Typer(help="S3 bucket management and details.", no_args_is_help=True)
@@ -28,7 +28,7 @@ def bucket_info(
 
     async def _fetch():
         await provider.authenticate()
-        from skyforge.providers.aws.s3_details import S3DetailAnalyzer
+        from spancloud.providers.aws.s3_details import S3DetailAnalyzer
 
         analyzer = S3DetailAnalyzer(provider._auth)
         return await analyzer.get_bucket_details(bucket_name)

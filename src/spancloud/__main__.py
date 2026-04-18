@@ -1,5 +1,5 @@
-"""Allow running Skyforge as a module: python -m skyforge."""
+"""Allow running Spancloud as a module: python -m spancloud."""
 
-from skyforge.cli.main import app
+from spancloud.cli.main import app
 
 app()

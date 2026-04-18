@@ -33,8 +33,8 @@ async def vultr_login() -> bool:
     )
 
     # Check for existing key — env/settings first, then credential store
-    from skyforge.config import get_settings
-    from skyforge.utils import credentials
+    from spancloud.config import get_settings
+    from spancloud.utils import credentials
 
     settings = get_settings().vultr
     existing_key = settings.api_key
@@ -78,7 +78,7 @@ async def vultr_login() -> bool:
 
 def _persist_key(api_key: str) -> None:
     """Save the verified key to the secure credential store."""
-    from skyforge.utils import credentials
+    from spancloud.utils import credentials
 
     if credentials.save("vultr", "api_key", api_key):
         console.print(
@@ -88,7 +88,7 @@ def _persist_key(api_key: str) -> None:
     else:
         console.print(
             "\n[yellow]Could not persist API key securely.[/yellow]\n"
-            "[dim]Set SKYFORGE_VULTR_API_KEY in your shell to avoid re-entering "
+            "[dim]Set SPANCLOUD_VULTR_API_KEY in your shell to avoid re-entering "
             "it next time.[/dim]"
         )
 

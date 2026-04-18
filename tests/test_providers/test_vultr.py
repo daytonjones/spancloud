@@ -4,26 +4,26 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceState, ResourceType
+from spancloud.core.resource import ResourceState, ResourceType
 
 
 class TestVultrProvider:
     """Tests for the VultrProvider class."""
 
     def test_name(self) -> None:
-        from skyforge.providers.vultr.provider import VultrProvider
+        from spancloud.providers.vultr.provider import VultrProvider
 
         provider = VultrProvider()
         assert provider.name == "vultr"
 
     def test_display_name(self) -> None:
-        from skyforge.providers.vultr.provider import VultrProvider
+        from spancloud.providers.vultr.provider import VultrProvider
 
         provider = VultrProvider()
         assert provider.display_name == "Vultr"
 
     def test_supported_resource_types(self) -> None:
-        from skyforge.providers.vultr.provider import VultrProvider
+        from spancloud.providers.vultr.provider import VultrProvider
 
         provider = VultrProvider()
         expected = [
@@ -42,7 +42,7 @@ class TestVultrAuth:
     """Tests for the Vultr auth client."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.vultr.auth import VultrAuth
+        from spancloud.providers.vultr.auth import VultrAuth
 
         auth = VultrAuth()
         assert auth.api_key == ""
@@ -52,7 +52,7 @@ class TestInstanceResources:
     """Tests for Vultr instance mapping."""
 
     def test_map_instance(self) -> None:
-        from skyforge.providers.vultr.instances import InstanceResources
+        from spancloud.providers.vultr.instances import InstanceResources
 
         auth = MagicMock()
         res = InstanceResources(auth)
@@ -86,7 +86,7 @@ class TestInstanceResources:
         assert resource.metadata["resource_subtype"] == "instance"
 
     def test_map_bare_metal(self) -> None:
-        from skyforge.providers.vultr.instances import BareMetalResources
+        from spancloud.providers.vultr.instances import BareMetalResources
 
         auth = MagicMock()
         res = BareMetalResources(auth)
@@ -114,7 +114,7 @@ class TestStorageResources:
     """Tests for Vultr storage mapping."""
 
     def test_map_block(self) -> None:
-        from skyforge.providers.vultr.storage import BlockStorageResources
+        from spancloud.providers.vultr.storage import BlockStorageResources
 
         auth = MagicMock()
         res = BlockStorageResources(auth)
@@ -137,7 +137,7 @@ class TestStorageResources:
         assert resource.metadata["resource_subtype"] == "block_storage"
 
     def test_map_object_storage(self) -> None:
-        from skyforge.providers.vultr.storage import ObjectStorageResources
+        from spancloud.providers.vultr.storage import ObjectStorageResources
 
         auth = MagicMock()
         res = ObjectStorageResources(auth)
@@ -161,7 +161,7 @@ class TestVPCResources:
     """Tests for Vultr VPC mapping."""
 
     def test_map_vpc(self) -> None:
-        from skyforge.providers.vultr.vpc import VPCResources
+        from spancloud.providers.vultr.vpc import VPCResources
 
         auth = MagicMock()
         res = VPCResources(auth)
@@ -180,7 +180,7 @@ class TestVPCResources:
         assert resource.metadata["resource_subtype"] == "vpc"
 
     def test_map_firewall(self) -> None:
-        from skyforge.providers.vultr.vpc import FirewallResources
+        from spancloud.providers.vultr.vpc import FirewallResources
 
         auth = MagicMock()
         res = FirewallResources(auth)
@@ -203,7 +203,7 @@ class TestDatabaseResources:
     """Tests for Vultr database mapping."""
 
     def test_map_database(self) -> None:
-        from skyforge.providers.vultr.database import DatabaseResources
+        from spancloud.providers.vultr.database import DatabaseResources
 
         auth = MagicMock()
         res = DatabaseResources(auth)
@@ -233,7 +233,7 @@ class TestKubernetesResources:
     """Tests for Vultr VKE mapping."""
 
     def test_map_cluster(self) -> None:
-        from skyforge.providers.vultr.kubernetes import KubernetesResources
+        from spancloud.providers.vultr.kubernetes import KubernetesResources
 
         auth = MagicMock()
         res = KubernetesResources(auth)
@@ -261,7 +261,7 @@ class TestDNSResources:
     """Tests for Vultr DNS mapping."""
 
     def test_map_domain(self) -> None:
-        from skyforge.providers.vultr.dns import DNSResources
+        from spancloud.providers.vultr.dns import DNSResources
 
         auth = MagicMock()
         res = DNSResources(auth)
@@ -276,7 +276,7 @@ class TestDNSResources:
         assert resource.metadata["resource_subtype"] == "dns_domain"
 
     def test_map_record(self) -> None:
-        from skyforge.providers.vultr.dns import DNSResources
+        from spancloud.providers.vultr.dns import DNSResources
 
         auth = MagicMock()
         res = DNSResources(auth)
@@ -300,14 +300,14 @@ class TestVultrActions:
     """Tests for Vultr instance actions."""
 
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.vultr.actions import ActionVerb
+        from spancloud.providers.vultr.actions import ActionVerb
 
         assert ActionVerb.START == "start"
         assert ActionVerb.STOP == "halt"
         assert ActionVerb.REBOOT == "reboot"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.vultr.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.vultr.actions import _VALID_STATES, ActionVerb
 
         assert "halted" in _VALID_STATES[ActionVerb.START]
         assert "active" in _VALID_STATES[ActionVerb.STOP]
@@ -318,14 +318,14 @@ class TestVultrCostAnalyzer:
     """Tests for Vultr cost analyzer."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.vultr.cost import VultrCostAnalyzer
+        from spancloud.providers.vultr.cost import VultrCostAnalyzer
 
         auth = MagicMock()
         analyzer = VultrCostAnalyzer(auth)
         assert analyzer is not None
 
     def test_classify_service(self) -> None:
-        from skyforge.providers.vultr.cost import VultrCostAnalyzer
+        from spancloud.providers.vultr.cost import VultrCostAnalyzer
 
         auth = MagicMock()
         analyzer = VultrCostAnalyzer(auth)
@@ -340,7 +340,7 @@ class TestVultrSecurityAuditor:
     """Tests for Vultr security auditor."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.vultr.security import VultrSecurityAuditor
+        from spancloud.providers.vultr.security import VultrSecurityAuditor
 
         auth = MagicMock()
         auditor = VultrSecurityAuditor(auth)
@@ -351,7 +351,7 @@ class TestVultrUnusedDetector:
     """Tests for Vultr unused detector."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.vultr.unused import VultrUnusedDetector
+        from spancloud.providers.vultr.unused import VultrUnusedDetector
 
         auth = MagicMock()
         detector = VultrUnusedDetector(auth)
@@ -365,7 +365,7 @@ class TestVultrUnusedDetector:
         """
         from unittest.mock import AsyncMock
 
-        from skyforge.providers.vultr.unused import VultrUnusedDetector
+        from spancloud.providers.vultr.unused import VultrUnusedDetector
 
         auth = MagicMock()
         # 25 GB expressed in bytes
@@ -396,7 +396,7 @@ class TestVultrRelationshipMapper:
     """Tests for Vultr relationship mapper."""
 
     def test_can_create(self) -> None:
-        from skyforge.providers.vultr.relationships import VultrRelationshipMapper
+        from spancloud.providers.vultr.relationships import VultrRelationshipMapper
 
         auth = MagicMock()
         mapper = VultrRelationshipMapper(auth)

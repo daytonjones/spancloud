@@ -8,8 +8,8 @@ import subprocess
 from rich.console import Console
 from rich.prompt import Prompt
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 console = Console()
 logger = get_logger(__name__)
@@ -89,7 +89,7 @@ async def azure_login() -> bool:
         f"\n[green]Selected subscription:[/green] "
         f"{chosen.get('name', '')} ({subscription_id})"
     )
-    console.print("[dim]Saved to ~/.config/skyforge/azure.env[/dim]")
+    console.print("[dim]Saved to ~/.config/spancloud/azure.env[/dim]")
     return True
 
 
@@ -111,22 +111,22 @@ def _list_subscriptions_cli(az_path: str) -> list[dict[str, object]]:
 
 
 def _save_subscription(subscription_id: str, tenant_id: str) -> None:
-    """Persist subscription selection to the skyforge config dir."""
+    """Persist subscription selection to the spancloud config dir."""
     settings = get_settings()
     config_dir = settings.ensure_config_dir()
     env_path = config_dir / "azure.env"
 
     lines = [
-        f"SKYFORGE_AZURE_SUBSCRIPTION_ID={subscription_id}",
+        f"SPANCLOUD_AZURE_SUBSCRIPTION_ID={subscription_id}",
     ]
     if tenant_id:
-        lines.append(f"SKYFORGE_AZURE_TENANT_ID={tenant_id}")
+        lines.append(f"SPANCLOUD_AZURE_TENANT_ID={tenant_id}")
 
     env_path.write_text("\n".join(lines) + "\n")
 
     # Also export for the current process so verify() works post-login
     import os
 
-    os.environ["SKYFORGE_AZURE_SUBSCRIPTION_ID"] = subscription_id
+    os.environ["SPANCLOUD_AZURE_SUBSCRIPTION_ID"] = subscription_id
     if tenant_id:
-        os.environ["SKYFORGE_AZURE_TENANT_ID"] = tenant_id
+        os.environ["SPANCLOUD_AZURE_TENANT_ID"] = tenant_id

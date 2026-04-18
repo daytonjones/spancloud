@@ -2,11 +2,11 @@
 
 Provides a simple save/load/delete API backed by the OS keyring where
 available (macOS Keychain, Linux Secret Service, Windows Credential Locker).
-Falls back to a Fernet-encrypted file at ~/.config/skyforge/credentials.enc
+Falls back to a Fernet-encrypted file at ~/.config/spancloud/credentials.enc
 when no keyring backend is present (headless Linux, minimal containers).
 
 Usage:
-    from skyforge.utils.credentials import save, load, delete
+    from spancloud.utils.credentials import save, load, delete
 
     save("vultr", "api_key", "ABC123...")
     token = load("vultr", "api_key")          # returns None if not found
@@ -20,12 +20,12 @@ import os
 import stat
 from pathlib import Path  # noqa: TC003 — used at runtime
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-_SERVICE_PREFIX = "skyforge"
+_SERVICE_PREFIX = "spancloud"
 _FALLBACK_FILE = "credentials.enc"
 _FALLBACK_KEY_FILE = ".cred_key"
 
@@ -72,7 +72,7 @@ def backend_name() -> str:
         # The "null" fallback backend lives in keyring.backends.fail
         if module.endswith("backends.fail") or module.endswith("backends.null"):
             if _file_store_exists():
-                return "encrypted file (~/.config/skyforge/credentials.enc)"
+                return "encrypted file (~/.config/spancloud/credentials.enc)"
             return "none (no usable keyring backend)"
         # Friendly names for the common OS backends
         friendly = {
@@ -86,7 +86,7 @@ def backend_name() -> str:
         return f"OS keyring ({label})"
     except Exception:
         if _file_store_exists():
-            return "encrypted file (~/.config/skyforge/credentials.enc)"
+            return "encrypted file (~/.config/spancloud/credentials.enc)"
         return "none"
 
 

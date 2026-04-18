@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 cost_app = typer.Typer(help="Analyze cloud costs and spending.", no_args_is_help=True)
@@ -27,7 +27,7 @@ def show_cost(
     ),
 ) -> None:
     """Show cost summary for a cloud provider."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -39,27 +39,27 @@ def show_cost(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.cost import AWSCostAnalyzer
+            from spancloud.providers.aws.cost import AWSCostAnalyzer
             analyzer = AWSCostAnalyzer(provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.cost import GCPCostAnalyzer
+            from spancloud.providers.gcp.cost import GCPCostAnalyzer
             analyzer = GCPCostAnalyzer(provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.cost import VultrCostAnalyzer
+            from spancloud.providers.vultr.cost import VultrCostAnalyzer
             analyzer = VultrCostAnalyzer(provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.cost import (
+            from spancloud.providers.digitalocean.cost import (
                 DigitalOceanCostAnalyzer,
             )
             analyzer = DigitalOceanCostAnalyzer(provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.cost import AzureCostAnalyzer
+            from spancloud.providers.azure.cost import AzureCostAnalyzer
             analyzer = AzureCostAnalyzer(provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.cost import OCICostAnalyzer
+            from spancloud.providers.oci.cost import OCICostAnalyzer
             analyzer = OCICostAnalyzer(provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.cost import AlibabaCostAnalyzer
+            from spancloud.providers.alibaba.cost import AlibabaCostAnalyzer
             analyzer = AlibabaCostAnalyzer(provider._auth)
         else:
             console.print(f"[yellow]Cost analysis not available for {provider_name}[/yellow]")

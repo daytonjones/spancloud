@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 console = Console()
@@ -125,7 +125,7 @@ def gcp_login() -> bool:
         console.print("[red]gcloud CLI is not installed.[/red] Install it from:")
         console.print("  https://cloud.google.com/sdk/docs/install")
         console.print(
-            "\n[dim]After installing, run [bold]skyforge auth login gcp[/bold] again.[/dim]"
+            "\n[dim]After installing, run [bold]spancloud auth login gcp[/bold] again.[/dim]"
         )
         return False
 
@@ -147,7 +147,7 @@ def gcp_login() -> bool:
     else:
         console.print("\n[bold]Step 1:[/bold] Set up Application Default Credentials")
         console.print(
-            "[dim]This is required for Skyforge (and other Python SDKs) to access GCP.\n"
+            "[dim]This is required for Spancloud (and other Python SDKs) to access GCP.\n"
             "Note: 'gcloud auth login' alone is NOT sufficient — "
             "ADC is a separate credential.[/dim]\n"
         )
@@ -211,7 +211,7 @@ def _handle_project_selection(current_project: str) -> bool:
             return True
         console.print(
             "\n[green]ADC is set up.[/green] "
-            "Run [bold]skyforge auth login gcp[/bold] again after creating a project."
+            "Run [bold]spancloud auth login gcp[/bold] again after creating a project."
         )
         return True
 
@@ -269,6 +269,6 @@ def _set_quota_project(project_id: str) -> None:
 def _print_env_hint(project_id: str) -> None:
     """Print environment variable hints for the project."""
     console.print(
-        f"\n[dim]To set this permanently for Skyforge, add to your shell profile:\n"
-        f"  export SKYFORGE_GCP_PROJECT_ID={project_id}[/dim]"
+        f"\n[dim]To set this permanently for Spancloud, add to your shell profile:\n"
+        f"  export SPANCLOUD_GCP_PROJECT_ID={project_id}[/dim]"
     )

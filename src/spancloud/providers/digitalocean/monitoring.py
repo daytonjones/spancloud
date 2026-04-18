@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
 
 if TYPE_CHECKING:
-    from skyforge.providers.digitalocean.auth import DigitalOceanAuth
+    from spancloud.providers.digitalocean.auth import DigitalOceanAuth
 
 logger = get_logger(__name__)
 

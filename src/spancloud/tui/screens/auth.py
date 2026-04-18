@@ -15,7 +15,7 @@ from textual.widgets import Button, Input, RichLog, Static
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from skyforge.core.provider import BaseProvider
+    from spancloud.core.provider import BaseProvider
 
 
 class AuthScreen(ModalScreen[bool]):
@@ -267,7 +267,7 @@ class AuthScreen(ModalScreen[bool]):
         """
         import shutil
 
-        from skyforge.providers.aws.login import (
+        from spancloud.providers.aws.login import (
             _get_existing_profiles,
             _get_sso_profiles,
         )
@@ -336,7 +336,7 @@ class AuthScreen(ModalScreen[bool]):
             "  \u2022 Set env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY\n"
             "  \u2022 Run [bold]aws configure[/bold] in a terminal to store access keys\n"
             "  \u2022 Run [bold]aws configure sso[/bold] to set up SSO\n"
-            "  \u2022 Run [bold]skyforge auth login aws[/bold] for the full "
+            "  \u2022 Run [bold]spancloud auth login aws[/bold] for the full "
             "interactive flow (SSO / access keys / profile switch)"
         )
         if existing:
@@ -420,7 +420,7 @@ class AuthScreen(ModalScreen[bool]):
                 self._provider._auth._api_key = api_key
 
             # Persist to the OS keychain so future sessions reuse it
-            from skyforge.utils import credentials
+            from spancloud.utils import credentials
 
             if credentials.save("vultr", "api_key", api_key):
                 log.write(
@@ -430,7 +430,7 @@ class AuthScreen(ModalScreen[bool]):
             else:
                 log.write(
                     "[yellow]Could not save key to keychain.[/yellow] "
-                    "[dim]Set SKYFORGE_VULTR_API_KEY to avoid re-entering "
+                    "[dim]Set SPANCLOUD_VULTR_API_KEY to avoid re-entering "
                     "it next session.[/dim]"
                 )
             return True
@@ -480,7 +480,7 @@ class AuthScreen(ModalScreen[bool]):
             if hasattr(self._provider, "_auth"):
                 self._provider._auth._token = token
 
-            from skyforge.utils import credentials
+            from spancloud.utils import credentials
 
             if credentials.save("digitalocean", "token", token):
                 log.write(
@@ -490,7 +490,7 @@ class AuthScreen(ModalScreen[bool]):
             else:
                 log.write(
                     "[yellow]Could not save token to keychain.[/yellow] "
-                    "[dim]Set SKYFORGE_DIGITALOCEAN_TOKEN to avoid "
+                    "[dim]Set SPANCLOUD_DIGITALOCEAN_TOKEN to avoid "
                     "re-entering it next session.[/dim]"
                 )
             return True
@@ -600,7 +600,7 @@ class AuthScreen(ModalScreen[bool]):
 
     async def _azure_select_subscription(self, log: RichLog) -> bool:
         """Phase 2: parse the chosen subscription number, persist, and signal verify."""
-        from skyforge.providers.azure.login import _save_subscription
+        from spancloud.providers.azure.login import _save_subscription
 
         raw = self.query_one("#auth-api-key", Input).value.strip() or "1"
         try:
@@ -621,7 +621,7 @@ class AuthScreen(ModalScreen[bool]):
 
         log.write(f"\n[cyan]Selected:[/cyan] {name} ({subscription_id})")
 
-        # Persist for future sessions (writes ~/.config/skyforge/azure.env +
+        # Persist for future sessions (writes ~/.config/spancloud/azure.env +
         # updates os.environ for the current process).
         _save_subscription(subscription_id, tenant_id)
 
@@ -633,7 +633,7 @@ class AuthScreen(ModalScreen[bool]):
             if hasattr(auth, "_tenant_id") and tenant_id:
                 auth._tenant_id = tenant_id
 
-        log.write("[dim]Saved to ~/.config/skyforge/azure.env[/dim]")
+        log.write("[dim]Saved to ~/.config/spancloud/azure.env[/dim]")
         # Reset phase so closing and reopening starts fresh.
         self._azure_phase = "idle"
         return True
@@ -642,7 +642,7 @@ class AuthScreen(ModalScreen[bool]):
 
     async def _auth_oci(self, log: RichLog) -> bool:
         """Validate OCI by loading its config file and selecting a profile."""
-        from skyforge.providers.oci.auth import OCIAuth
+        from spancloud.providers.oci.auth import OCIAuth
 
         auth = OCIAuth()
         profiles = await asyncio.to_thread(auth.list_profiles)
@@ -666,22 +666,22 @@ class AuthScreen(ModalScreen[bool]):
             self._provider._auth.set_profile(chosen)
 
         # Persist for future runs.
-        from skyforge.config import get_settings
+        from spancloud.config import get_settings
 
         env_path = get_settings().ensure_config_dir() / "oci.env"
-        env_path.write_text(f"SKYFORGE_OCI_PROFILE={chosen}\n")
+        env_path.write_text(f"SPANCLOUD_OCI_PROFILE={chosen}\n")
         import os
 
-        os.environ["SKYFORGE_OCI_PROFILE"] = chosen
-        log.write("[dim]Saved to ~/.config/skyforge/oci.env[/dim]")
+        os.environ["SPANCLOUD_OCI_PROFILE"] = chosen
+        log.write("[dim]Saved to ~/.config/spancloud/oci.env[/dim]")
         return True
 
     # ---- Alibaba ----
 
     async def _auth_alibaba(self, log: RichLog) -> bool:
         """Validate Alibaba AccessKey ID:Secret entered in the input field."""
-        from skyforge.config import get_settings
-        from skyforge.utils import credentials
+        from spancloud.config import get_settings
+        from spancloud.utils import credentials
 
         raw = self.query_one("#auth-api-key", Input).value.strip()
         if ":" not in raw:

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 
 def apply_aws_profile(profile: str | None) -> None:

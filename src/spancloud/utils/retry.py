@@ -7,7 +7,7 @@ import functools
 import random
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

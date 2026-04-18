@@ -8,11 +8,11 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, TabbedContent, TabPane
 
 # Import providers to ensure registration.
-import skyforge.providers  # noqa: F401
-from skyforge.config.sidebar import is_provider_enabled
-from skyforge.core.registry import registry
-from skyforge.tui.widgets.overview_tab import OverviewTab
-from skyforge.tui.widgets.provider_tab import ProviderTab
+import spancloud.providers  # noqa: F401
+from spancloud.config.sidebar import is_provider_enabled
+from spancloud.core.registry import registry
+from spancloud.tui.widgets.overview_tab import OverviewTab
+from spancloud.tui.widgets.provider_tab import ProviderTab
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult

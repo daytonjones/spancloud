@@ -11,7 +11,7 @@ from textual.widgets import Button, Checkbox, Static
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from skyforge.core.provider import BaseProvider
+    from spancloud.core.provider import BaseProvider
 
 
 class ProviderStatusCard(Static):
@@ -58,7 +58,7 @@ class ProviderStatusCard(Static):
 
         if self.has_class("error") or not self.has_class("authenticated"):
             # Not authenticated — open the auth popup
-            from skyforge.tui.screens.auth import AuthScreen
+            from spancloud.tui.screens.auth import AuthScreen
 
             def _on_dismiss(result: bool) -> None:
                 if result:
@@ -141,12 +141,12 @@ class OverviewTab(VerticalScroll):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold cyan]Skyforge[/bold cyan] — "
+            "[bold cyan]Spancloud[/bold cyan] — "
             "Multi-Cloud Infrastructure Overview\n",
             id="overview-title",
         )
 
-        from skyforge.config.sidebar import is_provider_enabled
+        from spancloud.config.sidebar import is_provider_enabled
 
         implemented = [p for p in self._providers if p.supported_resource_types]
         stubs = [p for p in self._providers if not p.supported_resource_types]
@@ -173,7 +173,7 @@ class OverviewTab(VerticalScroll):
 
         yield Static("")
         yield Button(
-            "\u274c  Quit Skyforge",
+            "\u274c  Quit Spancloud",
             id="quit-button",
             variant="error",
         )
@@ -192,7 +192,7 @@ class OverviewTab(VerticalScroll):
         if not provider_name:
             return
 
-        from skyforge.config.sidebar import get_enabled_providers, set_enabled_providers
+        from spancloud.config.sidebar import get_enabled_providers, set_enabled_providers
 
         enabled = get_enabled_providers()
         if event.value:

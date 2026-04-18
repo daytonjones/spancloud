@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from skyforge.analysis.models import (
+from spancloud.analysis.models import (
     CostSummary,
     DailyCost,
     RelationshipMap,
@@ -255,7 +255,7 @@ class TestRateLimiter:
     """Tests for the rate limiter utility."""
 
     def test_import(self) -> None:
-        from skyforge.utils.throttle import RateLimiter, run_in_batches
+        from spancloud.utils.throttle import RateLimiter, run_in_batches
 
         limiter = RateLimiter(calls_per_second=10.0, max_concurrency=5)
         assert limiter is not None

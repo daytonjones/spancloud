@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from google.auth.credentials import Credentials
@@ -54,7 +54,7 @@ class GCPAuth:
             if not self._project_id:
                 logger.warning(
                     "GCP credentials found but no project ID configured. "
-                    "Set SKYFORGE_GCP_PROJECT_ID or run 'gcloud config set project <id>'."
+                    "Set SPANCLOUD_GCP_PROJECT_ID or run 'gcloud config set project <id>'."
                 )
 
             logger.info("GCP authenticated for project '%s'", self._project_id)
@@ -66,7 +66,7 @@ class GCPAuth:
                 "  gcloud auth application-default login\n"
                 "Then optionally set a default project:\n"
                 "  gcloud config set project PROJECT_ID\n"
-                "Or set SKYFORGE_GCP_PROJECT_ID in your environment."
+                "Or set SPANCLOUD_GCP_PROJECT_ID in your environment."
             )
             return False
 

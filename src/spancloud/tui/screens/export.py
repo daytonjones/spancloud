@@ -13,7 +13,7 @@ from textual.widgets import Button, Input, RadioButton, RadioSet, Static
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from skyforge.core.resource import Resource
+    from spancloud.core.resource import Resource
 
 
 class ExportScreen(ModalScreen[bool]):
@@ -78,7 +78,7 @@ class ExportScreen(ModalScreen[bool]):
                 yield RadioButton("YAML")
 
             yield Input(
-                value="skyforge-export",
+                value="spancloud-export",
                 placeholder="Filename (without extension)",
                 id="export-path",
             )
@@ -97,7 +97,7 @@ class ExportScreen(ModalScreen[bool]):
         self.dismiss(False)
 
     def _do_export(self) -> None:
-        from skyforge.core.export import to_csv, to_json, to_yaml
+        from spancloud.core.export import to_csv, to_json, to_yaml
 
         # Get format
         radio_set = self.query_one("#export-format", RadioSet)
@@ -112,7 +112,7 @@ class ExportScreen(ModalScreen[bool]):
         # Get filename
         base = self.query_one("#export-path", Input).value.strip()
         if not base:
-            base = "skyforge-export"
+            base = "spancloud-export"
         filepath = Path(base + ext)
 
         try:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from skyforge.core.provider import BaseProvider
+    from spancloud.core.provider import BaseProvider
 
 
 class ProviderRegistry:

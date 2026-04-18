@@ -11,7 +11,7 @@ from textual.widgets import Static
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from skyforge.core.provider import BaseProvider
+    from spancloud.core.provider import BaseProvider
 
 
 class ProviderSelected(Message):

@@ -1,32 +1,32 @@
-"""Main CLI entry point for Skyforge."""
+"""Main CLI entry point for Spancloud."""
 
 from __future__ import annotations
 
 import typer
 from rich.console import Console
 
-import skyforge
-from skyforge.cli.commands.action import action_app
-from skyforge.cli.commands.audit import audit_app
-from skyforge.cli.commands.auth import auth_app
-from skyforge.cli.commands.config import config_app
-from skyforge.cli.commands.cost import cost_app
-from skyforge.cli.commands.gcs import gcs_app
-from skyforge.cli.commands.map import map_app
-from skyforge.cli.commands.monitor import monitor_app
-from skyforge.cli.commands.profile import profile_app
-from skyforge.cli.commands.provider import provider_app
-from skyforge.cli.commands.resource import resource_app
-from skyforge.cli.commands.s3 import s3_app
-from skyforge.cli.commands.tui import launch_tui
-from skyforge.cli.commands.unused import unused_app
-from skyforge.cli.commands.vultr_storage import vultr_app
+import spancloud
+from spancloud.cli.commands.action import action_app
+from spancloud.cli.commands.audit import audit_app
+from spancloud.cli.commands.auth import auth_app
+from spancloud.cli.commands.config import config_app
+from spancloud.cli.commands.cost import cost_app
+from spancloud.cli.commands.gcs import gcs_app
+from spancloud.cli.commands.map import map_app
+from spancloud.cli.commands.monitor import monitor_app
+from spancloud.cli.commands.profile import profile_app
+from spancloud.cli.commands.provider import provider_app
+from spancloud.cli.commands.resource import resource_app
+from spancloud.cli.commands.s3 import s3_app
+from spancloud.cli.commands.tui import launch_tui
+from spancloud.cli.commands.unused import unused_app
+from spancloud.cli.commands.vultr_storage import vultr_app
 
 console = Console()
 
 app = typer.Typer(
-    name="skyforge",
-    help="Skyforge — Multi-cloud infrastructure orchestrator.",
+    name="spancloud",
+    help="Spancloud — Multi-cloud infrastructure orchestrator.",
     invoke_without_command=True,
     rich_markup_mode="rich",
 )
@@ -44,20 +44,20 @@ app.add_typer(s3_app, name="s3", help="S3 bucket details and management.")
 app.add_typer(gcs_app, name="gcs", help="GCS bucket details and management.")
 app.add_typer(action_app, name="action", help="Resource actions (start/stop/reboot/terminate).")
 app.add_typer(profile_app, name="profile", help="AWS profile management for multi-account access.")
-app.add_typer(config_app, name="config", help="Manage Skyforge configuration.")
+app.add_typer(config_app, name="config", help="Manage Spancloud configuration.")
 app.add_typer(vultr_app, name="vultr", help="Vultr storage details.")
 
 
 @app.command()
 def tui() -> None:
-    """Launch the Skyforge TUI dashboard."""
+    """Launch the Spancloud TUI dashboard."""
     launch_tui()
 
 
 @app.command()
 def version() -> None:
-    """Show the Skyforge version."""
-    console.print(f"[bold cyan]Skyforge[/bold cyan] v{skyforge.__version__}")
+    """Show the Spancloud version."""
+    console.print(f"[bold cyan]Spancloud[/bold cyan] v{spancloud.__version__}")
 
 
 @app.callback(invoke_without_command=True)
@@ -66,28 +66,28 @@ def main_callback(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
     profile: str | None = typer.Option(
         None, "--profile", "-P",
-        help="AWS profile name for multi-account access (overrides SKYFORGE_AWS_PROFILE).",
+        help="AWS profile name for multi-account access (overrides SPANCLOUD_AWS_PROFILE).",
     ),
     gcp_project: str | None = typer.Option(
         None, "--gcp-project", "-G",
-        help="GCP project ID (overrides SKYFORGE_GCP_PROJECT_ID and ADC default).",
+        help="GCP project ID (overrides SPANCLOUD_GCP_PROJECT_ID and ADC default).",
     ),
 ) -> None:
-    """Skyforge — an all-seeing eye into your multi-cloud infrastructure."""
+    """Spancloud — an all-seeing eye into your multi-cloud infrastructure."""
     if verbose:
-        from skyforge.utils.logging import setup_logging
+        from spancloud.utils.logging import setup_logging
 
         setup_logging("DEBUG")
     else:
-        from skyforge.utils.logging import setup_logging
+        from spancloud.utils.logging import setup_logging
 
         setup_logging("WARNING")
 
     # Apply provider overrides if specified (registered once here so every
     # subcommand sees the swap).
     if profile or gcp_project:
-        import skyforge.providers  # noqa: F401
-        from skyforge.core.registry import registry
+        import spancloud.providers  # noqa: F401
+        from spancloud.core.registry import registry
 
         if profile:
             aws = registry.get("aws")

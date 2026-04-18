@@ -1,7 +1,7 @@
 """Sidebar configuration — user-selectable resource types per provider.
 
 Manages which resource subtypes appear in the TUI sidebar (max ~10).
-Config stored at ~/.config/skyforge/sidebar.yaml.
+Config stored at ~/.config/spancloud/sidebar.yaml.
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ import json
 from pathlib import Path  # noqa: TC003 — used at runtime
 from typing import Any
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

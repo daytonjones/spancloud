@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.table import Table
 
 # Trigger provider registration by importing the providers package.
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 provider_app = typer.Typer(help="Manage cloud providers.", no_args_is_help=True)

@@ -16,13 +16,13 @@ from typing import TYPE_CHECKING, Any
 
 from googleapiclient.discovery import build
 
-from skyforge.analysis.models import CostSummary, DailyCost, ServiceCost
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
-from skyforge.utils.throttle import RateLimiter
+from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
+from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
-    from skyforge.providers.gcp.auth import GCPAuth
+    from spancloud.providers.gcp.auth import GCPAuth
 
 logger = get_logger(__name__)
 

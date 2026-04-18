@@ -1,4 +1,4 @@
-"""Main Textual application for Skyforge."""
+"""Main Textual application for Spancloud."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import TabbedContent  # noqa: TCH002
 
-from skyforge.tui.screens.dashboard import DashboardScreen
+from spancloud.tui.screens.dashboard import DashboardScreen
 
 
 def _set_terminal_title(title: str) -> None:
@@ -21,14 +21,14 @@ def _set_terminal_title(title: str) -> None:
         pass
 
 
-class SkyforgeApp(App):
-    """Skyforge — the all-seeing eye into multi-cloud infrastructure.
+class SpancloudApp(App):
+    """Spancloud — the all-seeing eye into multi-cloud infrastructure.
 
     A Textual TUI application providing a tabbed dashboard view
     with one tab per cloud provider for maximum screen real estate.
     """
 
-    TITLE = "Skyforge"
+    TITLE = "Spancloud"
     SUB_TITLE = "Overview"
     CSS_PATH = "styles/app.tcss"
 
@@ -48,7 +48,7 @@ class SkyforgeApp(App):
 
     def on_mount(self) -> None:
         """Push the dashboard screen on startup."""
-        _set_terminal_title("Skyforge :: Overview")
+        _set_terminal_title("Spancloud :: Overview")
         self.push_screen("dashboard")
 
     def on_tabbed_content_tab_activated(
@@ -61,10 +61,10 @@ class SkyforgeApp(App):
         """
         tab_label = event.tab.label_text
         self.sub_title = tab_label
-        _set_terminal_title(f"Skyforge :: {tab_label}")
+        _set_terminal_title(f"Spancloud :: {tab_label}")
 
         # Re-check auth on the newly active provider tab
-        from skyforge.tui.widgets.provider_tab import ResourceTypeSidebar
+        from spancloud.tui.widgets.provider_tab import ResourceTypeSidebar
 
         for sidebar in self.screen.query(ResourceTypeSidebar):
             if sidebar.display and sidebar.parent and sidebar.parent.display:
@@ -82,7 +82,7 @@ class SkyforgeApp(App):
     def action_toggle_help(self) -> None:
         """Toggle the help panel."""
         self.notify(
-            "Skyforge TUI\n"
+            "Spancloud TUI\n"
             "Tab / Shift+Tab — switch provider tabs\n"
             "Up / Down — navigate sidebar items\n"
             "Enter — load resource type or run analysis\n"

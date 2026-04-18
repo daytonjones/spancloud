@@ -28,7 +28,7 @@ def setup_logging(level: str = "INFO") -> None:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Return a named logger for a Skyforge module.
+    """Return a named logger for a Spancloud module.
 
     Args:
         name: Typically ``__name__`` from the calling module.

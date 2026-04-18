@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from skyforge.providers.azure.compute import _parse_resource_group
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
+from spancloud.providers.azure.compute import _parse_resource_group
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
 
 if TYPE_CHECKING:
-    from skyforge.providers.azure.auth import AzureAuth
+    from spancloud.providers.azure.auth import AzureAuth
 
 logger = get_logger(__name__)
 

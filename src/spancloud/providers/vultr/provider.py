@@ -6,18 +6,18 @@ All API calls are rate-limited and use exponential backoff retries.
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.providers.vultr.auth import VultrAuth
-from skyforge.providers.vultr.database import DatabaseResources
-from skyforge.providers.vultr.dns import DNSResources
-from skyforge.providers.vultr.instances import BareMetalResources, InstanceResources
-from skyforge.providers.vultr.kubernetes import KubernetesResources
-from skyforge.providers.vultr.loadbalancer import LoadBalancerResources
-from skyforge.providers.vultr.storage import BlockStorageResources, ObjectStorageResources
-from skyforge.providers.vultr.vpc import FirewallResources, VPCResources
-from skyforge.utils.logging import get_logger
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.providers.vultr.auth import VultrAuth
+from spancloud.providers.vultr.database import DatabaseResources
+from spancloud.providers.vultr.dns import DNSResources
+from spancloud.providers.vultr.instances import BareMetalResources, InstanceResources
+from spancloud.providers.vultr.kubernetes import KubernetesResources
+from spancloud.providers.vultr.loadbalancer import LoadBalancerResources
+from spancloud.providers.vultr.storage import BlockStorageResources, ObjectStorageResources
+from spancloud.providers.vultr.vpc import FirewallResources, VPCResources
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 class VultrProvider(BaseProvider):
     """Vultr cloud provider.
 
-    Uses API key authentication via SKYFORGE_VULTR_API_KEY.
+    Uses API key authentication via SPANCLOUD_VULTR_API_KEY.
     Supports instances, bare metal, block/object storage, VPCs,
     firewalls, managed databases, Kubernetes, load balancers, and DNS.
     """

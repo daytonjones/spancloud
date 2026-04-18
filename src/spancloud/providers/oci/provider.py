@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.providers.oci.auth import OCIAuth
-from skyforge.providers.oci.compute import InstanceResources
-from skyforge.providers.oci.container import OKEResources
-from skyforge.providers.oci.database import DatabaseResources
-from skyforge.providers.oci.dns import DNSResources
-from skyforge.providers.oci.loadbalancer import LoadBalancerResources
-from skyforge.providers.oci.network import NetworkResources
-from skyforge.providers.oci.storage import (
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.providers.oci.auth import OCIAuth
+from spancloud.providers.oci.compute import InstanceResources
+from spancloud.providers.oci.container import OKEResources
+from spancloud.providers.oci.database import DatabaseResources
+from spancloud.providers.oci.dns import DNSResources
+from spancloud.providers.oci.loadbalancer import LoadBalancerResources
+from spancloud.providers.oci.network import NetworkResources
+from spancloud.providers.oci.storage import (
     BlockVolumeResources,
     ObjectStorageResources,
 )
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ class OCIProvider(BaseProvider):
 
     Uses the standard OCI SDK credential chain — ~/.oci/config with a
     selectable profile (defaults to DEFAULT). Compartment defaults to the
-    tenancy root; override via SKYFORGE_OCI_COMPARTMENT_ID.
+    tenancy root; override via SPANCLOUD_OCI_COMPARTMENT_ID.
     """
 
     def __init__(self) -> None:

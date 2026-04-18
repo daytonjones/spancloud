@@ -3,7 +3,7 @@
 Uses the Tea-based alibabacloud_* SDKs, which take a Config object
 with access_key_id, access_key_secret, and endpoint per service.
 
-Tokens are persisted in the Skyforge credential store after a
+Tokens are persisted in the Spancloud credential store after a
 successful login (OS keychain or encrypted file fallback).
 """
 
@@ -12,8 +12,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -70,7 +70,7 @@ class AlibabaAuth:
             return
 
         # Fall back to the encrypted credential store
-        from skyforge.utils import credentials
+        from spancloud.utils import credentials
 
         stored_id = credentials.load("alibaba", "access_key_id")
         stored_secret = credentials.load("alibaba", "access_key_secret")
@@ -131,7 +131,7 @@ class AlibabaAuth:
         if not self._access_key_id or not self._access_key_secret:
             logger.warning(
                 "Alibaba credentials not configured. "
-                "Run `skyforge auth login alibaba`."
+                "Run `spancloud auth login alibaba`."
             )
             return False
 

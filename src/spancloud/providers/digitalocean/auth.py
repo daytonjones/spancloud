@@ -10,9 +10,9 @@ from typing import Any
 
 import httpx
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
-from skyforge.utils.throttle import RateLimiter
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
+from spancloud.utils.throttle import RateLimiter
 
 logger = get_logger(__name__)
 
@@ -46,7 +46,7 @@ class DigitalOceanAuth:
 
         if not self._token:
             # Try the encrypted credential store (saved by `auth login digitalocean`)
-            from skyforge.utils import credentials
+            from spancloud.utils import credentials
 
             stored = credentials.load("digitalocean", "token")
             if stored:
@@ -56,8 +56,8 @@ class DigitalOceanAuth:
         if not self._token:
             logger.warning(
                 "DigitalOcean token not configured. "
-                "Set SKYFORGE_DIGITALOCEAN_TOKEN or run "
-                "'skyforge auth login digitalocean'."
+                "Set SPANCLOUD_DIGITALOCEAN_TOKEN or run "
+                "'spancloud auth login digitalocean'."
             )
             return False
 

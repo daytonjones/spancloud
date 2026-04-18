@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceState, ResourceType
+from spancloud.core.resource import ResourceState, ResourceType
 
 # ---------------------------------------------------------------------------
 # Provider + auth
@@ -14,19 +14,19 @@ from skyforge.core.resource import ResourceState, ResourceType
 
 class TestAzureProvider:
     def test_name(self) -> None:
-        from skyforge.providers.azure.provider import AzureProvider
+        from spancloud.providers.azure.provider import AzureProvider
 
         provider = AzureProvider()
         assert provider.name == "azure"
 
     def test_display_name(self) -> None:
-        from skyforge.providers.azure.provider import AzureProvider
+        from spancloud.providers.azure.provider import AzureProvider
 
         provider = AzureProvider()
         assert provider.display_name == "Microsoft Azure"
 
     def test_supported_resource_types(self) -> None:
-        from skyforge.providers.azure.provider import AzureProvider
+        from spancloud.providers.azure.provider import AzureProvider
 
         provider = AzureProvider()
         expected = [
@@ -44,14 +44,14 @@ class TestAzureProvider:
 
 class TestAzureAuth:
     def test_can_create(self) -> None:
-        from skyforge.providers.azure.auth import AzureAuth
+        from spancloud.providers.azure.auth import AzureAuth
 
         auth = AzureAuth()
         assert auth.subscription_id == ""
         assert auth.tenant_id == ""
 
     def test_set_subscription(self) -> None:
-        from skyforge.providers.azure.auth import AzureAuth
+        from spancloud.providers.azure.auth import AzureAuth
 
         auth = AzureAuth()
         auth.set_subscription("abc-123")
@@ -65,7 +65,7 @@ class TestAzureAuth:
 
 class TestVMResources:
     def test_map_vm_running(self) -> None:
-        from skyforge.providers.azure.compute import VMResources
+        from spancloud.providers.azure.compute import VMResources
 
         res = VMResources(MagicMock())
 
@@ -100,7 +100,7 @@ class TestVMResources:
         assert resource.metadata["resource_subtype"] == "virtual_machine"
 
     def test_parse_resource_group(self) -> None:
-        from skyforge.providers.azure.compute import _parse_resource_group
+        from spancloud.providers.azure.compute import _parse_resource_group
 
         rid = (
             "/subscriptions/abc/resourceGroups/my-rg/providers/"
@@ -112,7 +112,7 @@ class TestVMResources:
 
 class TestStorageAccountResources:
     def test_map_account(self) -> None:
-        from skyforge.providers.azure.storage import StorageAccountResources
+        from spancloud.providers.azure.storage import StorageAccountResources
 
         res = StorageAccountResources(MagicMock())
 
@@ -141,7 +141,7 @@ class TestStorageAccountResources:
 
 class TestVNetResources:
     def test_map_vnet(self) -> None:
-        from skyforge.providers.azure.network import VNetResources
+        from spancloud.providers.azure.network import VNetResources
 
         res = VNetResources(MagicMock())
 
@@ -162,7 +162,7 @@ class TestVNetResources:
         assert resource.metadata["resource_subtype"] == "vnet"
 
     def test_map_public_ip_unattached(self) -> None:
-        from skyforge.providers.azure.network import VNetResources
+        from spancloud.providers.azure.network import VNetResources
 
         res = VNetResources(MagicMock())
 
@@ -184,7 +184,7 @@ class TestVNetResources:
 
 class TestDatabaseResources:
     def test_map_sql_database(self) -> None:
-        from skyforge.providers.azure.database import SQLResources
+        from spancloud.providers.azure.database import SQLResources
 
         res = SQLResources(MagicMock())
 
@@ -211,7 +211,7 @@ class TestDatabaseResources:
         assert resource.metadata["resource_subtype"] == "sql_database"
 
     def test_map_cosmos_account(self) -> None:
-        from skyforge.providers.azure.database import CosmosDBResources
+        from spancloud.providers.azure.database import CosmosDBResources
 
         res = CosmosDBResources(MagicMock())
 
@@ -235,7 +235,7 @@ class TestDatabaseResources:
 
 class TestAppServiceResources:
     def test_map_function_app(self) -> None:
-        from skyforge.providers.azure.app_service import AppServiceResources
+        from spancloud.providers.azure.app_service import AppServiceResources
 
         res = AppServiceResources(MagicMock())
 
@@ -259,7 +259,7 @@ class TestAppServiceResources:
         assert resource.metadata["resource_subtype"] == "function_app"
 
     def test_map_web_app(self) -> None:
-        from skyforge.providers.azure.app_service import AppServiceResources
+        from spancloud.providers.azure.app_service import AppServiceResources
 
         res = AppServiceResources(MagicMock())
 
@@ -282,7 +282,7 @@ class TestAppServiceResources:
 
 class TestAKSResources:
     def test_map_cluster(self) -> None:
-        from skyforge.providers.azure.aks import AKSResources
+        from spancloud.providers.azure.aks import AKSResources
 
         res = AKSResources(MagicMock())
 
@@ -309,7 +309,7 @@ class TestAKSResources:
 
 class TestLoadBalancerResources:
     def test_map_lb(self) -> None:
-        from skyforge.providers.azure.loadbalancer import LoadBalancerResources
+        from spancloud.providers.azure.loadbalancer import LoadBalancerResources
 
         res = LoadBalancerResources(MagicMock())
 
@@ -334,7 +334,7 @@ class TestLoadBalancerResources:
 
 class TestDNSResources:
     def test_map_zone(self) -> None:
-        from skyforge.providers.azure.dns import DNSResources
+        from spancloud.providers.azure.dns import DNSResources
 
         res = DNSResources(MagicMock())
 
@@ -362,13 +362,13 @@ class TestDNSResources:
 
 class TestAzureCostAnalyzer:
     def test_can_create(self) -> None:
-        from skyforge.providers.azure.cost import AzureCostAnalyzer
+        from spancloud.providers.azure.cost import AzureCostAnalyzer
 
         analyzer = AzureCostAnalyzer(MagicMock())
         assert analyzer is not None
 
     def test_parse_service_rows_empty(self) -> None:
-        from skyforge.providers.azure.cost import _parse_service_rows
+        from spancloud.providers.azure.cost import _parse_service_rows
 
         result = SimpleNamespace(rows=[], columns=[])
         assert _parse_service_rows(result) == []
@@ -376,13 +376,13 @@ class TestAzureCostAnalyzer:
 
 class TestAzureSecurityAuditor:
     def test_can_create(self) -> None:
-        from skyforge.providers.azure.security import AzureSecurityAuditor
+        from spancloud.providers.azure.security import AzureSecurityAuditor
 
         auditor = AzureSecurityAuditor(MagicMock())
         assert auditor is not None
 
     def test_nsg_rule_finding_critical(self) -> None:
-        from skyforge.providers.azure.security import AzureSecurityAuditor
+        from spancloud.providers.azure.security import AzureSecurityAuditor
 
         auditor = AzureSecurityAuditor(MagicMock())
         nsg = SimpleNamespace(id="/nsg/1", name="web-nsg", location="eastus")
@@ -399,7 +399,7 @@ class TestAzureSecurityAuditor:
         assert finding.severity.value == "critical"
 
     def test_nsg_rule_finding_sensitive_port(self) -> None:
-        from skyforge.providers.azure.security import AzureSecurityAuditor
+        from spancloud.providers.azure.security import AzureSecurityAuditor
 
         auditor = AzureSecurityAuditor(MagicMock())
         nsg = SimpleNamespace(id="/nsg/1", name="web-nsg", location="eastus")
@@ -416,7 +416,7 @@ class TestAzureSecurityAuditor:
         assert finding.severity.value == "high"
 
     def test_nsg_rule_finding_internal_source_safe(self) -> None:
-        from skyforge.providers.azure.security import AzureSecurityAuditor
+        from spancloud.providers.azure.security import AzureSecurityAuditor
 
         auditor = AzureSecurityAuditor(MagicMock())
         nsg = SimpleNamespace(id="/nsg/1", name="web-nsg", location="eastus")
@@ -433,7 +433,7 @@ class TestAzureSecurityAuditor:
 
 class TestAzureUnusedDetector:
     def test_can_create(self) -> None:
-        from skyforge.providers.azure.unused import AzureUnusedDetector
+        from spancloud.providers.azure.unused import AzureUnusedDetector
 
         detector = AzureUnusedDetector(MagicMock())
         assert detector is not None
@@ -441,13 +441,13 @@ class TestAzureUnusedDetector:
 
 class TestAzureMonitoring:
     def test_can_create(self) -> None:
-        from skyforge.providers.azure.monitoring import AzureMonitoringAnalyzer
+        from spancloud.providers.azure.monitoring import AzureMonitoringAnalyzer
 
         analyzer = AzureMonitoringAnalyzer(MagicMock())
         assert analyzer is not None
 
     def test_map_rule(self) -> None:
-        from skyforge.providers.azure.monitoring import AzureMonitoringAnalyzer
+        from spancloud.providers.azure.monitoring import AzureMonitoringAnalyzer
 
         analyzer = AzureMonitoringAnalyzer(MagicMock())
         rule = SimpleNamespace(
@@ -471,7 +471,7 @@ class TestAzureMonitoring:
 
 class TestAzureRelationshipMapper:
     def test_can_create(self) -> None:
-        from skyforge.providers.azure.relationships import (
+        from spancloud.providers.azure.relationships import (
             AzureRelationshipMapper,
         )
 
@@ -486,7 +486,7 @@ class TestAzureRelationshipMapper:
 
 class TestVMActions:
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.azure.actions import ActionVerb
+        from spancloud.providers.azure.actions import ActionVerb
 
         assert ActionVerb.START == "start"
         assert ActionVerb.STOP == "deallocate"
@@ -494,7 +494,7 @@ class TestVMActions:
         assert ActionVerb.POWEROFF == "poweroff"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.azure.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.azure.actions import _VALID_STATES, ActionVerb
 
         assert "PowerState/stopped" in _VALID_STATES[ActionVerb.START]
         assert "PowerState/deallocated" in _VALID_STATES[ActionVerb.START]
@@ -502,7 +502,7 @@ class TestVMActions:
         assert "PowerState/running" in _VALID_STATES[ActionVerb.RESTART]
 
     def test_resolve_rg_name_from_id(self) -> None:
-        from skyforge.providers.azure.actions import _resolve_rg_name
+        from spancloud.providers.azure.actions import _resolve_rg_name
 
         rg, name = _resolve_rg_name(
             "/subscriptions/x/resourceGroups/prod/providers/"
@@ -513,7 +513,7 @@ class TestVMActions:
         assert name == "web-1"
 
     def test_resolve_rg_name_bare(self) -> None:
-        from skyforge.providers.azure.actions import _resolve_rg_name
+        from spancloud.providers.azure.actions import _resolve_rg_name
 
         rg, name = _resolve_rg_name("web-1", "prod")
         assert rg == "prod"

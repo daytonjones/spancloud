@@ -16,13 +16,13 @@ from google.cloud.container_v1 import ClusterManagerClient
 from google.cloud.container_v1.types import ListClustersRequest
 from googleapiclient.discovery import build
 
-from skyforge.analysis.models import RelationshipMap, RelationshipType, ResourceRelationship
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
-from skyforge.utils.throttle import RateLimiter
+from spancloud.analysis.models import RelationshipMap, RelationshipType, ResourceRelationship
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
+from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
-    from skyforge.providers.gcp.auth import GCPAuth
+    from spancloud.providers.gcp.auth import GCPAuth
 
 logger = get_logger(__name__)
 

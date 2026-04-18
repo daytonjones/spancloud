@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 gcs_app = typer.Typer(help="GCS bucket management and details.", no_args_is_help=True)
@@ -28,7 +28,7 @@ def bucket_info(
 
     async def _fetch():
         await provider.authenticate()
-        from skyforge.providers.gcp.gcs_details import GCSDetailAnalyzer
+        from spancloud.providers.gcp.gcs_details import GCSDetailAnalyzer
 
         analyzer = GCSDetailAnalyzer(provider._auth)
         return await analyzer.get_bucket_details(bucket_name)

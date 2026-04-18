@@ -13,8 +13,8 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from azure.identity import DefaultAzureCredential
@@ -73,8 +73,8 @@ class AzureAuth:
         if not self._subscription_id:
             logger.warning(
                 "Azure subscription_id not configured. "
-                "Set SKYFORGE_AZURE_SUBSCRIPTION_ID or run "
-                "'skyforge auth login azure'."
+                "Set SPANCLOUD_AZURE_SUBSCRIPTION_ID or run "
+                "'spancloud auth login azure'."
             )
             return False
 

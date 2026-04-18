@@ -8,8 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 audit_app = typer.Typer(help="Run security audits on cloud infrastructure.", no_args_is_help=True)
@@ -26,7 +26,7 @@ def run_audit(
     ),
 ) -> None:
     """Run a security audit on a cloud provider."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -38,27 +38,27 @@ def run_audit(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.security import AWSSecurityAuditor
+            from spancloud.providers.aws.security import AWSSecurityAuditor
             auditor = AWSSecurityAuditor(provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.security import GCPSecurityAuditor
+            from spancloud.providers.gcp.security import GCPSecurityAuditor
             auditor = GCPSecurityAuditor(provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.security import VultrSecurityAuditor
+            from spancloud.providers.vultr.security import VultrSecurityAuditor
             auditor = VultrSecurityAuditor(provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.security import (
+            from spancloud.providers.digitalocean.security import (
                 DigitalOceanSecurityAuditor,
             )
             auditor = DigitalOceanSecurityAuditor(provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.security import AzureSecurityAuditor
+            from spancloud.providers.azure.security import AzureSecurityAuditor
             auditor = AzureSecurityAuditor(provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.security import OCISecurityAuditor
+            from spancloud.providers.oci.security import OCISecurityAuditor
             auditor = OCISecurityAuditor(provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.security import (
+            from spancloud.providers.alibaba.security import (
                 AlibabaSecurityAuditor,
             )
             auditor = AlibabaSecurityAuditor(provider._auth)

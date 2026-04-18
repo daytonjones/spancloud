@@ -1,4 +1,4 @@
-"""Launcher for the Skyforge TUI."""
+"""Launcher for the Spancloud TUI."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ def launch_tui() -> None:
     except ImportError as exc:
         console.print(
             "[red]Error:[/red] Textual is required for the TUI. "
-            "Install it with: [bold]pip install 'skyforge'[/bold]"
+            "Install it with: [bold]pip install 'spancloud'[/bold]"
         )
         raise SystemExit(1) from exc
 
-    from skyforge.tui.app import SkyforgeApp
+    from spancloud.tui.app import SpancloudApp
 
-    app = SkyforgeApp()
+    app = SpancloudApp()
     app.run()

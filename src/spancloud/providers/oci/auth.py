@@ -11,8 +11,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class OCIAuth:
             raise FileNotFoundError(
                 f"OCI config not found at {self._config_file}. "
                 "Run `oci setup config` to create one, or run "
-                "`skyforge auth login oci`."
+                "`spancloud auth login oci`."
             )
 
         self._config = oci.config.from_file(

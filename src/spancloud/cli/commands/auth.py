@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.table import Table
 
 # Trigger provider registration.
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 auth_app = typer.Typer(help="Authenticate with cloud providers.", no_args_is_help=True)
@@ -38,34 +38,34 @@ def auth_login(
 
     match provider_name:
         case "aws":
-            from skyforge.providers.aws.login import aws_login
+            from spancloud.providers.aws.login import aws_login
 
             aws_profile = aws_login()
             success = aws_profile is not None
         case "gcp":
-            from skyforge.providers.gcp.login import gcp_login
+            from spancloud.providers.gcp.login import gcp_login
 
             success = gcp_login()
         case "vultr":
-            from skyforge.providers.vultr.login import vultr_login
+            from spancloud.providers.vultr.login import vultr_login
 
             success = asyncio.run(vultr_login())
         case "digitalocean":
-            from skyforge.providers.digitalocean.login import (
+            from spancloud.providers.digitalocean.login import (
                 digitalocean_login,
             )
 
             success = asyncio.run(digitalocean_login())
         case "azure":
-            from skyforge.providers.azure.login import azure_login
+            from spancloud.providers.azure.login import azure_login
 
             success = asyncio.run(azure_login())
         case "oci":
-            from skyforge.providers.oci.login import oci_login
+            from spancloud.providers.oci.login import oci_login
 
             success = asyncio.run(oci_login())
         case "alibaba":
-            from skyforge.providers.alibaba.login import alibaba_login
+            from spancloud.providers.alibaba.login import alibaba_login
 
             success = asyncio.run(alibaba_login())
         case _:
@@ -163,10 +163,10 @@ def auth_status() -> None:
         console.print("\n[dim]To authenticate a provider, run:[/dim]")
         for s in unauthed:
             name = s["provider"]
-            console.print(f"  skyforge auth login {name}")
+            console.print(f"  spancloud auth login {name}")
 
 
-# Providers that use the Skyforge credential store (bearer-token flow)
+# Providers that use the Spancloud credential store (bearer-token flow)
 _STORED_CRED_KEYS: dict[str, list[str]] = {
     "vultr": ["api_key"],
     "digitalocean": ["token"],
@@ -182,15 +182,15 @@ def auth_logout(
 ) -> None:
     """Delete stored credentials for a provider from the secure credential store.
 
-    Only affects providers that Skyforge stores credentials for (vultr,
+    Only affects providers that Spancloud stores credentials for (vultr,
     digitalocean). AWS/GCP/Azure use their native credential chains — use
     'aws sso logout', 'gcloud auth revoke', or 'az logout' for those.
     """
-    from skyforge.utils import credentials
+    from spancloud.utils import credentials
 
     if provider_name not in _STORED_CRED_KEYS:
         console.print(
-            f"[yellow]'{provider_name}' does not use Skyforge's credential store.[/yellow]"
+            f"[yellow]'{provider_name}' does not use Spancloud's credential store.[/yellow]"
         )
         if provider_name == "aws":
             console.print("[dim]Use 'aws sso logout' or delete ~/.aws/credentials.[/dim]")
@@ -214,8 +214,8 @@ def auth_logout(
 
 @auth_app.command("store-info")
 def auth_store_info() -> None:
-    """Show which backend Skyforge is using for credential storage."""
-    from skyforge.utils import credentials
+    """Show which backend Spancloud is using for credential storage."""
+    from spancloud.utils import credentials
 
     console.print(
         f"[bold]Credential storage backend:[/bold] {credentials.backend_name()}"
@@ -226,5 +226,5 @@ def auth_store_info() -> None:
     )
     console.print(
         "[dim]Vultr and DigitalOcean API tokens are stored in the backend "
-        "shown above after 'skyforge auth login'.[/dim]"
+        "shown above after 'spancloud auth login'.[/dim]"
     )

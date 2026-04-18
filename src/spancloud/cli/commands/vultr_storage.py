@@ -8,8 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 vultr_app = typer.Typer(
@@ -29,7 +29,7 @@ def block_info(
 
     async def _fetch():
         await provider.authenticate()
-        from skyforge.providers.vultr.storage_details import (
+        from spancloud.providers.vultr.storage_details import (
             VultrStorageDetailAnalyzer,
         )
 
@@ -77,7 +77,7 @@ def object_info(
 
     async def _fetch():
         await provider.authenticate()
-        from skyforge.providers.vultr.storage_details import (
+        from spancloud.providers.vultr.storage_details import (
             VultrStorageDetailAnalyzer,
         )
 

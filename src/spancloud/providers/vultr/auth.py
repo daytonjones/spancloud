@@ -12,9 +12,9 @@ from typing import Any
 
 import httpx
 
-from skyforge.config import get_settings
-from skyforge.utils.logging import get_logger
-from skyforge.utils.throttle import RateLimiter
+from spancloud.config import get_settings
+from spancloud.utils.logging import get_logger
+from spancloud.utils.throttle import RateLimiter
 
 logger = get_logger(__name__)
 
@@ -27,7 +27,7 @@ _VULTR_LIMITER = RateLimiter(calls_per_second=3.0, max_concurrency=5)
 class VultrAuth:
     """Manages Vultr API key authentication.
 
-    The API key can be set via SKYFORGE_VULTR_API_KEY environment variable
+    The API key can be set via SPANCLOUD_VULTR_API_KEY environment variable
     or through the interactive login flow.
     """
 
@@ -55,7 +55,7 @@ class VultrAuth:
 
         if not self._api_key:
             # Try the encrypted credential store (saved by `auth login vultr`)
-            from skyforge.utils import credentials
+            from spancloud.utils import credentials
 
             stored = credentials.load("vultr", "api_key")
             if stored:
@@ -65,7 +65,7 @@ class VultrAuth:
         if not self._api_key:
             logger.warning(
                 "Vultr API key not configured. "
-                "Set SKYFORGE_VULTR_API_KEY or run 'skyforge auth login vultr'."
+                "Set SPANCLOUD_VULTR_API_KEY or run 'spancloud auth login vultr'."
             )
             return False
 

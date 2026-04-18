@@ -8,8 +8,8 @@ import subprocess
 from rich.console import Console
 from rich.prompt import Prompt
 
-from skyforge.providers.oci.auth import OCIAuth
-from skyforge.utils.logging import get_logger
+from spancloud.providers.oci.auth import OCIAuth
+from spancloud.utils.logging import get_logger
 
 console = Console()
 logger = get_logger(__name__)
@@ -86,13 +86,13 @@ def _run_oci_setup() -> bool:
 
 
 def _persist_profile(profile: str) -> None:
-    """Remember the chosen profile for future Skyforge runs."""
-    from skyforge.config import get_settings
+    """Remember the chosen profile for future Spancloud runs."""
+    from spancloud.config import get_settings
 
     config_dir = get_settings().ensure_config_dir()
     env_path = config_dir / "oci.env"
-    env_path.write_text(f"SKYFORGE_OCI_PROFILE={profile}\n")
+    env_path.write_text(f"SPANCLOUD_OCI_PROFILE={profile}\n")
 
     import os
 
-    os.environ["SKYFORGE_OCI_PROFILE"] = profile
+    os.environ["SPANCLOUD_OCI_PROFILE"] = profile

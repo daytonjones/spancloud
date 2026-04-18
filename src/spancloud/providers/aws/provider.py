@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.providers.aws.auth import AWSAuth
-from skyforge.providers.aws.eks import EKSResources
-from skyforge.providers.aws.elb import ELBResources
-from skyforge.providers.aws.iam import IAMPolicyResources, IAMRoleResources, IAMUserResources
-from skyforge.providers.aws.lambda_ import LambdaResources
-from skyforge.providers.aws.rds import RDSResources
-from skyforge.providers.aws.regions import scan_all_regions
-from skyforge.providers.aws.resources import EC2Resources, S3Resources
-from skyforge.providers.aws.route53 import Route53Resources
-from skyforge.providers.aws.vpc import SecurityGroupResources, SubnetResources, VPCResources
-from skyforge.utils.logging import get_logger
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.providers.aws.auth import AWSAuth
+from spancloud.providers.aws.eks import EKSResources
+from spancloud.providers.aws.elb import ELBResources
+from spancloud.providers.aws.iam import IAMPolicyResources, IAMRoleResources, IAMUserResources
+from spancloud.providers.aws.lambda_ import LambdaResources
+from spancloud.providers.aws.rds import RDSResources
+from spancloud.providers.aws.regions import scan_all_regions
+from spancloud.providers.aws.resources import EC2Resources, S3Resources
+from spancloud.providers.aws.route53 import Route53Resources
+from spancloud.providers.aws.vpc import SecurityGroupResources, SubnetResources, VPCResources
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

@@ -7,20 +7,20 @@ class TestAWSAuthProfileSwitching:
     """Tests for runtime profile switching in AWSAuth."""
 
     def test_default_active_profile(self) -> None:
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         auth = AWSAuth()
         assert auth.active_profile == "(default)"
 
     def test_set_profile_changes_active(self) -> None:
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         auth = AWSAuth()
         auth.set_profile("production")
         assert auth.active_profile == "production"
 
     def test_set_profile_invalidates_session(self) -> None:
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         auth = AWSAuth()
         # Access session to cache it
@@ -33,7 +33,7 @@ class TestAWSAuthProfileSwitching:
         assert auth.active_profile == "staging"
 
     def test_set_profile_multiple_switches(self) -> None:
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         auth = AWSAuth()
         auth.set_profile("dev")
@@ -44,7 +44,7 @@ class TestAWSAuthProfileSwitching:
         assert auth.active_profile == "staging"
 
     def test_list_configured_profiles_returns_list(self) -> None:
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         # Should return a list (may be empty if no AWS config)
         profiles = AWSAuth.list_configured_profiles()
@@ -61,7 +61,7 @@ class TestAWSAuthProfileSwitching:
 
         from botocore.exceptions import NoCredentialsError
 
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         auth = AWSAuth()
         # No explicit profile so the fallback branch is active.
@@ -103,7 +103,7 @@ class TestAWSAuthProfileSwitching:
 
         from botocore.exceptions import NoCredentialsError
 
-        from skyforge.providers.aws.auth import AWSAuth
+        from spancloud.providers.aws.auth import AWSAuth
 
         auth = AWSAuth()
 

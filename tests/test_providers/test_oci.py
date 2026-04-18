@@ -5,24 +5,24 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceState, ResourceType
+from spancloud.core.resource import ResourceState, ResourceType
 
 
 class TestOCIProvider:
     def test_name(self) -> None:
-        from skyforge.providers.oci.provider import OCIProvider
+        from spancloud.providers.oci.provider import OCIProvider
 
         provider = OCIProvider()
         assert provider.name == "oci"
 
     def test_display_name(self) -> None:
-        from skyforge.providers.oci.provider import OCIProvider
+        from spancloud.providers.oci.provider import OCIProvider
 
         provider = OCIProvider()
         assert provider.display_name == "Oracle Cloud (OCI)"
 
     def test_supported_resource_types(self) -> None:
-        from skyforge.providers.oci.provider import OCIProvider
+        from spancloud.providers.oci.provider import OCIProvider
 
         provider = OCIProvider()
         expected = [
@@ -39,14 +39,14 @@ class TestOCIProvider:
 
 class TestOCIAuth:
     def test_can_create(self) -> None:
-        from skyforge.providers.oci.auth import OCIAuth
+        from spancloud.providers.oci.auth import OCIAuth
 
         auth = OCIAuth()
         assert auth.profile == ""
         assert auth.region == ""
 
     def test_set_profile(self) -> None:
-        from skyforge.providers.oci.auth import OCIAuth
+        from spancloud.providers.oci.auth import OCIAuth
 
         auth = OCIAuth()
         auth.set_profile("PROD")
@@ -55,7 +55,7 @@ class TestOCIAuth:
 
 class TestInstanceResources:
     def test_map_instance(self) -> None:
-        from skyforge.providers.oci.compute import InstanceResources
+        from spancloud.providers.oci.compute import InstanceResources
 
         res = InstanceResources(MagicMock())
 
@@ -86,7 +86,7 @@ class TestInstanceResources:
 
 class TestObjectStorageResources:
     def test_map_bucket(self) -> None:
-        from skyforge.providers.oci.storage import ObjectStorageResources
+        from spancloud.providers.oci.storage import ObjectStorageResources
 
         res = ObjectStorageResources(MagicMock())
         b = SimpleNamespace(
@@ -105,7 +105,7 @@ class TestObjectStorageResources:
 
 class TestBlockVolumeResources:
     def test_map_volume_available(self) -> None:
-        from skyforge.providers.oci.storage import BlockVolumeResources
+        from spancloud.providers.oci.storage import BlockVolumeResources
 
         res = BlockVolumeResources(MagicMock())
         v = SimpleNamespace(
@@ -127,7 +127,7 @@ class TestBlockVolumeResources:
 
 class TestNetworkResources:
     def test_map_vcn(self) -> None:
-        from skyforge.providers.oci.network import NetworkResources
+        from spancloud.providers.oci.network import NetworkResources
 
         res = NetworkResources(MagicMock())
         vcn = SimpleNamespace(
@@ -146,7 +146,7 @@ class TestNetworkResources:
 
 class TestDatabaseResources:
     def test_map_adb(self) -> None:
-        from skyforge.providers.oci.database import DatabaseResources
+        from spancloud.providers.oci.database import DatabaseResources
 
         res = DatabaseResources(MagicMock())
         adb = SimpleNamespace(
@@ -170,7 +170,7 @@ class TestDatabaseResources:
 
 class TestOKEResources:
     def test_map_cluster(self) -> None:
-        from skyforge.providers.oci.container import OKEResources
+        from spancloud.providers.oci.container import OKEResources
 
         res = OKEResources(MagicMock())
         c = SimpleNamespace(
@@ -190,7 +190,7 @@ class TestOKEResources:
 
 class TestLoadBalancerResources:
     def test_map_lb(self) -> None:
-        from skyforge.providers.oci.loadbalancer import LoadBalancerResources
+        from spancloud.providers.oci.loadbalancer import LoadBalancerResources
 
         res = LoadBalancerResources(MagicMock())
         lb = SimpleNamespace(
@@ -212,7 +212,7 @@ class TestLoadBalancerResources:
 
 class TestDNSResources:
     def test_map_zone(self) -> None:
-        from skyforge.providers.oci.dns import DNSResources
+        from spancloud.providers.oci.dns import DNSResources
 
         res = DNSResources(MagicMock())
         z = SimpleNamespace(
@@ -232,7 +232,7 @@ class TestDNSResources:
 
 class TestOCICostAnalyzer:
     def test_can_create(self) -> None:
-        from skyforge.providers.oci.cost import OCICostAnalyzer
+        from spancloud.providers.oci.cost import OCICostAnalyzer
 
         analyzer = OCICostAnalyzer(MagicMock())
         assert analyzer is not None
@@ -240,7 +240,7 @@ class TestOCICostAnalyzer:
 
 class TestOCISecurityAuditor:
     def test_can_create(self) -> None:
-        from skyforge.providers.oci.security import OCISecurityAuditor
+        from spancloud.providers.oci.security import OCISecurityAuditor
 
         auditor = OCISecurityAuditor(MagicMock())
         assert auditor is not None
@@ -248,7 +248,7 @@ class TestOCISecurityAuditor:
 
 class TestOCIUnusedDetector:
     def test_can_create(self) -> None:
-        from skyforge.providers.oci.unused import OCIUnusedDetector
+        from spancloud.providers.oci.unused import OCIUnusedDetector
 
         detector = OCIUnusedDetector(MagicMock())
         assert detector is not None
@@ -256,7 +256,7 @@ class TestOCIUnusedDetector:
 
 class TestOCIRelationshipMapper:
     def test_can_create(self) -> None:
-        from skyforge.providers.oci.relationships import OCIRelationshipMapper
+        from spancloud.providers.oci.relationships import OCIRelationshipMapper
 
         mapper = OCIRelationshipMapper(MagicMock())
         assert mapper is not None
@@ -264,13 +264,13 @@ class TestOCIRelationshipMapper:
 
 class TestOCIMonitoring:
     def test_can_create(self) -> None:
-        from skyforge.providers.oci.monitoring import OCIMonitoringAnalyzer
+        from spancloud.providers.oci.monitoring import OCIMonitoringAnalyzer
 
         analyzer = OCIMonitoringAnalyzer(MagicMock())
         assert analyzer is not None
 
     def test_map_alarm(self) -> None:
-        from skyforge.providers.oci.monitoring import OCIMonitoringAnalyzer
+        from spancloud.providers.oci.monitoring import OCIMonitoringAnalyzer
 
         analyzer = OCIMonitoringAnalyzer(MagicMock())
         alarm = SimpleNamespace(
@@ -289,14 +289,14 @@ class TestOCIMonitoring:
 
 class TestOCIActions:
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.oci.actions import ActionVerb
+        from spancloud.providers.oci.actions import ActionVerb
 
         assert ActionVerb.START == "START"
         assert ActionVerb.STOP == "STOP"
         assert ActionVerb.SOFTRESET == "SOFTRESET"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.oci.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.oci.actions import _VALID_STATES, ActionVerb
 
         assert "STOPPED" in _VALID_STATES[ActionVerb.START]
         assert "RUNNING" in _VALID_STATES[ActionVerb.STOP]

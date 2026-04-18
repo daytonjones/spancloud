@@ -10,12 +10,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from skyforge.analysis.models import CostSummary, DailyCost, ServiceCost
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
+from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
 
 if TYPE_CHECKING:
-    from skyforge.providers.vultr.auth import VultrAuth
+    from spancloud.providers.vultr.auth import VultrAuth
 
 logger = get_logger(__name__)
 

@@ -8,8 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-import skyforge.providers  # noqa: F401
-from skyforge.core.registry import registry
+import spancloud.providers  # noqa: F401
+from spancloud.core.registry import registry
 
 console = Console()
 monitor_app = typer.Typer(
@@ -39,7 +39,7 @@ def list_alerts(
     GCP, DigitalOcean, and Azure report alert *policies* (enabled/disabled).
     Vultr is not supported — no public alerts API.
     """
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -51,40 +51,40 @@ def list_alerts(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.cloudwatch import CloudWatchAnalyzer
+            from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
 
             analyzer = CloudWatchAnalyzer(provider._auth)
             return "aws", await analyzer.list_alarms(
                 region=region, state_filter=state
             )
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.monitoring import CloudMonitoringAnalyzer
+            from spancloud.providers.gcp.monitoring import CloudMonitoringAnalyzer
 
             analyzer = CloudMonitoringAnalyzer(provider._auth)
             return "policies", await analyzer.list_alert_policies()
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.monitoring import (
+            from spancloud.providers.digitalocean.monitoring import (
                 DigitalOceanMonitoringAnalyzer,
             )
 
             analyzer = DigitalOceanMonitoringAnalyzer(provider._auth)
             return "policies", await analyzer.list_alert_policies()
         elif provider_name == "azure":
-            from skyforge.providers.azure.monitoring import (
+            from spancloud.providers.azure.monitoring import (
                 AzureMonitoringAnalyzer,
             )
 
             analyzer = AzureMonitoringAnalyzer(provider._auth)
             return "policies", await analyzer.list_alert_policies()
         elif provider_name == "oci":
-            from skyforge.providers.oci.monitoring import (
+            from spancloud.providers.oci.monitoring import (
                 OCIMonitoringAnalyzer,
             )
 
             analyzer = OCIMonitoringAnalyzer(provider._auth)
             return "policies", await analyzer.list_alert_policies()
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.monitoring import (
+            from spancloud.providers.alibaba.monitoring import (
                 AlibabaMonitoringAnalyzer,
             )
 
@@ -203,7 +203,7 @@ def show_metrics(
     ),
 ) -> None:
     """Show key metrics for a compute instance (CPU, network, disk)."""
-    from skyforge.cli.helpers import apply_aws_profile
+    from spancloud.cli.helpers import apply_aws_profile
 
     apply_aws_profile(profile)
     provider = registry.get(provider_name)
@@ -215,14 +215,14 @@ def show_metrics(
         await provider.authenticate()
 
         if provider_name == "aws":
-            from skyforge.providers.aws.cloudwatch import CloudWatchAnalyzer
+            from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
 
             analyzer = CloudWatchAnalyzer(provider._auth)
             return await analyzer.get_instance_metrics(
                 instance_id, region=region, hours=hours
             )
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.monitoring import CloudMonitoringAnalyzer
+            from spancloud.providers.gcp.monitoring import CloudMonitoringAnalyzer
 
             if not region:
                 console.print(

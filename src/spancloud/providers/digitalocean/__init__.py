@@ -1,7 +1,7 @@
-"""Digital Ocean provider for Skyforge."""
+"""Digital Ocean provider for Spancloud."""
 
-from skyforge.core.registry import registry
-from skyforge.providers.digitalocean.provider import DigitalOceanProvider
+from spancloud.core.registry import registry
+from spancloud.providers.digitalocean.provider import DigitalOceanProvider
 
 _provider = DigitalOceanProvider()
 registry.register(_provider)

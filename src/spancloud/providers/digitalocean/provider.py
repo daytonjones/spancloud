@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.providers.digitalocean.auth import DigitalOceanAuth
-from skyforge.providers.digitalocean.database import DatabaseResources
-from skyforge.providers.digitalocean.dns import DNSResources
-from skyforge.providers.digitalocean.droplets import DropletResources
-from skyforge.providers.digitalocean.kubernetes import KubernetesResources
-from skyforge.providers.digitalocean.loadbalancer import LoadBalancerResources
-from skyforge.providers.digitalocean.storage import (
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.providers.digitalocean.auth import DigitalOceanAuth
+from spancloud.providers.digitalocean.database import DatabaseResources
+from spancloud.providers.digitalocean.dns import DNSResources
+from spancloud.providers.digitalocean.droplets import DropletResources
+from spancloud.providers.digitalocean.kubernetes import KubernetesResources
+from spancloud.providers.digitalocean.loadbalancer import LoadBalancerResources
+from spancloud.providers.digitalocean.storage import (
     SpacesResources,
     VolumeResources,
 )
-from skyforge.providers.digitalocean.vpc import FirewallResources, VPCResources
-from skyforge.utils.logging import get_logger
+from spancloud.providers.digitalocean.vpc import FirewallResources, VPCResources
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 class DigitalOceanProvider(BaseProvider):
     """DigitalOcean provider.
 
-    Uses Personal Access Token auth via SKYFORGE_DIGITALOCEAN_TOKEN.
+    Uses Personal Access Token auth via SPANCLOUD_DIGITALOCEAN_TOKEN.
     """
 
     def __init__(self) -> None:

@@ -1,14 +1,14 @@
-"""Core abstractions for Skyforge providers and resources."""
+"""Core abstractions for Spancloud providers and resources."""
 
-from skyforge.core.exceptions import (
+from spancloud.core.exceptions import (
     AuthenticationError,
     ProviderError,
     ResourceNotFoundError,
-    SkyforgeError,
+    SpancloudError,
 )
-from skyforge.core.provider import BaseProvider
-from skyforge.core.registry import ProviderRegistry, registry
-from skyforge.core.resource import Resource, ResourceState, ResourceType
+from spancloud.core.provider import BaseProvider
+from spancloud.core.registry import ProviderRegistry, registry
+from spancloud.core.resource import Resource, ResourceState, ResourceType
 
 __all__ = [
     "AuthenticationError",
@@ -19,6 +19,6 @@ __all__ = [
     "ResourceNotFoundError",
     "ResourceState",
     "ResourceType",
-    "SkyforgeError",
+    "SpancloudError",
     "registry",
 ]

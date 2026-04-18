@@ -12,7 +12,7 @@ from textual.widgets import Button, Checkbox, Static
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from skyforge.core.provider import BaseProvider
+    from spancloud.core.provider import BaseProvider
 
 
 class SidebarSettingsScreen(ModalScreen[bool]):
@@ -63,7 +63,7 @@ class SidebarSettingsScreen(ModalScreen[bool]):
         self._provider = provider
 
     def compose(self) -> ComposeResult:
-        from skyforge.config.sidebar import get_available_services, get_sidebar_items
+        from spancloud.config.sidebar import get_available_services, get_sidebar_items
 
         current = {s["name"] for s in get_sidebar_items(self._provider.name)}
         available = get_available_services(self._provider.name)
@@ -97,7 +97,7 @@ class SidebarSettingsScreen(ModalScreen[bool]):
         if event.button.id == "settings-cancel":
             self.dismiss(False)
         elif event.button.id == "settings-reset":
-            from skyforge.config.sidebar import reset_sidebar
+            from spancloud.config.sidebar import reset_sidebar
 
             reset_sidebar(self._provider.name)
             self.app.notify("Sidebar reset to defaults.", timeout=3)
@@ -109,7 +109,7 @@ class SidebarSettingsScreen(ModalScreen[bool]):
         self.dismiss(False)
 
     def _save(self) -> None:
-        from skyforge.config.sidebar import get_available_services, set_sidebar_items
+        from spancloud.config.sidebar import get_available_services, set_sidebar_items
 
         available = {
             s["name"]: s for s in get_available_services(self._provider.name)

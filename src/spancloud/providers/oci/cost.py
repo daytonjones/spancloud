@@ -11,12 +11,12 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from skyforge.analysis.models import CostSummary, DailyCost, ServiceCost
-from skyforge.utils.logging import get_logger
-from skyforge.utils.retry import retry_with_backoff
+from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
+from spancloud.utils.logging import get_logger
+from spancloud.utils.retry import retry_with_backoff
 
 if TYPE_CHECKING:
-    from skyforge.providers.oci.auth import OCIAuth
+    from spancloud.providers.oci.auth import OCIAuth
 
 logger = get_logger(__name__)
 

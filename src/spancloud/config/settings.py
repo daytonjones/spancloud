@@ -19,7 +19,7 @@ class ProviderSettings(BaseSettings):
 class AWSSettings(ProviderSettings):
     """AWS-specific settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_AWS_"}
+    model_config = {"env_prefix": "SPANCLOUD_AWS_"}
 
     default_region: str = Field(default="us-east-1")
     profile: str = Field(default="", description="AWS CLI profile name")
@@ -28,7 +28,7 @@ class AWSSettings(ProviderSettings):
 class GCPSettings(ProviderSettings):
     """GCP-specific settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_GCP_"}
+    model_config = {"env_prefix": "SPANCLOUD_GCP_"}
 
     default_region: str = Field(default="us-central1")
     project_id: str = Field(default="", description="GCP project ID")
@@ -37,7 +37,7 @@ class GCPSettings(ProviderSettings):
 class VultrSettings(ProviderSettings):
     """Vultr-specific settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_VULTR_"}
+    model_config = {"env_prefix": "SPANCLOUD_VULTR_"}
 
     api_key: str = Field(default="", description="Vultr API key")
 
@@ -45,7 +45,7 @@ class VultrSettings(ProviderSettings):
 class DigitalOceanSettings(ProviderSettings):
     """DigitalOcean-specific settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_DIGITALOCEAN_"}
+    model_config = {"env_prefix": "SPANCLOUD_DIGITALOCEAN_"}
 
     token: str = Field(default="", description="DigitalOcean Personal Access Token")
 
@@ -53,7 +53,7 @@ class DigitalOceanSettings(ProviderSettings):
 class AzureSettings(ProviderSettings):
     """Azure-specific settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_AZURE_"}
+    model_config = {"env_prefix": "SPANCLOUD_AZURE_"}
 
     subscription_id: str = Field(default="", description="Azure subscription ID")
     tenant_id: str = Field(default="", description="Azure tenant ID (optional)")
@@ -62,7 +62,7 @@ class AzureSettings(ProviderSettings):
 class OCISettings(ProviderSettings):
     """Oracle Cloud Infrastructure settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_OCI_"}
+    model_config = {"env_prefix": "SPANCLOUD_OCI_"}
 
     config_file: str = Field(
         default="~/.oci/config", description="Path to OCI SDK config file"
@@ -77,7 +77,7 @@ class OCISettings(ProviderSettings):
 class AlibabaSettings(ProviderSettings):
     """Alibaba Cloud settings."""
 
-    model_config = {"env_prefix": "SKYFORGE_ALIBABA_"}
+    model_config = {"env_prefix": "SPANCLOUD_ALIBABA_"}
 
     access_key_id: str = Field(default="", description="Alibaba AccessKey ID")
     access_key_secret: str = Field(default="", description="Alibaba AccessKey Secret")
@@ -85,19 +85,19 @@ class AlibabaSettings(ProviderSettings):
 
 
 class Settings(BaseSettings):
-    """Top-level Skyforge configuration.
+    """Top-level Spancloud configuration.
 
-    Settings are loaded from environment variables prefixed with SKYFORGE_
-    and from a config file at ~/.config/skyforge/config.env if it exists.
+    Settings are loaded from environment variables prefixed with SPANCLOUD_
+    and from a config file at ~/.config/spancloud/config.env if it exists.
     """
 
-    model_config = {"env_prefix": "SKYFORGE_"}
+    model_config = {"env_prefix": "SPANCLOUD_"}
 
     # General
     log_level: str = Field(default="INFO", description="Logging level")
     config_dir: Path = Field(
-        default_factory=lambda: Path.home() / ".config" / "skyforge",
-        description="Directory for Skyforge configuration files",
+        default_factory=lambda: Path.home() / ".config" / "spancloud",
+        description="Directory for Spancloud configuration files",
     )
 
     # Provider configs

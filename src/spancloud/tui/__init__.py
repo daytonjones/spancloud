@@ -1,1 +1,1 @@
-"""Skyforge TUI — Textual-based terminal dashboard."""
+"""Spancloud TUI — Textual-based terminal dashboard."""

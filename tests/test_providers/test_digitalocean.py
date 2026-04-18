@@ -4,26 +4,26 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from skyforge.core.resource import ResourceState, ResourceType
+from spancloud.core.resource import ResourceState, ResourceType
 
 
 class TestDigitalOceanProvider:
     """Tests for the DigitalOceanProvider class."""
 
     def test_name(self) -> None:
-        from skyforge.providers.digitalocean.provider import DigitalOceanProvider
+        from spancloud.providers.digitalocean.provider import DigitalOceanProvider
 
         provider = DigitalOceanProvider()
         assert provider.name == "digitalocean"
 
     def test_display_name(self) -> None:
-        from skyforge.providers.digitalocean.provider import DigitalOceanProvider
+        from spancloud.providers.digitalocean.provider import DigitalOceanProvider
 
         provider = DigitalOceanProvider()
         assert provider.display_name == "Digital Ocean"
 
     def test_supported_resource_types(self) -> None:
-        from skyforge.providers.digitalocean.provider import DigitalOceanProvider
+        from spancloud.providers.digitalocean.provider import DigitalOceanProvider
 
         provider = DigitalOceanProvider()
         expected = [
@@ -40,7 +40,7 @@ class TestDigitalOceanProvider:
 
 class TestDigitalOceanAuth:
     def test_can_create(self) -> None:
-        from skyforge.providers.digitalocean.auth import DigitalOceanAuth
+        from spancloud.providers.digitalocean.auth import DigitalOceanAuth
 
         auth = DigitalOceanAuth()
         assert auth.token == ""
@@ -48,7 +48,7 @@ class TestDigitalOceanAuth:
 
 class TestDropletResources:
     def test_map_droplet(self) -> None:
-        from skyforge.providers.digitalocean.droplets import DropletResources
+        from spancloud.providers.digitalocean.droplets import DropletResources
 
         auth = MagicMock()
         res = DropletResources(auth)
@@ -90,7 +90,7 @@ class TestDropletResources:
 
 class TestVolumeResources:
     def test_map_volume(self) -> None:
-        from skyforge.providers.digitalocean.storage import VolumeResources
+        from spancloud.providers.digitalocean.storage import VolumeResources
 
         auth = MagicMock()
         res = VolumeResources(auth)
@@ -113,7 +113,7 @@ class TestVolumeResources:
         assert resource.metadata["resource_subtype"] == "volume"
 
     def test_map_volume_unattached(self) -> None:
-        from skyforge.providers.digitalocean.storage import VolumeResources
+        from spancloud.providers.digitalocean.storage import VolumeResources
 
         auth = MagicMock()
         res = VolumeResources(auth)
@@ -131,7 +131,7 @@ class TestVolumeResources:
 
 class TestVPCResources:
     def test_map_vpc(self) -> None:
-        from skyforge.providers.digitalocean.vpc import VPCResources
+        from spancloud.providers.digitalocean.vpc import VPCResources
 
         auth = MagicMock()
         res = VPCResources(auth)
@@ -151,7 +151,7 @@ class TestVPCResources:
         assert resource.metadata["resource_subtype"] == "vpc"
 
     def test_map_firewall(self) -> None:
-        from skyforge.providers.digitalocean.vpc import FirewallResources
+        from spancloud.providers.digitalocean.vpc import FirewallResources
 
         auth = MagicMock()
         res = FirewallResources(auth)
@@ -172,7 +172,7 @@ class TestVPCResources:
 
 class TestDatabaseResources:
     def test_map_database(self) -> None:
-        from skyforge.providers.digitalocean.database import DatabaseResources
+        from spancloud.providers.digitalocean.database import DatabaseResources
 
         auth = MagicMock()
         res = DatabaseResources(auth)
@@ -203,7 +203,7 @@ class TestDatabaseResources:
 
 class TestKubernetesResources:
     def test_map_cluster(self) -> None:
-        from skyforge.providers.digitalocean.kubernetes import KubernetesResources
+        from spancloud.providers.digitalocean.kubernetes import KubernetesResources
 
         auth = MagicMock()
         res = KubernetesResources(auth)
@@ -228,7 +228,7 @@ class TestKubernetesResources:
 
 class TestDNSResources:
     def test_map_domain(self) -> None:
-        from skyforge.providers.digitalocean.dns import DNSResources
+        from spancloud.providers.digitalocean.dns import DNSResources
 
         auth = MagicMock()
         res = DNSResources(auth)
@@ -240,7 +240,7 @@ class TestDNSResources:
         assert resource.metadata["resource_subtype"] == "dns_domain"
 
     def test_map_record(self) -> None:
-        from skyforge.providers.digitalocean.dns import DNSResources
+        from spancloud.providers.digitalocean.dns import DNSResources
 
         auth = MagicMock()
         res = DNSResources(auth)
@@ -262,7 +262,7 @@ class TestDNSResources:
 
 class TestDropletActions:
     def test_action_verb_enum(self) -> None:
-        from skyforge.providers.digitalocean.actions import ActionVerb
+        from spancloud.providers.digitalocean.actions import ActionVerb
 
         assert ActionVerb.START == "power_on"
         assert ActionVerb.STOP == "power_off"
@@ -270,7 +270,7 @@ class TestDropletActions:
         assert ActionVerb.SHUTDOWN == "shutdown"
 
     def test_valid_state_transitions(self) -> None:
-        from skyforge.providers.digitalocean.actions import _VALID_STATES, ActionVerb
+        from spancloud.providers.digitalocean.actions import _VALID_STATES, ActionVerb
 
         assert "off" in _VALID_STATES[ActionVerb.START]
         assert "active" in _VALID_STATES[ActionVerb.STOP]
@@ -279,14 +279,14 @@ class TestDropletActions:
 
 class TestDigitalOceanCostAnalyzer:
     def test_can_create(self) -> None:
-        from skyforge.providers.digitalocean.cost import DigitalOceanCostAnalyzer
+        from spancloud.providers.digitalocean.cost import DigitalOceanCostAnalyzer
 
         auth = MagicMock()
         analyzer = DigitalOceanCostAnalyzer(auth)
         assert analyzer is not None
 
     def test_classify_service(self) -> None:
-        from skyforge.providers.digitalocean.cost import DigitalOceanCostAnalyzer
+        from spancloud.providers.digitalocean.cost import DigitalOceanCostAnalyzer
 
         auth = MagicMock()
         analyzer = DigitalOceanCostAnalyzer(auth)
@@ -300,7 +300,7 @@ class TestDigitalOceanCostAnalyzer:
         """Balance endpoint reports MTD usage + history has a prior invoice."""
         from decimal import Decimal
 
-        from skyforge.providers.digitalocean.cost import DigitalOceanCostAnalyzer
+        from spancloud.providers.digitalocean.cost import DigitalOceanCostAnalyzer
 
         auth = MagicMock()
         # Pick a date well inside the 30-day window
@@ -355,7 +355,7 @@ class TestDigitalOceanCostAnalyzer:
         """401 on the balance endpoint must surface in notes, not hide as $0."""
         from decimal import Decimal
 
-        from skyforge.providers.digitalocean.cost import DigitalOceanCostAnalyzer
+        from spancloud.providers.digitalocean.cost import DigitalOceanCostAnalyzer
 
         auth = MagicMock()
 
@@ -380,7 +380,7 @@ class TestDigitalOceanCostAnalyzer:
 
 class TestDigitalOceanSecurityAuditor:
     def test_can_create(self) -> None:
-        from skyforge.providers.digitalocean.security import (
+        from spancloud.providers.digitalocean.security import (
             DigitalOceanSecurityAuditor,
         )
 
@@ -391,7 +391,7 @@ class TestDigitalOceanSecurityAuditor:
 
 class TestDigitalOceanUnusedDetector:
     def test_can_create(self) -> None:
-        from skyforge.providers.digitalocean.unused import (
+        from spancloud.providers.digitalocean.unused import (
             DigitalOceanUnusedDetector,
         )
 
@@ -402,7 +402,7 @@ class TestDigitalOceanUnusedDetector:
 
 class TestDigitalOceanMonitoring:
     def test_can_create(self) -> None:
-        from skyforge.providers.digitalocean.monitoring import (
+        from spancloud.providers.digitalocean.monitoring import (
             DigitalOceanMonitoringAnalyzer,
         )
 
@@ -412,7 +412,7 @@ class TestDigitalOceanMonitoring:
 
 class TestDigitalOceanRelationshipMapper:
     def test_can_create(self) -> None:
-        from skyforge.providers.digitalocean.relationships import (
+        from spancloud.providers.digitalocean.relationships import (
             DigitalOceanRelationshipMapper,
         )
 

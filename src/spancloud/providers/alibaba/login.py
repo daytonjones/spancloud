@@ -26,8 +26,8 @@ async def alibaba_login() -> bool:
         )
     )
 
-    from skyforge.config import get_settings
-    from skyforge.utils import credentials
+    from spancloud.config import get_settings
+    from spancloud.utils import credentials
 
     settings = get_settings().alibaba
 
@@ -123,7 +123,7 @@ async def _validate(
 
 def _persist(access_key_id: str, access_key_secret: str, region: str) -> None:
     """Save verified credentials and region for future sessions."""
-    from skyforge.utils import credentials
+    from spancloud.utils import credentials
 
     ok_id = credentials.save("alibaba", "access_key_id", access_key_id)
     ok_sec = credentials.save("alibaba", "access_key_secret", access_key_secret)
@@ -132,12 +132,12 @@ def _persist(access_key_id: str, access_key_secret: str, region: str) -> None:
             f"\n[dim]Credentials saved to {credentials.backend_name()}.[/dim]"
         )
 
-    from skyforge.config import get_settings
+    from spancloud.config import get_settings
 
     config_dir = get_settings().ensure_config_dir()
     env_path = config_dir / "alibaba.env"
-    env_path.write_text(f"SKYFORGE_ALIBABA_DEFAULT_REGION={region}\n")
+    env_path.write_text(f"SPANCLOUD_ALIBABA_DEFAULT_REGION={region}\n")
 
     import os
 
-    os.environ["SKYFORGE_ALIBABA_DEFAULT_REGION"] = region
+    os.environ["SPANCLOUD_ALIBABA_DEFAULT_REGION"] = region

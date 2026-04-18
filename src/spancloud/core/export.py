@@ -8,7 +8,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from skyforge.core.resource import Resource
+    from spancloud.core.resource import Resource
 
 
 def to_json(resources: list[Resource], pretty: bool = True) -> str:

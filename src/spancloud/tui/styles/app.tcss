@@ -1,4 +1,4 @@
-/* Skyforge TUI Stylesheet — Tabbed Provider Layout */
+/* Spancloud TUI Stylesheet — Tabbed Provider Layout */
 
 Screen {
     background: $surface;

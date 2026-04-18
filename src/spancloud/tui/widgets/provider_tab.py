@@ -11,13 +11,13 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.widgets import DataTable, Input, ListItem, ListView, Select, Static
 
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.utils.logging import get_logger
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from skyforge.core.provider import BaseProvider
+    from spancloud.core.provider import BaseProvider
 
 logger = get_logger(__name__)
 
@@ -242,7 +242,7 @@ class ResourceTypeSidebar(Vertical):
 
         # AWS profile switcher
         if self._provider.name == "aws":
-            from skyforge.providers.aws.auth import AWSAuth
+            from spancloud.providers.aws.auth import AWSAuth
 
             profiles = AWSAuth.list_configured_profiles()
             if len(profiles) > 1:
@@ -285,7 +285,7 @@ class ResourceTypeSidebar(Vertical):
             )
 
         # Build sidebar from user config
-        from skyforge.config.sidebar import get_sidebar_items
+        from spancloud.config.sidebar import get_sidebar_items
 
         sidebar_items = get_sidebar_items(self._provider.name)
 
@@ -553,7 +553,7 @@ class ResourceContentArea(Vertical):
             self.app.notify("No resources to export.", severity="warning")
             return
 
-        from skyforge.tui.screens.export import ExportScreen
+        from spancloud.tui.screens.export import ExportScreen
 
         self.app.push_screen(ExportScreen(self._resources))
 
@@ -619,7 +619,7 @@ class ResourceContentArea(Vertical):
         ):
             lines.append(
                 "\n  [dim italic]Use CLI for full storage details: "
-                "skyforge s3 info / gcs info / vultr block-info[/dim italic]"
+                "spancloud s3 info / gcs info / vultr block-info[/dim italic]"
             )
 
         content.update("\n".join(lines))
@@ -657,7 +657,7 @@ class ResourceContentArea(Vertical):
                 )
                 return
 
-            from skyforge.providers.aws.services import AWSServiceScanner
+            from spancloud.providers.aws.services import AWSServiceScanner
 
             scanner = AWSServiceScanner(self._provider._auth)
             all_resources = await scanner.scan_all(
@@ -933,27 +933,27 @@ class AnalysisPanel(VerticalScroll):
 
     async def _run_cost(self, provider_name: str) -> str:
         if provider_name == "aws":
-            from skyforge.providers.aws.cost import AWSCostAnalyzer
+            from spancloud.providers.aws.cost import AWSCostAnalyzer
             analyzer = AWSCostAnalyzer(self._provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.cost import GCPCostAnalyzer
+            from spancloud.providers.gcp.cost import GCPCostAnalyzer
             analyzer = GCPCostAnalyzer(self._provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.cost import VultrCostAnalyzer
+            from spancloud.providers.vultr.cost import VultrCostAnalyzer
             analyzer = VultrCostAnalyzer(self._provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.cost import (
+            from spancloud.providers.digitalocean.cost import (
                 DigitalOceanCostAnalyzer,
             )
             analyzer = DigitalOceanCostAnalyzer(self._provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.cost import AzureCostAnalyzer
+            from spancloud.providers.azure.cost import AzureCostAnalyzer
             analyzer = AzureCostAnalyzer(self._provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.cost import OCICostAnalyzer
+            from spancloud.providers.oci.cost import OCICostAnalyzer
             analyzer = OCICostAnalyzer(self._provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.cost import AlibabaCostAnalyzer
+            from spancloud.providers.alibaba.cost import AlibabaCostAnalyzer
             analyzer = AlibabaCostAnalyzer(self._provider._auth)
         else:
             return f"[yellow]Cost not available for {provider_name}[/yellow]"
@@ -1009,27 +1009,27 @@ class AnalysisPanel(VerticalScroll):
 
     async def _run_audit(self, provider_name: str) -> str:
         if provider_name == "aws":
-            from skyforge.providers.aws.security import AWSSecurityAuditor
+            from spancloud.providers.aws.security import AWSSecurityAuditor
             auditor = AWSSecurityAuditor(self._provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.security import GCPSecurityAuditor
+            from spancloud.providers.gcp.security import GCPSecurityAuditor
             auditor = GCPSecurityAuditor(self._provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.security import VultrSecurityAuditor
+            from spancloud.providers.vultr.security import VultrSecurityAuditor
             auditor = VultrSecurityAuditor(self._provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.security import (
+            from spancloud.providers.digitalocean.security import (
                 DigitalOceanSecurityAuditor,
             )
             auditor = DigitalOceanSecurityAuditor(self._provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.security import AzureSecurityAuditor
+            from spancloud.providers.azure.security import AzureSecurityAuditor
             auditor = AzureSecurityAuditor(self._provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.security import OCISecurityAuditor
+            from spancloud.providers.oci.security import OCISecurityAuditor
             auditor = OCISecurityAuditor(self._provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.security import (
+            from spancloud.providers.alibaba.security import (
                 AlibabaSecurityAuditor,
             )
             auditor = AlibabaSecurityAuditor(self._provider._auth)
@@ -1057,27 +1057,27 @@ class AnalysisPanel(VerticalScroll):
 
     async def _run_unused(self, provider_name: str) -> str:
         if provider_name == "aws":
-            from skyforge.providers.aws.unused import AWSUnusedDetector
+            from spancloud.providers.aws.unused import AWSUnusedDetector
             detector = AWSUnusedDetector(self._provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.unused import GCPUnusedDetector
+            from spancloud.providers.gcp.unused import GCPUnusedDetector
             detector = GCPUnusedDetector(self._provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.unused import VultrUnusedDetector
+            from spancloud.providers.vultr.unused import VultrUnusedDetector
             detector = VultrUnusedDetector(self._provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.unused import (
+            from spancloud.providers.digitalocean.unused import (
                 DigitalOceanUnusedDetector,
             )
             detector = DigitalOceanUnusedDetector(self._provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.unused import AzureUnusedDetector
+            from spancloud.providers.azure.unused import AzureUnusedDetector
             detector = AzureUnusedDetector(self._provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.unused import OCIUnusedDetector
+            from spancloud.providers.oci.unused import OCIUnusedDetector
             detector = OCIUnusedDetector(self._provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.unused import (
+            from spancloud.providers.alibaba.unused import (
                 AlibabaUnusedDetector,
             )
             detector = AlibabaUnusedDetector(self._provider._auth)
@@ -1121,31 +1121,31 @@ class AnalysisPanel(VerticalScroll):
 
     async def _run_relationships(self, provider_name: str) -> str:
         if provider_name == "aws":
-            from skyforge.providers.aws.relationships import AWSRelationshipMapper
+            from spancloud.providers.aws.relationships import AWSRelationshipMapper
             mapper = AWSRelationshipMapper(self._provider._auth)
         elif provider_name == "gcp":
-            from skyforge.providers.gcp.relationships import GCPRelationshipMapper
+            from spancloud.providers.gcp.relationships import GCPRelationshipMapper
             mapper = GCPRelationshipMapper(self._provider._auth)
         elif provider_name == "vultr":
-            from skyforge.providers.vultr.relationships import VultrRelationshipMapper
+            from spancloud.providers.vultr.relationships import VultrRelationshipMapper
             mapper = VultrRelationshipMapper(self._provider._auth)
         elif provider_name == "digitalocean":
-            from skyforge.providers.digitalocean.relationships import (
+            from spancloud.providers.digitalocean.relationships import (
                 DigitalOceanRelationshipMapper,
             )
             mapper = DigitalOceanRelationshipMapper(self._provider._auth)
         elif provider_name == "azure":
-            from skyforge.providers.azure.relationships import (
+            from spancloud.providers.azure.relationships import (
                 AzureRelationshipMapper,
             )
             mapper = AzureRelationshipMapper(self._provider._auth)
         elif provider_name == "oci":
-            from skyforge.providers.oci.relationships import (
+            from spancloud.providers.oci.relationships import (
                 OCIRelationshipMapper,
             )
             mapper = OCIRelationshipMapper(self._provider._auth)
         elif provider_name == "alibaba":
-            from skyforge.providers.alibaba.relationships import (
+            from spancloud.providers.alibaba.relationships import (
                 AlibabaRelationshipMapper,
             )
             mapper = AlibabaRelationshipMapper(self._provider._auth)
@@ -1178,7 +1178,7 @@ class AnalysisPanel(VerticalScroll):
 
     async def _run_alerts(self, provider_name: str) -> str:
         if provider_name == "aws":
-            from skyforge.providers.aws.cloudwatch import CloudWatchAnalyzer
+            from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
 
             analyzer = CloudWatchAnalyzer(self._provider._auth)
             alarms = await analyzer.list_alarms()
@@ -1212,35 +1212,35 @@ class AnalysisPanel(VerticalScroll):
             "gcp", "digitalocean", "azure", "oci", "alibaba"
         ):
             if provider_name == "gcp":
-                from skyforge.providers.gcp.monitoring import (
+                from spancloud.providers.gcp.monitoring import (
                     CloudMonitoringAnalyzer,
                 )
 
                 analyzer = CloudMonitoringAnalyzer(self._provider._auth)
                 title = "Alert Policies"
             elif provider_name == "digitalocean":
-                from skyforge.providers.digitalocean.monitoring import (
+                from spancloud.providers.digitalocean.monitoring import (
                     DigitalOceanMonitoringAnalyzer,
                 )
 
                 analyzer = DigitalOceanMonitoringAnalyzer(self._provider._auth)
                 title = "DigitalOcean Alert Policies"
             elif provider_name == "azure":
-                from skyforge.providers.azure.monitoring import (
+                from spancloud.providers.azure.monitoring import (
                     AzureMonitoringAnalyzer,
                 )
 
                 analyzer = AzureMonitoringAnalyzer(self._provider._auth)
                 title = "Azure Metric Alerts"
             elif provider_name == "oci":
-                from skyforge.providers.oci.monitoring import (
+                from spancloud.providers.oci.monitoring import (
                     OCIMonitoringAnalyzer,
                 )
 
                 analyzer = OCIMonitoringAnalyzer(self._provider._auth)
                 title = "OCI Monitoring Alarms"
             else:  # alibaba
-                from skyforge.providers.alibaba.monitoring import (
+                from spancloud.providers.alibaba.monitoring import (
                     AlibabaMonitoringAnalyzer,
                 )
 
@@ -1359,7 +1359,7 @@ class ProviderTab(Horizontal):
         self._reload_active_pane()
 
     def on_settings_requested(self, event: SettingsRequested) -> None:
-        from skyforge.tui.screens.settings import SidebarSettingsScreen
+        from spancloud.tui.screens.settings import SidebarSettingsScreen
 
         self.app.push_screen(
             SidebarSettingsScreen(event.provider),

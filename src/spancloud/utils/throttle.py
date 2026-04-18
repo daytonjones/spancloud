@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import time
 
-from skyforge.utils.logging import get_logger
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

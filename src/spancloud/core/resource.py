@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class ResourceType(StrEnum):
-    """Categories of cloud resources Skyforge can manage."""
+    """Categories of cloud resources Spancloud can manage."""
 
     COMPUTE = "compute"
     STORAGE = "storage"

@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.providers.alibaba.auth import AlibabaAuth
-from skyforge.providers.alibaba.compute import ECSResources
-from skyforge.providers.alibaba.container import ACKResources
-from skyforge.providers.alibaba.database import RDSResources
-from skyforge.providers.alibaba.dns import DNSResources
-from skyforge.providers.alibaba.loadbalancer import SLBResources
-from skyforge.providers.alibaba.network import NetworkResources
-from skyforge.providers.alibaba.storage import DiskResources, OSSResources
-from skyforge.utils.logging import get_logger
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.providers.alibaba.auth import AlibabaAuth
+from spancloud.providers.alibaba.compute import ECSResources
+from spancloud.providers.alibaba.container import ACKResources
+from spancloud.providers.alibaba.database import RDSResources
+from spancloud.providers.alibaba.dns import DNSResources
+from spancloud.providers.alibaba.loadbalancer import SLBResources
+from spancloud.providers.alibaba.network import NetworkResources
+from spancloud.providers.alibaba.storage import DiskResources, OSSResources
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,8 +22,8 @@ class AlibabaCloudProvider(BaseProvider):
     """Alibaba Cloud provider.
 
     Uses AccessKey ID + Secret authentication. Credentials are read from
-    SKYFORGE_ALIBABA_ACCESS_KEY_ID / _SECRET environment variables or the
-    Skyforge encrypted credential store (OS keychain by default).
+    SPANCLOUD_ALIBABA_ACCESS_KEY_ID / _SECRET environment variables or the
+    Spancloud encrypted credential store (OS keychain by default).
     """
 
     def __init__(self) -> None:

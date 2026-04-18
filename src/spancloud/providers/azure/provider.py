@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from skyforge.core.exceptions import ProviderError
-from skyforge.core.provider import BaseProvider
-from skyforge.core.resource import Resource, ResourceType
-from skyforge.providers.azure.aks import AKSResources
-from skyforge.providers.azure.app_service import AppServiceResources
-from skyforge.providers.azure.auth import AzureAuth
-from skyforge.providers.azure.compute import VMResources
-from skyforge.providers.azure.database import CosmosDBResources, SQLResources
-from skyforge.providers.azure.dns import DNSResources
-from skyforge.providers.azure.loadbalancer import LoadBalancerResources
-from skyforge.providers.azure.network import VNetResources
-from skyforge.providers.azure.storage import StorageAccountResources
-from skyforge.utils.logging import get_logger
+from spancloud.core.exceptions import ProviderError
+from spancloud.core.provider import BaseProvider
+from spancloud.core.resource import Resource, ResourceType
+from spancloud.providers.azure.aks import AKSResources
+from spancloud.providers.azure.app_service import AppServiceResources
+from spancloud.providers.azure.auth import AzureAuth
+from spancloud.providers.azure.compute import VMResources
+from spancloud.providers.azure.database import CosmosDBResources, SQLResources
+from spancloud.providers.azure.dns import DNSResources
+from spancloud.providers.azure.loadbalancer import LoadBalancerResources
+from spancloud.providers.azure.network import VNetResources
+from spancloud.providers.azure.storage import StorageAccountResources
+from spancloud.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -24,7 +24,7 @@ class AzureProvider(BaseProvider):
 
     Uses DefaultAzureCredential — reads from env vars, managed identity,
     Azure CLI, or interactive browser. Subscription ID is supplied via
-    SKYFORGE_AZURE_SUBSCRIPTION_ID or 'skyforge auth login azure'.
+    SPANCLOUD_AZURE_SUBSCRIPTION_ID or 'spancloud auth login azure'.
     """
 
     def __init__(self) -> None:
