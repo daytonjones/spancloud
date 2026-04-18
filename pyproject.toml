@@ -80,6 +80,7 @@ dev = [
 
 [project.scripts]
 spancloud = "spancloud.cli.main:app"
+sc = "spancloud.cli.main:app"
 
 [project.urls]
 Homepage = "https://github.com/daytonjones/spancloud"
