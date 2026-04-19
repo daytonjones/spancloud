@@ -382,7 +382,123 @@ _MOCK_UNUSED: dict[str, list[tuple[str, str, str, str]]] = {
 }
 
 
-def _mock_analysis(name: str, key: str) -> str:
+def _sparkline(values: list[float], color: str) -> str:
+    blocks = "▁▂▃▄▅▆▇█"
+    mn, mx = min(values), max(values)
+    rng = mx - mn or 1
+    chars = "".join(blocks[min(7, int((v - mn) / rng * 7))] for v in values)
+    return f'<span style="color:{color};letter-spacing:1px;">{chars}</span>'
+
+
+def _mock_metrics_for(resource: Resource) -> str:
+    import hashlib, math
+    C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a", "muted": "#565f89",
+         "warn": "#e0af68", "high": "#ff9e64", "purple": "#bb9af7"}
+
+    seed = int(hashlib.md5(resource.id.encode()).hexdigest()[:8], 16)
+
+    def fake_series(base: float, noise: float, n: int = 24) -> list[float]:
+        vals = []
+        v = base
+        for i in range(n):
+            v += (((seed * (i + 1) * 6364136223846793005 + 1442695040888963407) & 0xFFFFFFFF) / 0xFFFFFFFF - 0.5) * noise
+            v = max(0.0, min(100.0, v))
+            vals.append(round(v, 1))
+        return vals
+
+    is_stopped = resource.state.value in ("stopped", "terminated")
+    cpu_base = 0.0 if is_stopped else 15 + (seed % 40)
+    mem_base = 0.0 if is_stopped else 30 + (seed % 35)
+    net_base = 0.0 if is_stopped else 5 + (seed % 20)
+
+    cpu  = fake_series(cpu_base,  12)
+    mem  = fake_series(mem_base,  8)
+    net  = fake_series(net_base,  15)
+    disk = fake_series(40 + (seed % 30), 5)
+
+    def stat_row(label: str, series: list[float], unit: str, color: str) -> str:
+        cur = series[-1]
+        lo  = min(series)
+        hi  = max(series)
+        spark = _sparkline(series, color)
+        return (
+            f'<tr>'
+            f'<td style="color:{C["label"]};padding:4px 12px 4px 8px;white-space:nowrap;">{label}</td>'
+            f'<td style="padding:4px 16px 4px 0;">{spark}</td>'
+            f'<td style="color:{color};padding:4px 8px;font-weight:bold;">{cur:.1f}{unit}</td>'
+            f'<td style="color:{C["muted"]};padding:4px 0;font-size:11px;">lo {lo:.1f}  hi {hi:.1f}</td>'
+            f'</tr>'
+        )
+
+    rt_label = resource.resource_type.value.replace("_", " ").title()
+    state_color = C["val"] if not is_stopped else C["warn"]
+    meta_rows = "".join(
+        f'<tr><td style="color:{C["muted"]};padding:1px 12px 1px 8px;">{k}</td>'
+        f'<td style="color:#c0caf5;">{v}</td></tr>'
+        for k, v in list(resource.metadata.items())[:4]
+    )
+
+    html = (
+        f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span><br>'
+        f'<span style="color:{C["muted"]};">Demo data · last 24 hours</span><br><br>'
+        f'<table cellspacing="0">'
+        f'<tr><td style="color:{C["label"]};padding:2px 12px 2px 8px;">Resource</td>'
+        f'<td style="color:#c0caf5;font-weight:bold;">{resource.name}</td></tr>'
+        f'<tr><td style="color:{C["label"]};padding:2px 12px 2px 8px;">Type</td>'
+        f'<td style="color:{C["purple"]};">{rt_label}</td></tr>'
+        f'<tr><td style="color:{C["label"]};padding:2px 12px 2px 8px;">State</td>'
+        f'<td style="color:{state_color};">{resource.state.value}</td></tr>'
+        f'<tr><td style="color:{C["label"]};padding:2px 12px 2px 8px;">Region</td>'
+        f'<td style="color:#c0caf5;">{resource.region}</td></tr>'
+        f'{meta_rows}'
+        f'</table>'
+        f'<br><span style="color:{C["label"]};">Performance  <span style="color:{C["muted"]};font-size:10px;">(hourly, 24h)</span></span><br><br>'
+        f'<table cellspacing="0">'
+        f'{stat_row("CPU", cpu, "%", C["val"])}'
+        f'{stat_row("Memory", mem, "%", C["purple"])}'
+        f'{stat_row("Network", net, "%", C["warn"])}'
+        f'{stat_row("Disk", disk, "%", C["high"])}'
+        f'</table>'
+    )
+    return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{html}</div>'
+
+
+def _format_cloudwatch_metrics(resource: Resource, metrics: object) -> str:
+    """Format real CloudWatch ResourceMetrics into HTML."""
+    C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a", "muted": "#565f89",
+         "warn": "#e0af68", "high": "#ff9e64", "purple": "#bb9af7"}
+
+    rm = metrics  # type: ignore[assignment]
+    if not rm or not hasattr(rm, "metrics") or not rm.metrics:
+        return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;"><span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span><br><br><span style="color:{C["muted"]};">No CloudWatch data available for this instance.</span></div>'
+
+    metric_colors = {"CPUUtilization": C["val"], "MemoryUtilization": C["purple"],
+                     "NetworkIn": C["warn"], "NetworkOut": C["warn"], "DiskReadBytes": C["high"]}
+
+    rows = []
+    for metric_name, points in rm.metrics.items():
+        if not points:
+            continue
+        vals = [p.value for p in sorted(points, key=lambda p: p.timestamp)][-24:]
+        color = metric_colors.get(metric_name, C["label"])
+        unit = points[0].unit if points else ""
+        cur = vals[-1] if vals else 0
+        spark = _sparkline(vals, color) if len(vals) > 1 else ""
+        rows.append(
+            f'<tr><td style="color:{C["label"]};padding:4px 12px 4px 8px;">{metric_name}</td>'
+            f'<td style="padding:4px 16px 4px 0;">{spark}</td>'
+            f'<td style="color:{color};font-weight:bold;">{cur:.1f} {unit}</td></tr>'
+        )
+
+    html = (
+        f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span><br>'
+        f'<span style="color:{C["muted"]};">CloudWatch · {resource.name} · {resource.region}</span><br><br>'
+        f'<table cellspacing="0">{"".join(rows)}</table>'
+    )
+    return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{html}</div>'
+
+
+def _mock_analysis(name: str, key: str, resource: Resource | None = None) -> str:
     C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a", "muted": "#565f89",
          "warn": "#e0af68", "critical": "#f7768e", "high": "#ff9e64", "med": "#e0af68", "low": "#9ece6a", "purple": "#bb9af7"}
 
@@ -452,7 +568,9 @@ def _mock_analysis(name: str, key: str) -> str:
     if key == "alerts":
         return "  No active alerts — all systems nominal ✓\n"
     if key == "metrics":
-        return "  Select a resource first, then view metrics here.\n"
+        if resource is None:
+            return "  Select a resource from the table first, then view its metrics here.\n"
+        return _mock_metrics_for(resource)
     return f"  Analysis not available in demo mode.\n"
 
 
@@ -460,12 +578,12 @@ def _mock_analysis(name: str, key: str) -> str:
 # Analyzer factory — mirrors TUI's _run_cost / _run_audit / _run_unused
 # ---------------------------------------------------------------------------
 
-async def _run_analysis(provider: BaseProvider, key: str) -> str:
+async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | None = None) -> str:
     """Dispatch to the right analyzer and return formatted plain text."""
     name = provider.name
 
     if not hasattr(provider, "_auth"):
-        return _mock_analysis(name, key)
+        return _mock_analysis(name, key, resource)
 
     auth = provider._auth  # type: ignore[attr-defined]
 
@@ -546,7 +664,17 @@ async def _run_analysis(provider: BaseProvider, key: str) -> str:
     if key == "alerts":
         return "  No active alerts — all systems nominal ✓\n"
     if key == "metrics":
-        return "  Select a resource first, then view metrics here.\n"
+        if resource is None:
+            return "  Select a resource from the table first, then view its metrics here.\n"
+        if name == "aws" and resource.resource_type.value == "compute":
+            from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
+            try:
+                cw = CloudWatchAnalyzer(auth)
+                metrics = await cw.get_instance_metrics(resource.id, resource.region or "us-east-1")
+                return _format_cloudwatch_metrics(resource, metrics)
+            except Exception as exc:
+                return f"  Could not fetch metrics: {exc}\n"
+        return f"  Metrics not yet available for {name} {resource.resource_type.value} resources.\n"
     return f"  Unknown analysis type: {key}\n"
 
 
@@ -572,6 +700,8 @@ class ProviderViewWidget(QWidget):
         self.region_changed_hint = "All Regions"
         self._active_workers: list[AsyncWorker] = []
         self._current_load_key: str | None = None  # stale-result guard
+        self._selected_resource: Resource | None = None
+        self._current_analysis_key: str | None = None
         self._build()
 
     def _build(self) -> None:
@@ -1090,6 +1220,7 @@ class ProviderViewWidget(QWidget):
         self._right_stack.setCurrentWidget(self._resource_view)
 
     def _select_analysis(self, key: str) -> None:
+        self._current_analysis_key = key
         self._deselect_all()
         self._current_rt = None
         btn = self._analysis_buttons.get(key)
@@ -1231,7 +1362,10 @@ class ProviderViewWidget(QWidget):
     def _on_row_clicked(self, item: QTreeWidgetItem) -> None:
         resource: Resource | None = item.data(0, Qt.ItemDataRole.UserRole)
         if resource is not None:
+            self._selected_resource = resource
             self._open_drawer(resource)
+            if self._current_analysis_key == "metrics":
+                self._load_analysis("metrics")
 
     def _load_analysis(self, key: str) -> None:
         titles = {
@@ -1252,7 +1386,7 @@ class ProviderViewWidget(QWidget):
         self._current_load_key = load_key
         self._analysis_content.setPlainText("  Loading…")
 
-        worker = AsyncWorker(_run_analysis(self._provider, key))
+        worker = AsyncWorker(_run_analysis(self._provider, key, self._selected_resource))
         worker.result_ready.connect(
             lambda text, k=load_key: self._on_analysis_done(text, k)
         )
