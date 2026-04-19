@@ -18,7 +18,6 @@ from spancloud.gui.theme import (
     BORDER_SUBTLE,
     TEXT_MUTED,
     TEXT_PRIMARY,
-    TEXT_SECONDARY,
 )
 
 # ---------------------------------------------------------------------------
@@ -120,21 +119,6 @@ _REGIONS: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
-# Placeholder AWS profiles (in a live app, read from ~/.aws/config)
-_MOCK_AWS_PROFILES = [
-    ("default", "default"),
-    ("prod-admin", "prod-admin"),
-    ("staging", "staging"),
-    ("dev-sandbox", "dev-sandbox"),
-]
-
-# Placeholder GCP projects (in a live app, fetched from Cloud Resource Manager)
-_MOCK_GCP_PROJECTS = [
-    ("my-prod-project", "my-prod-project"),
-    ("my-staging-project", "my-staging-project"),
-    ("data-platform", "data-platform"),
-]
-
 _COMBO_STYLE = f"""
     QComboBox {{
         background: {BG_ELEVATED};
@@ -182,13 +166,20 @@ _COMBO_STYLE = f"""
 _LABEL_STYLE = f"color: {TEXT_MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 1px;"
 
 
-class ProviderControls(QWidget):
-    """Compact selector bar shown at the top of the provider inner sidebar.
+def _load_aws_profiles() -> list[tuple[str, str]]:
+    """Return real AWS profiles from ~/.aws/config."""
+    try:
+        from spancloud.providers.aws.auth import AWSAuth
+        profiles = AWSAuth.list_configured_profiles()
+        if profiles:
+            return [(p["name"], p["name"]) for p in profiles]
+    except Exception:
+        pass
+    return [("default", "default")]
 
-    Emits signals when the user changes region, AWS profile, or GCP project.
-    In a live app these would trigger a resource reload; in the mockup they
-    just update the displayed value.
-    """
+
+class ProviderControls(QWidget):
+    """Compact selector bar shown at the top of the provider inner sidebar."""
 
     region_changed  = Signal(str)   # region slug, "" = all
     profile_changed = Signal(str)   # AWS profile name
@@ -206,19 +197,28 @@ class ProviderControls(QWidget):
 
         regions = _REGIONS.get(self._provider_name)
 
-        # AWS-specific: profile picker
+        # AWS-specific: profile picker populated from real ~/.aws/config
         if self._provider_name == "aws":
             v.addWidget(self._label("AWS PROFILE"))
             self._profile_combo = self._make_combo(
-                _MOCK_AWS_PROFILES, "profile_changed"
+                _load_aws_profiles(), "profile_changed"
             )
             v.addWidget(self._profile_combo)
 
-        # GCP-specific: project picker
+        # GCP-specific: project picker — starts empty, filled after auth
         if self._provider_name == "gcp":
             v.addWidget(self._label("GCP PROJECT"))
-            self._project_combo = self._make_combo(
-                _MOCK_GCP_PROJECTS, "project_changed"
+            self._project_combo = QComboBox()
+            self._project_combo.setStyleSheet(_COMBO_STYLE)
+            self._project_combo.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            )
+            self._project_combo.setEnabled(False)
+            self._project_combo.addItem("loading…", "")
+            self._project_combo.currentIndexChanged.connect(
+                lambda idx, c=self._project_combo: self.project_changed.emit(
+                    c.itemData(idx) or ""
+                )
             )
             v.addWidget(self._project_combo)
 
@@ -254,6 +254,50 @@ class ProviderControls(QWidget):
             lambda idx, c=combo, s=signal: s.emit(c.itemData(idx) or "")
         )
         return combo
+
+    def populate_gcp_projects(
+        self, projects: list[dict], active_project: str = ""
+    ) -> None:
+        """Fill the GCP project combo from the resource-manager API response.
+
+        Called by the parent view after auth succeeds and projects are fetched.
+        """
+        if not hasattr(self, "_project_combo"):
+            return
+        combo = self._project_combo
+        combo.blockSignals(True)
+        combo.clear()
+        if not projects:
+            active = active_project or "(none)"
+            combo.addItem(active, active)
+        else:
+            for p in projects:
+                pid = p["project_id"]
+                label = pid if p["name"] == pid else f"{pid}  — {p['name']}"
+                combo.addItem(label, pid)
+            if active_project and not any(
+                combo.itemData(i) == active_project for i in range(combo.count())
+            ):
+                combo.insertItem(0, active_project, active_project)
+        combo.setEnabled(True)
+        if active_project:
+            for i in range(combo.count()):
+                if combo.itemData(i) == active_project:
+                    combo.setCurrentIndex(i)
+                    break
+        combo.blockSignals(False)
+
+    def set_active_profile(self, profile: str) -> None:
+        """Select the given AWS profile in the combo (called after auth check)."""
+        if not hasattr(self, "_profile_combo"):
+            return
+        combo = self._profile_combo
+        for i in range(combo.count()):
+            if combo.itemData(i) == profile:
+                combo.blockSignals(True)
+                combo.setCurrentIndex(i)
+                combo.blockSignals(False)
+                return
 
     def current_region(self) -> str:
         if hasattr(self, "_region_combo"):

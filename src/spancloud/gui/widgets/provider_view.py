@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFrame,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QStackedWidget,
+    QTextEdit,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -64,103 +65,196 @@ _STATE_COLOR: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
-# Analysis text formatters (plain monospace, no Rich markup)
+# Tokyo Night colour palette for analysis HTML
+# ---------------------------------------------------------------------------
+_H = {
+    "title":    "#7aa2f7",   # blue  — section headers
+    "period":   "#e0af68",   # amber — dates, periods
+    "label":    "#7dcfff",   # cyan  — service / resource names
+    "amount":   "#9ece6a",   # green — dollar amounts
+    "pct":      "#bb9af7",   # purple — percentages
+    "savings":  "#9ece6a",   # green — savings amounts
+    "sep":      "#3b4261",   # dim   — separator lines
+    "note":     "#565f89",   # muted — notes / hints
+    "bar":      "#e0af68",   # amber — trend bars
+    "crit":     "#f7768e",   # red   — critical
+    "high":     "#ff9e64",   # orange — high
+    "med":      "#e0af68",   # amber — medium
+    "low":      "#7aa2f7",   # blue  — low
+    "info":     "#565f89",   # muted — info
+    "ok":       "#9ece6a",   # green — no issues / clean
+    "rec":      "#565f89",   # muted — recommendation text
+    "reason":   "#cfc9c2",   # off-white — reason text
+}
+
+_MONO = "font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace;font-size:12px;"
+
+def _s(color: str, text: str) -> str:
+    """Wrap text in a colored span."""
+    return f'<span style="color:{color}">{text}</span>'
+
+def _sep_row(cols: int = 1) -> str:
+    return (
+        f'<tr><td colspan="{cols}" style="padding:3px 0;">'
+        f'<hr style="border:none;border-top:1px solid {_H["sep"]};margin:0;"></td></tr>'
+    )
+
+def _wrap(body: str) -> str:
+    return f'<div style="{_MONO}padding:8px;">{body}</div>'
+
+
+# ---------------------------------------------------------------------------
+# Analysis HTML formatters
 # ---------------------------------------------------------------------------
 
 def _format_cost(summary: object) -> str:  # CostSummary
-    from decimal import Decimal
-    M = "  "
-    LW, AW = 42, 14
-    SEP = M + "─" * (LW + AW)
-
-    def row(label: str, amount: str, indent: str = "") -> str:
-        return f"{M}{indent}{label:<{LW - len(indent)}}{amount:>{AW}}"
-
-    lines = [
-        row(f"Monthly cost  ({summary.period_start} → {summary.period_end})", ""),
-        SEP,
+    period = _s(_H["period"], f'{summary.period_start} → {summary.period_end}')  # type: ignore[attr-defined]
+    rows = [
+        f'<p style="margin:0 0 6px;font-size:13px;font-weight:700;">'
+        f'{_s(_H["title"], "Monthly Cost")}  <span style="font-weight:400;">{period}</span></p>',
+        '<table style="width:100%;border-collapse:collapse;">',
+        _sep_row(3),
     ]
-    if summary.notes:
-        lines.append(f"{M}Note: {summary.notes}")
-        lines.append("")
 
-    for svc in summary.by_service[:15]:
-        pct = (
-            f"{float(svc.cost / summary.total_cost * 100):.1f}%"
-            if summary.total_cost > 0 else "—"
+    if getattr(summary, "notes", None):
+        rows.append(
+            f'<tr><td colspan="3" style="padding:2px 0;">'
+            f'{_s(_H["note"], "Note: " + summary.notes)}</td></tr>'  # type: ignore[attr-defined]
         )
-        lines.append(row(f"{svc.service}  ({pct})", f"${svc.cost:>10,.2f} / mo"))
+        rows.append(_sep_row(3))
 
-    lines.append(SEP)
-    lines.append(row("Estimated total", f"${summary.total_cost:>10,.2f} / mo"))
+    for svc in summary.by_service[:15]:  # type: ignore[attr-defined]
+        pct = (
+            f"{float(svc.cost / summary.total_cost * 100):.1f}%"  # type: ignore[attr-defined]
+            if summary.total_cost > 0 else "—"  # type: ignore[attr-defined]
+        )
+        rows.append(
+            f'<tr>'
+            f'<td style="padding:2px 4px 2px 0;">{_s(_H["label"], svc.service)}</td>'
+            f'<td style="padding:2px 8px;text-align:right;">{_s(_H["pct"], pct)}</td>'
+            f'<td style="padding:2px 0 2px 8px;text-align:right;font-weight:600;">'
+            f'{_s(_H["amount"], f"${svc.cost:,.2f} / mo")}</td>'
+            f'</tr>'
+        )
 
-    if summary.daily_costs:
-        recent = summary.daily_costs[-7:]
-        max_cost = max(d.cost for d in recent) if recent else Decimal(1)
-        lines += ["", row("Daily trend (last 7 days)", ""), SEP]
+    rows.append(_sep_row(3))
+    rows.append(
+        f'<tr>'
+        f'<td style="padding:3px 0;font-weight:700;">{_s(_H["title"], "Estimated total")}</td>'
+        f'<td></td>'
+        f'<td style="padding:3px 0;text-align:right;font-weight:700;font-size:13px;">'
+        f'{_s(_H["amount"], f"${summary.total_cost:,.2f} / mo")}</td>'  # type: ignore[attr-defined]
+        f'</tr>'
+    )
+
+    if getattr(summary, "daily_costs", None):
+        recent = summary.daily_costs[-7:]  # type: ignore[attr-defined]
+        max_cost = max(d.cost for d in recent) if recent else 1
+        rows += [
+            _sep_row(3),
+            f'<tr><td colspan="3" style="padding:6px 0 2px;">'
+            f'<b>{_s(_H["title"], "Daily trend — last 7 days")}</b></td></tr>',
+        ]
         for day in recent:
             bar_len = int(float(day.cost / max_cost) * 20) if max_cost > 0 else 0
-            lines.append(row(str(day.date), f"${day.cost:>10,.2f}") + "  " + "█" * bar_len)
+            rows.append(
+                f'<tr>'
+                f'<td style="padding:1px 4px 1px 0;">{_s(_H["period"], str(day.date))}</td>'
+                f'<td style="padding:1px 8px;text-align:right;font-weight:600;">'
+                f'{_s(_H["amount"], f"${day.cost:,.2f}")}</td>'
+                f'<td style="padding:1px 0 1px 8px;">{_s(_H["bar"], "█" * bar_len)}</td>'
+                f'</tr>'
+            )
 
-    lines.append("")
-    return "\n".join(lines)
+    rows.append("</table>")
+    return _wrap("".join(rows))
 
 
 def _format_audit(result: object) -> str:  # SecurityAuditResult
-    M = "  "
-    SEP = M + "─" * 58
-    SEV_DOT = {
-        "critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪",
+    sev_color = {
+        "critical": _H["crit"], "high": _H["high"],
+        "medium":   _H["med"],  "low":  _H["low"], "info": _H["info"],
     }
 
-    def row(dot: str, sev: str, text: str) -> str:
-        return f"{M}{dot}  {sev:<10}  {text}"
-
-    lines = [
-        f"{M}Security Audit — {len(result.findings)} finding(s)  ({result.summary})",
-        SEP,
+    count = len(result.findings)  # type: ignore[attr-defined]
+    rows = [
+        f'<p style="margin:0 0 6px;font-size:13px;font-weight:700;">'
+        f'{_s(_H["title"], "Security Audit")}  '
+        f'<span style="font-weight:400;color:{_H["note"]};">'
+        f'{count} finding(s) — {result.summary}</span></p>',  # type: ignore[attr-defined]
+        '<table style="width:100%;border-collapse:collapse;">',
+        _sep_row(3),
     ]
-    if not result.findings:
-        lines.append(f"{M}No security issues found ✓")
+
+    if not result.findings:  # type: ignore[attr-defined]
+        rows.append(
+            f'<tr><td colspan="3" style="padding:4px 0;">'
+            f'{_s(_H["ok"], "✓  No security issues found")}</td></tr>'
+        )
     else:
-        for f in sorted(result.findings, key=lambda x: x.severity.value):
-            dot = SEV_DOT.get(f.severity.value, "⚪")
-            lines.append(row(dot, f.severity.value.upper(), f"{f.resource_type}/{f.resource_id}"))
-            lines.append(f"{M}               {f.title}")
-            lines.append(f"{M}               → {f.recommendation}")
-            lines.append("")
-    lines.append("")
-    return "\n".join(lines)
+        for f in sorted(result.findings, key=lambda x: x.severity.value):  # type: ignore[attr-defined]
+            sev = f.severity.value
+            color = sev_color.get(sev, _H["info"])
+            rows.append(
+                f'<tr style="vertical-align:top;">'
+                f'<td style="padding:3px 4px 1px 0;white-space:nowrap;font-weight:700;">'
+                f'{_s(color, sev.upper())}</td>'
+                f'<td style="padding:3px 0 1px 8px;">'
+                f'{_s(_H["label"], f.resource_type + "/" + f.resource_id)}</td>'
+                f'</tr>'
+                f'<tr><td></td>'
+                f'<td style="padding:0 0 1px 8px;">{_s(_H["reason"], f.title)}</td>'
+                f'</tr>'
+                f'<tr><td></td>'
+                f'<td style="padding:0 0 6px 8px;">'
+                f'{_s(_H["rec"], "→ " + f.recommendation)}</td>'
+                f'</tr>'
+            )
+
+    rows.append("</table>")
+    return _wrap("".join(rows))
 
 
 def _format_unused(report: object) -> str:  # UnusedResourceReport
-    M = "  "
-    NW, TW, RW, SW = 20, 18, 24, 14
-    SEP = M + "─" * (NW + TW + RW + SW)
-
-    def hdr() -> str:
-        return f"{M}{'Resource':<{NW}}{'Type':<{TW}}{'Reason':<{RW}}{'Savings':>{SW}}"
-
-    def row(name: str, rtype: str, reason: str, cost: str) -> str:
-        return f"{M}{name:<{NW}}{rtype:<{TW}}{reason:<{RW}}{cost:>{SW}}"
-
-    total = report.total_estimated_monthly_savings
-    lines = [
-        f"{M}Unused / Idle Resources — {report.total_count} item(s)",
-        f"{M}Potential savings: ${total:,.2f}/mo" if total > 0 else f"{M}No cost estimates available.",
-        SEP,
-        hdr(),
-        SEP,
+    total = report.total_estimated_monthly_savings  # type: ignore[attr-defined]
+    savings_str = (
+        _s(_H["savings"], f"${total:,.2f} / mo potential savings")
+        if total > 0
+        else _s(_H["note"], "No cost estimates available")
+    )
+    rows = [
+        f'<p style="margin:0 0 6px;font-size:13px;font-weight:700;">'
+        f'{_s(_H["title"], "Unused / Idle Resources")}  '
+        f'<span style="font-weight:400;color:{_H["note"]};">'
+        f'{report.total_count} item(s)</span></p>',  # type: ignore[attr-defined]
+        f'<p style="margin:0 0 6px;">{savings_str}</p>',
+        '<table style="width:100%;border-collapse:collapse;">',
+        _sep_row(4),
+        f'<tr style="font-weight:700;">'
+        f'<td style="padding:2px 4px 2px 0;">{_s(_H["title"], "Resource")}</td>'
+        f'<td style="padding:2px 8px;">{_s(_H["title"], "Type")}</td>'
+        f'<td style="padding:2px 8px;">{_s(_H["title"], "Reason")}</td>'
+        f'<td style="padding:2px 0 2px 8px;text-align:right;">{_s(_H["title"], "Savings")}</td>'
+        f'</tr>',
+        _sep_row(4),
     ]
-    for r in report.resources:
-        lines.append(row(
-            r.resource_name[:NW - 1],
-            r.resource_type[:TW - 1],
-            r.reason[:RW - 1],
-            r.estimated_monthly_savings or "—",
-        ))
-    lines += [SEP, ""]
-    return "\n".join(lines)
+
+    for r in report.resources:  # type: ignore[attr-defined]
+        sav = (
+            _s(_H["savings"], r.estimated_monthly_savings)
+            if r.estimated_monthly_savings else _s(_H["note"], "—")
+        )
+        rows.append(
+            f'<tr style="vertical-align:top;">'
+            f'<td style="padding:2px 4px 2px 0;">{_s(_H["label"], r.resource_name)}</td>'
+            f'<td style="padding:2px 8px;">{_s(_H["note"], r.resource_type)}</td>'
+            f'<td style="padding:2px 8px;">{_s(_H["reason"], r.reason)}</td>'
+            f'<td style="padding:2px 0 2px 8px;text-align:right;">{sav}</td>'
+            f'</tr>'
+        )
+
+    rows += [_sep_row(4), "</table>"]
+    return _wrap("".join(rows))
 
 
 # ---------------------------------------------------------------------------
@@ -258,12 +352,15 @@ async def _run_analysis(provider: BaseProvider, key: str) -> str:
 # ---------------------------------------------------------------------------
 
 class ProviderViewWidget(QWidget):
+    auth_requested = Signal()
+
     def __init__(self, provider: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._provider_meta = provider
         self._provider: BaseProvider | None = provider.get("provider")
         self._current_rt: str | None = None
         self._rt_buttons: dict[str, QPushButton] = {}
+        self._rt_type_map: dict[str, str] = {}  # service name → ResourceType value
         self._analysis_buttons: dict[str, QPushButton] = {}
         self._drawer_open = False
         self._current_region = ""
@@ -294,9 +391,11 @@ class ProviderViewWidget(QWidget):
         self._empty_view = self._make_empty_view()
         self._resource_view = self._make_resource_view()
         self._analysis_view = self._make_analysis_view()
+        self._unauthed_view = self._make_unauthed_view()
         self._right_stack.addWidget(self._empty_view)
         self._right_stack.addWidget(self._resource_view)
         self._right_stack.addWidget(self._analysis_view)
+        self._right_stack.addWidget(self._unauthed_view)
         self._h_splitter.addWidget(self._right_stack)
 
         self._drawer = self._make_drawer()
@@ -372,28 +471,28 @@ class ProviderViewWidget(QWidget):
 
     def _rebuild_rt_buttons(self) -> None:
         from spancloud.config.sidebar import get_sidebar_items
-        from spancloud.core.resource import ResourceType
 
         while self._nav_rt_layout.count():
             item = self._nav_rt_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
         self._rt_buttons.clear()
+        self._rt_type_map.clear()
 
         pname = self._provider_meta["name"]
         if self._provider is None:
             return
 
-        supported = {rt.value for rt in self._provider.supported_resource_types}
-        seen: set[str] = set()
+        # "All Resources" is always first
+        all_btn = self._make_nav_button("_all", "📋 All Resources", None, "rt")
+        self._rt_buttons["_all"] = all_btn
+        self._nav_rt_layout.addWidget(all_btn)
 
         for svc in get_sidebar_items(pname):
-            rt = svc["type"]
-            if rt in seen or rt not in supported:
-                continue
-            seen.add(rt)
-            btn = self._make_nav_button(rt, svc["label"], None, "rt")
-            self._rt_buttons[rt] = btn
+            name = svc["name"]
+            btn = self._make_nav_button(name, svc["label"], None, "rt")
+            self._rt_buttons[name] = btn
+            self._rt_type_map[name] = svc["type"]  # may be "other" — handled in _load_table
             self._nav_rt_layout.addWidget(btn)
 
     def _open_sidebar_settings(self) -> None:
@@ -615,22 +714,18 @@ class ProviderViewWidget(QWidget):
         self._analysis_title.setObjectName("analysis-title")
         v.addWidget(self._analysis_title)
 
-        self._analysis_content = QLabel()
-        self._analysis_content.setWordWrap(True)
-        self._analysis_content.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-        )
-        self._analysis_content.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
+        self._analysis_content = QTextEdit()
+        self._analysis_content.setReadOnly(True)
         self._analysis_content.setStyleSheet(f"""
-            color: {TEXT_PRIMARY};
-            font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
-            font-size: 12px;
-            background: {BG_SURFACE};
-            border: 1px solid {BORDER_SUBTLE};
-            border-radius: 8px;
-            padding: 16px;
+            QTextEdit {{
+                color: {TEXT_PRIMARY};
+                font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+                font-size: 12px;
+                background: {BG_SURFACE};
+                border: 1px solid {BORDER_SUBTLE};
+                border-radius: 8px;
+                padding: 12px;
+            }}
         """)
         v.addWidget(self._analysis_content, stretch=1)
         return w
@@ -644,6 +739,98 @@ class ProviderViewWidget(QWidget):
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         v.addWidget(hint)
         return w
+
+    def _make_unauthed_view(self) -> QWidget:
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        v.setSpacing(14)
+
+        icon = QLabel("🔌")
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setStyleSheet("font-size: 42px;")
+        v.addWidget(icon)
+
+        name_lbl = QLabel(f"Not connected to {self._provider_meta['display']}")
+        name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name_lbl.setStyleSheet(
+            f"color: {TEXT_PRIMARY}; font-size: 16px; font-weight: 600;"
+        )
+        v.addWidget(name_lbl)
+
+        hint = QLabel("Authenticate to view resources and run analysis.")
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 13px;")
+        v.addWidget(hint)
+
+        connect_btn = QPushButton(f"Connect to {self._provider_meta['display']}")
+        connect_btn.setFixedWidth(240)
+        connect_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {ACCENT_BLUE};
+                border: none;
+                border-radius: 6px;
+                color: #1a1b26;
+                font-size: 13px;
+                font-weight: 600;
+                padding: 10px 20px;
+            }}
+            QPushButton:hover {{ background: #89b4fa; }}
+        """)
+        connect_btn.clicked.connect(self.auth_requested.emit)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(connect_btn)
+        btn_row.addStretch()
+        v.addLayout(btn_row)
+        return w
+
+    def notify_auth_status(self, status: str) -> None:
+        """Called from app.py when auth state changes for this provider."""
+        if status in ("unauthenticated", "error"):
+            self._right_stack.setCurrentWidget(self._unauthed_view)
+        elif status == "authenticated":
+            if self._right_stack.currentWidget() is self._unauthed_view:
+                self._right_stack.setCurrentWidget(self._empty_view)
+            self._post_auth_setup()
+
+    def _post_auth_setup(self) -> None:
+        """After successful auth, sync controls with live provider state."""
+        if self._provider is None:
+            return
+        name = self._provider_meta["name"]
+
+        # Reflect the active AWS profile in the combo
+        if name == "aws" and hasattr(self._provider, "_auth"):
+            active = getattr(self._provider._auth, "active_profile", "")
+            if active:
+                self._controls.set_active_profile(active)
+
+        # Populate GCP project list from the resource-manager API
+        if name == "gcp":
+            self._fetch_gcp_projects()
+
+    def _fetch_gcp_projects(self) -> None:
+        if self._provider is None or not hasattr(self._provider, "_auth"):
+            return
+        auth = self._provider._auth  # type: ignore[attr-defined]
+
+        async def _load() -> tuple[list[dict], str]:
+            try:
+                projects = await auth.list_accessible_projects()
+            except Exception:
+                projects = []
+            active = getattr(auth, "project_id", "") or ""
+            return projects, active
+
+        worker = AsyncWorker(_load())
+        worker.result_ready.connect(
+            lambda result: self._controls.populate_gcp_projects(result[0], result[1])
+        )
+        worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
+        self._active_workers.append(worker)
+        worker.start()
 
     # ------------------------------------------------------------------
     # Region / profile / project signal handlers
@@ -693,7 +880,10 @@ class ProviderViewWidget(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
         self._close_drawer()
-        self._load_table(rt)
+        if rt == "_all":
+            self._load_all_resources()
+        else:
+            self._load_table(rt)
         self._right_stack.setCurrentWidget(self._resource_view)
 
     def _select_analysis(self, key: str) -> None:
@@ -715,6 +905,21 @@ class ProviderViewWidget(QWidget):
             return
 
         from spancloud.core.resource import ResourceType
+
+        # Resolve service name (e.g. "ec2") to its ResourceType value (e.g. "compute")
+        rt_value = self._rt_type_map.get(rt, rt)
+
+        # If this type isn't a known ResourceType, show a friendly message
+        supported = {r.value for r in self._provider.supported_resource_types}
+        if rt_value not in supported:
+            self._table.setSortingEnabled(False)
+            self._table.clear()
+            self._show_table_message(
+                f"{rt} — detailed browsing not yet available in the GUI "
+                "(use CLI: spancloud aws list --type other)"
+            )
+            return
+
         load_key = f"rt:{rt}:{self._current_region}"
         self._current_load_key = load_key
 
@@ -724,8 +929,48 @@ class ProviderViewWidget(QWidget):
 
         region = self._current_region or None
         worker = AsyncWorker(
-            self._provider.list_resources(ResourceType(rt), region=region)
+            self._provider.list_resources(ResourceType(rt_value), region=region)
         )
+        worker.result_ready.connect(
+            lambda res, k=load_key: self._on_resources_loaded(res, k)
+        )
+        worker.error_occurred.connect(
+            lambda err, k=load_key: self._on_load_error(err, k)
+        )
+        worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
+        self._active_workers.append(worker)
+        worker.start()
+
+    def _load_all_resources(self) -> None:
+        if self._provider is None:
+            self._table.clear()
+            self._show_table_message("Provider not available.")
+            return
+
+        load_key = f"rt:_all:{self._current_region}"
+        self._current_load_key = load_key
+
+        self._table.setSortingEnabled(False)
+        self._table.clear()
+        self._show_table_message("Loading all resources…")
+
+        region = self._current_region or None
+
+        async def _fetch_all() -> list[Resource]:
+            import asyncio
+
+            async def _one(rt: object) -> list[Resource]:
+                try:
+                    return await self._provider.list_resources(rt, region=region)  # type: ignore[arg-type, union-attr]
+                except Exception:
+                    return []
+
+            results = await asyncio.gather(
+                *[_one(rt) for rt in self._provider.supported_resource_types]  # type: ignore[union-attr]
+            )
+            return [r for sublist in results for r in sublist]
+
+        worker = AsyncWorker(_fetch_all())
         worker.result_ready.connect(
             lambda res, k=load_key: self._on_resources_loaded(res, k)
         )
@@ -797,12 +1042,12 @@ class ProviderViewWidget(QWidget):
         self._analysis_title.setText(titles.get(key, key))
 
         if self._provider is None:
-            self._analysis_content.setText("  Provider not available.")
+            self._analysis_content.setPlainText("  Provider not available.")
             return
 
         load_key = f"analysis:{key}"
         self._current_load_key = load_key
-        self._analysis_content.setText("  Loading…")
+        self._analysis_content.setPlainText("  Loading…")
 
         worker = AsyncWorker(_run_analysis(self._provider, key))
         worker.result_ready.connect(
@@ -818,12 +1063,15 @@ class ProviderViewWidget(QWidget):
     def _on_analysis_done(self, text: str, key: str) -> None:
         if key != self._current_load_key:
             return
-        self._analysis_content.setText(text)
+        if text.startswith("<"):
+            self._analysis_content.setHtml(text)
+        else:
+            self._analysis_content.setPlainText(text)
 
     def _on_analysis_error(self, error: str, key: str) -> None:
         if key != self._current_load_key:
             return
-        self._analysis_content.setText(f"  Error: {error}")
+        self._analysis_content.setPlainText(f"  Error: {error}")
 
     def _cleanup_worker(self, worker: AsyncWorker) -> None:
         try:

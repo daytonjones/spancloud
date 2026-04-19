@@ -8,8 +8,10 @@ import importlib.resources as pkg_resources
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import Qt
+from PySide6.QtCore import QByteArray, QSettings
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QLabel,
     QMainWindow,
     QSplitter,
@@ -75,6 +77,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._setup_statusbar()
+        self._restore_geometry()
         self._start_auth_checks()
 
     def _build_ui(self) -> None:
@@ -116,6 +119,9 @@ class MainWindow(QMainWindow):
             view._controls.project_changed.connect(
                 lambda project, pname=p["name"]: self._on_context_changed(pname)
             )
+            view.auth_requested.connect(
+                lambda pname=p["name"]: self._open_auth_dialog(pname)
+            )
             self._provider_views[p["name"]] = view
             self._stack.addWidget(view)
 
@@ -155,7 +161,7 @@ class MainWindow(QMainWindow):
             if provider is None:
                 p_dict["status"] = "unauthenticated"
                 continue
-            worker = AsyncWorker(provider.is_authenticated())
+            worker = AsyncWorker(provider.authenticate())
             worker.result_ready.connect(
                 lambda ok, pd=p_dict: self._on_auth_checked(pd, ok)
             )
@@ -171,12 +177,71 @@ class MainWindow(QMainWindow):
         self._sidebar.update_status(p_dict["name"], status)
         self._overview.update_provider_status(p_dict["name"], status)
         self._update_statusbar_summary()
+        view = self._provider_views.get(p_dict["name"])
+        if view:
+            view.notify_auth_status(status)
+        if is_authed:
+            self._fetch_resource_count(p_dict)
+
+    def _fetch_resource_count(self, p_dict: dict) -> None:
+        from spancloud.gui.async_worker import AsyncWorker
+
+        provider = p_dict.get("provider")
+        if provider is None:
+            return
+
+        async def _count() -> int:
+            import asyncio
+
+            async def _one(rt: object) -> int:
+                try:
+                    resources = await asyncio.wait_for(  # type: ignore[arg-type]
+                        provider.list_resources(rt),  # type: ignore[arg-type]
+                        timeout=20,
+                    )
+                    return len(resources)
+                except Exception:
+                    return 0
+
+            counts = await asyncio.gather(
+                *[_one(rt) for rt in provider.supported_resource_types]
+            )
+            return sum(counts)
+
+        worker = AsyncWorker(_count())
+        worker.result_ready.connect(
+            lambda count, pd=p_dict: self._on_resource_count(pd, count)
+        )
+        worker.start()
+        self._auth_workers.append(worker)
+
+    def _on_resource_count(self, p_dict: dict, count: int) -> None:
+        p_dict["resources"] = count
+        self._overview.update_provider_status(p_dict["name"], p_dict["status"], count)
+        self._update_statusbar_summary()
 
     def _on_auth_error(self, p_dict: dict, error: str) -> None:
         p_dict["status"] = "error"
         self._sidebar.update_status(p_dict["name"], "error")
         self._overview.update_provider_status(p_dict["name"], "error")
         self._update_statusbar_summary()
+        view = self._provider_views.get(p_dict["name"])
+        if view:
+            view.notify_auth_status("error")
+
+    def _open_auth_dialog(self, provider_name: str) -> None:
+        from spancloud.gui.widgets.auth_dialog import AuthDialog
+
+        p = next((p for p in self._providers if p["name"] == provider_name), None)
+        if p is None:
+            return
+        provider = p.get("provider")
+        if provider is None:
+            return
+
+        dlg = AuthDialog(provider, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._on_auth_checked(p, True)
 
     def _on_provider_selected(self, name: str) -> None:
         self._sidebar.select(name)
@@ -214,12 +279,22 @@ class MainWindow(QMainWindow):
 
     def _on_refresh(self) -> None:
         self._status_label.setText("Refreshing…")
-        # Reset all to "checking" then re-run auth
         for p in self._providers:
             p["status"] = "checking"
             self._sidebar.update_status(p["name"], "checking")
             self._overview.update_provider_status(p["name"], "checking")
         self._start_auth_checks()
+
+    def _restore_geometry(self) -> None:
+        settings = QSettings("spancloud", "spancloud-gui")
+        geometry = settings.value("windowGeometry")
+        if isinstance(geometry, QByteArray):
+            self.restoreGeometry(geometry)
+
+    def closeEvent(self, event: object) -> None:
+        settings = QSettings("spancloud", "spancloud-gui")
+        settings.setValue("windowGeometry", self.saveGeometry())
+        super().closeEvent(event)  # type: ignore[misc]
 
     def _on_settings(self) -> None:
         self._status_label.setText("Settings (not yet implemented)")
