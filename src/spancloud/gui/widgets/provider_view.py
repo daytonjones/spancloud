@@ -590,6 +590,79 @@ def _mock_analysis(name: str, key: str, resource: Resource | None = None) -> str
 
 
 # ---------------------------------------------------------------------------
+# Relationships HTML renderer (real providers)
+# ---------------------------------------------------------------------------
+
+async def _run_relationships_html(name: str, auth: object) -> str:
+    C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a",
+         "muted": "#565f89", "purple": "#bb9af7"}
+
+    try:
+        if name == "aws":
+            from spancloud.providers.aws.relationships import AWSRelationshipMapper
+            mapper = AWSRelationshipMapper(auth)  # type: ignore[arg-type]
+        elif name == "gcp":
+            from spancloud.providers.gcp.relationships import GCPRelationshipMapper
+            mapper = GCPRelationshipMapper(auth)  # type: ignore[arg-type]
+        elif name == "vultr":
+            from spancloud.providers.vultr.relationships import VultrRelationshipMapper
+            mapper = VultrRelationshipMapper(auth)  # type: ignore[arg-type]
+        elif name == "digitalocean":
+            from spancloud.providers.digitalocean.relationships import DigitalOceanRelationshipMapper
+            mapper = DigitalOceanRelationshipMapper(auth)  # type: ignore[arg-type]
+        elif name == "azure":
+            from spancloud.providers.azure.relationships import AzureRelationshipMapper
+            mapper = AzureRelationshipMapper(auth)  # type: ignore[arg-type]
+        elif name == "oci":
+            from spancloud.providers.oci.relationships import OCIRelationshipMapper
+            mapper = OCIRelationshipMapper(auth)  # type: ignore[arg-type]
+        elif name == "alibaba":
+            from spancloud.providers.alibaba.relationships import AlibabaRelationshipMapper
+            mapper = AlibabaRelationshipMapper(auth)  # type: ignore[arg-type]
+        else:
+            return f"  Relationships not available for {name}."
+
+        rel_map = await mapper.map_relationships()
+    except Exception as exc:
+        return f"  Error fetching relationships: {exc}"
+
+    if not rel_map.relationships:
+        body = (
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Resource Relationships</span><br><br>'
+            f'<span style="color:{C["val"]};">✓ No relationships found.</span>'
+        )
+        return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{body}</div>'
+
+    by_source: dict[str, list] = {}
+    for r in rel_map.relationships:
+        key = f"{r.source_type}/{r.source_name or r.source_id}"
+        by_source.setdefault(key, []).append(r)
+
+    rows = []
+    for source, rels in sorted(by_source.items()):
+        rows.append(
+            f'<tr><td colspan="4" style="padding:8px 0 2px 8px;color:{C["label"]};font-weight:bold;">{source}</td></tr>'
+        )
+        for r in rels:
+            target = r.target_name or r.target_id
+            rows.append(
+                f'<tr>'
+                f'<td style="color:{C["muted"]};padding:1px 4px 1px 24px;">│</td>'
+                f'<td style="color:{C["muted"]};padding:1px 8px 1px 0;">──</td>'
+                f'<td style="color:{C["purple"]};padding:1px 12px 1px 0;font-style:italic;">{r.relationship.value}</td>'
+                f'<td style="color:#c0caf5;padding:1px 0;">{target} <span style="color:{C["muted"]};font-size:11px;">({r.target_type})</span></td>'
+                f'</tr>'
+            )
+
+    html = (
+        f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Resource Relationships</span><br>'
+        f'<span style="color:{C["muted"]};">{len(rel_map.relationships):,} connection(s)</span><br><br>'
+        f'<table cellspacing="0">{"".join(rows)}</table>'
+    )
+    return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{html}</div>'
+
+
+# ---------------------------------------------------------------------------
 # Analyzer factory — mirrors TUI's _run_cost / _run_audit / _run_unused
 # ---------------------------------------------------------------------------
 
@@ -675,7 +748,7 @@ async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | N
         return f"  Unused detection not available for {name}."
 
     if key == "relationships":
-        return "  Relationships graph coming soon…\n"
+        return await _run_relationships_html(name, auth)
     if key == "alerts":
         return "  No active alerts — all systems nominal ✓\n"
     if key == "metrics":
