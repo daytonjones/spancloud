@@ -254,5 +254,44 @@ class MockProvider(BaseProvider):
                 return r
         raise ResourceNotFoundError(self._name, resource_type.value, resource_id)
 
+    async def get_instance_metrics(
+        self,
+        instance_id: str,
+        region: str | None = None,
+        hours: int = 1,
+    ) -> object:
+        """Return fake ResourceMetrics for TUI/GUI metrics panels."""
+        import hashlib
+        from datetime import datetime, timezone, timedelta
+        from spancloud.providers.aws.cloudwatch import MetricPoint, ResourceMetrics
+
+        seed = int(hashlib.md5(instance_id.encode()).hexdigest()[:8], 16)
+        now = datetime.now(timezone.utc)
+        n = max(12, hours * 12)
+
+        def _series(base: float, noise: float) -> list[MetricPoint]:
+            pts, v = [], base
+            for i in range(n):
+                v += (((seed * (i + 1) * 6364136223846793005 + 1442695040888963407) & 0xFFFFFFFF) / 0xFFFFFFFF - 0.5) * noise
+                v = max(0.0, min(100.0, v))
+                pts.append(MetricPoint(
+                    timestamp=now - timedelta(minutes=(n - i) * 5),
+                    value=round(v, 2),
+                    unit="Percent",
+                ))
+            return pts
+
+        cpu_base = 15 + (seed % 40)
+        return ResourceMetrics(
+            resource_id=instance_id,
+            resource_type="compute",
+            metrics={
+                "CPUUtilization":    _series(cpu_base,        12),
+                "MemoryUtilization": _series(30 + seed % 35,  8),
+                "NetworkIn":         _series(5  + seed % 20,  15),
+                "DiskReadBytes":     _series(40 + seed % 30,  5),
+            },
+        )
+
     async def get_status(self) -> dict[str, str]:
         return {"provider": self._name, "status": "mock", "mode": "demo"}
