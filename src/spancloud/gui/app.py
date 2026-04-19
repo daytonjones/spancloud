@@ -343,6 +343,31 @@ class MainWindow(QMainWindow):
 
 
 def main(mock: bool = False) -> None:
+    import threading
+    from spancloud.utils.logging import get_logger as _get_logger
+    _log = _get_logger(__name__)
+
+    # Log unhandled exceptions on the main thread instead of silently dying.
+    def _excepthook(exc_type: type, exc_val: BaseException, exc_tb: object) -> None:
+        import traceback
+        _log.error(
+            "Unhandled exception: %s",
+            "".join(traceback.format_exception(exc_type, exc_val, exc_tb)),  # type: ignore[arg-type]
+        )
+
+    sys.excepthook = _excepthook
+
+    # Log unhandled exceptions on background threads.
+    def _thread_excepthook(args: threading.ExceptHookArgs) -> None:
+        import traceback
+        _log.error(
+            "Unhandled exception in thread %s: %s",
+            args.thread,
+            "".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)),
+        )
+
+    threading.excepthook = _thread_excepthook
+
     app = QApplication(sys.argv)
     app.setApplicationName("Spancloud")
     app.setOrganizationName("spancloud")
@@ -351,7 +376,13 @@ def main(mock: bool = False) -> None:
     icon = _load_window_icon()
     app.setWindowIcon(icon)
 
-    window = MainWindow(mock=mock)
+    try:
+        window = MainWindow(mock=mock)
+    except Exception:
+        import traceback
+        _log.error("Failed to initialise MainWindow:\n%s", traceback.format_exc())
+        sys.exit(1)
+
     window.show()
     sys.exit(app.exec())
 
