@@ -261,7 +261,97 @@ def _format_unused(report: object) -> str:  # UnusedResourceReport
 # Mock analysis — demo data for --mock mode
 # ---------------------------------------------------------------------------
 
-_MOCK_COST: dict[str, str] = {
+_MOCK_RELATIONSHIPS: dict[str, list[tuple[str, str, str, str, str]]] = {
+    # (from_type, from_name, edge_label, to_type, to_name)
+    "aws": [
+        ("ALB",      "prod-alb",         "routes to",   "EC2",     "web-prod-01"),
+        ("ALB",      "prod-alb",         "routes to",   "EC2",     "api-prod-01"),
+        ("EC2",      "web-prod-01",       "writes to",   "S3",      "prod-assets-bucket"),
+        ("EC2",      "api-prod-01",       "connects to", "RDS",     "prod-postgres"),
+        ("EC2",      "worker-prod-01",    "connects to", "RDS",     "analytics-pg"),
+        ("EC2",      "worker-prod-01",    "reads from",  "S3",      "prod-logs-archive"),
+        ("Lambda",   "api-handler",       "connects to", "RDS",     "prod-mysql"),
+        ("Lambda",   "image-resizer",     "writes to",   "S3",      "prod-assets-bucket"),
+        ("EKS",      "prod-cluster",      "runs in",     "VPC",     "prod-vpc"),
+        ("EC2",      "web-prod-01",       "runs in",     "VPC",     "prod-vpc"),
+        ("NLB",      "prod-nlb",          "routes to",   "EKS",     "prod-cluster"),
+    ],
+    "gcp": [
+        ("GKE",      "prod-gke",          "runs in",     "VPC",     "default"),
+        ("VM",       "web-01",            "reads from",  "GCS",     "demo-prod-assets"),
+        ("VM",       "api-01",            "connects to", "CloudSQL", "prod-postgres"),
+        ("Function", "api-handler",       "connects to", "CloudSQL", "prod-postgres"),
+        ("Function", "data-proc",         "writes to",   "GCS",     "demo-backups"),
+        ("VM",       "worker-01",         "reads from",  "GCS",     "demo-staging-data"),
+    ],
+    "azure": [
+        ("VM",       "web-vm-01",         "reads from",  "Storage", "prodstgacct"),
+        ("VM",       "api-vm-01",         "connects to", "SQL",     "prod-sql"),
+        ("VM",       "web-vm-01",         "runs in",     "VNet",    "prod-vnet"),
+        ("VM",       "api-vm-01",         "runs in",     "VNet",    "prod-vnet"),
+    ],
+    "digitalocean": [
+        ("Droplet",  "web-droplet-01",    "attached to", "Volume",  "prod-data-volume"),
+        ("DOKS",     "prod-doks",         "uses",        "Volume",  "prod-data-volume"),
+    ],
+    "vultr": [
+        ("VM",       "web-01",            "attached to", "Block",   "prod-block-storage"),
+    ],
+    "oci": [
+        ("VM",       "web-instance-01",   "runs in",     "VCN",     "prod-vcn"),
+        ("VM",       "api-instance-01",   "runs in",     "VCN",     "prod-vcn"),
+        ("VM",       "web-instance-01",   "reads from",  "Object",  "prod-object-storage"),
+    ],
+    "alibaba": [
+        ("ECS",      "web-ecs-01",        "connects to", "RDS",     "prod-rds"),
+        ("ECS",      "worker-ecs-01",     "reads from",  "OSS",     "demo-prod-bucket"),
+    ],
+}
+
+
+def _mock_relationships(name: str, C: dict, wrap: object) -> str:
+    edges = _MOCK_RELATIONSHIPS.get(name, [])
+    if not edges:
+        body = (
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Resource Relationships</span><br><br>'
+            f'<span style="color:{C["val"]};">✓ No relationships to display (demo data)</span>'
+        )
+        return wrap(body)  # type: ignore[operator]
+
+    # Build adjacency: group edges by source node
+    from collections import defaultdict
+    by_src: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
+    for ft, fn, edge, tt, tn in edges:
+        by_src[f"{ft}:{fn}"].append((edge, tt, tn))
+
+    rows = []
+    seen_src: set[str] = set()
+    for ft, fn, edge, tt, tn in edges:
+        src_key = f"{ft}:{fn}"
+        if src_key not in seen_src:
+            seen_src.add(src_key)
+            rows.append(
+                f'<tr><td colspan="4" style="padding:8px 0 2px 8px;color:{C["label"]};font-weight:bold;">'
+                f'[{ft}] <span style="color:#c0caf5;">{fn}</span></td></tr>'
+            )
+        rows.append(
+            f'<tr>'
+            f'<td style="color:{C["muted"]};padding:1px 4px 1px 24px;">│</td>'
+            f'<td style="color:{C["muted"]};padding:1px 8px 1px 0;">──</td>'
+            f'<td style="color:{C["purple"]};padding:1px 12px 1px 0;font-style:italic;">{edge}</td>'
+            f'<td style="color:{C["label"]};padding:1px 8px 1px 0;">[{tt}]</td>'
+            f'<td style="color:#c0caf5;padding:1px 0;">{tn}</td>'
+            f'</tr>'
+        )
+
+    html = (
+        f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Resource Relationships</span><br>'
+        f'<span style="color:{C["muted"]};">Demo data · {len(edges)} relationship(s)</span><br><br>'
+        f'<table cellspacing="0">{"".join(rows)}</table>'
+    )
+    return wrap(html)  # type: ignore[operator]
+
+_MOCK_COST: dict[str, tuple[str, str, str, str]] = {
     "aws":          ("$4,821.40", "$312.90", "$4,508.50", "EC2 Instances,S3 Storage,RDS Databases,Lambda Functions"),
     "gcp":          ("$2,340.10", "$187.20", "$2,152.90", "Compute Engine,Cloud Storage,Cloud SQL,Cloud Functions"),
     "azure":        ("$3,102.75", "$241.30", "$2,861.45", "Virtual Machines,Blob Storage,Azure SQL,App Service"),
@@ -358,7 +448,7 @@ def _mock_analysis(name: str, key: str) -> str:
         return wrap(html)
 
     if key == "relationships":
-        return "  Relationships graph coming soon…\n"
+        return _mock_relationships(name, C, wrap)
     if key == "alerts":
         return "  No active alerts — all systems nominal ✓\n"
     if key == "metrics":
