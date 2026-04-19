@@ -382,6 +382,21 @@ _MOCK_UNUSED: dict[str, list[tuple[str, str, str, str]]] = {
 }
 
 
+def _metrics_no_selection_html() -> str:
+    return (
+        '<div style="font-family:monospace;font-size:12px;padding:40px 24px;color:#c0caf5;text-align:center;">'
+        '<div style="font-size:36px;margin-bottom:16px;">📊</div>'
+        '<div style="color:#7aa2f7;font-size:15px;font-weight:bold;margin-bottom:12px;">No resource selected</div>'
+        '<div style="color:#565f89;font-size:12px;line-height:1.8;">'
+        'Click any row in the resource table<br>'
+        'on the left, then return here<br>'
+        'to view its performance metrics.'
+        '</div>'
+        '<div style="color:#3b4261;font-size:24px;margin-top:20px;">↑</div>'
+        '</div>'
+    )
+
+
 def _sparkline(values: list[float], color: str) -> str:
     blocks = "▁▂▃▄▅▆▇█"
     mn, mx = min(values), max(values)
@@ -569,7 +584,7 @@ def _mock_analysis(name: str, key: str, resource: Resource | None = None) -> str
         return "  No active alerts — all systems nominal ✓\n"
     if key == "metrics":
         if resource is None:
-            return "  Select a resource from the table first, then view its metrics here.\n"
+            return _metrics_no_selection_html()
         return _mock_metrics_for(resource)
     return f"  Analysis not available in demo mode.\n"
 
@@ -665,7 +680,7 @@ async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | N
         return "  No active alerts — all systems nominal ✓\n"
     if key == "metrics":
         if resource is None:
-            return "  Select a resource from the table first, then view its metrics here.\n"
+            return _metrics_no_selection_html()
         if name == "aws" and resource.resource_type.value == "compute":
             from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
             try:
@@ -1364,8 +1379,24 @@ class ProviderViewWidget(QWidget):
         if resource is not None:
             self._selected_resource = resource
             self._open_drawer(resource)
+            self._update_metrics_button()
             if self._current_analysis_key == "metrics":
                 self._load_analysis("metrics")
+
+    def _update_metrics_button(self) -> None:
+        btn = self._analysis_buttons.get("metrics")
+        if btn is None:
+            return
+        # Find the QLabel inside the button and update its text
+        for child in btn.findChildren(QLabel):
+            if "Metrics" in child.text() or "📊" in child.text():
+                if self._selected_resource:
+                    name = self._selected_resource.name
+                    display = name if len(name) <= 18 else name[:16] + "…"
+                    child.setText(f"📊 Metrics: {display}")
+                else:
+                    child.setText("📊 Metrics")
+                break
 
     def _load_analysis(self, key: str) -> None:
         titles = {
