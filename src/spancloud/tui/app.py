@@ -21,7 +21,7 @@ def _set_terminal_title(title: str) -> None:
         pass
 
 
-class SpancloudApp(App):
+class SpancloudApp(App):  # type: ignore[type-arg]
     """Spancloud — the all-seeing eye into multi-cloud infrastructure.
 
     A Textual TUI application providing a tabbed dashboard view
@@ -42,6 +42,10 @@ class SpancloudApp(App):
         "dashboard": DashboardScreen,
     }
 
+    def __init__(self, mock: bool = False, **kwargs: object) -> None:
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self._mock = mock
+
     def compose(self) -> ComposeResult:
         """Base app has no widgets — the dashboard screen provides everything."""
         return []
@@ -49,6 +53,13 @@ class SpancloudApp(App):
     def on_mount(self) -> None:
         """Push the dashboard screen on startup."""
         _set_terminal_title("Spancloud :: Overview")
+        if self._mock:
+            from spancloud.providers.mock import build_mock_providers
+            from spancloud.core.registry import registry
+            registry._providers.clear()
+            for p in build_mock_providers():
+                registry.register(p)
+            self.sub_title = "DEMO MODE"
         self.push_screen("dashboard")
 
     def on_tabbed_content_tab_activated(

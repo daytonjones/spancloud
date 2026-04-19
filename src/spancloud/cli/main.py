@@ -19,6 +19,7 @@ from spancloud.cli.commands.provider import provider_app
 from spancloud.cli.commands.resource import resource_app
 from spancloud.cli.commands.s3 import s3_app
 from spancloud.cli.commands.status import status_app
+from spancloud.cli.commands.gui import launch_gui
 from spancloud.cli.commands.tui import launch_tui
 from spancloud.cli.commands.unused import unused_app
 from spancloud.cli.commands.vultr_storage import vultr_app
@@ -51,9 +52,19 @@ app.add_typer(vultr_app, name="vultr", help="Vultr storage details.")
 
 
 @app.command()
-def tui() -> None:
+def tui(
+    mock: bool = typer.Option(False, "--mock", help="Use demo data (no credentials needed)."),
+) -> None:
     """Launch the Spancloud TUI dashboard."""
-    launch_tui()
+    launch_tui(mock=mock)
+
+
+@app.command()
+def gui(
+    mock: bool = typer.Option(False, "--mock", help="Use demo data (no credentials needed)."),
+) -> None:
+    """Launch the Spancloud desktop GUI (requires PySide6)."""
+    launch_gui(mock=mock)
 
 
 @app.command()
@@ -66,6 +77,8 @@ def version() -> None:
 def main_callback(
     ctx: typer.Context,
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output."),
+    tui: bool = typer.Option(False, "--tui", help="Launch the TUI dashboard instead of the GUI."),
+    mock: bool = typer.Option(False, "--mock", help="Use demo data (no credentials needed)."),
     profile: str | None = typer.Option(
         None, "--profile", "-P",
         help="AWS profile name for multi-account access (overrides SPANCLOUD_AWS_PROFILE).",
@@ -100,6 +113,9 @@ def main_callback(
             if gcp:
                 gcp._auth.set_project(gcp_project)
 
-    # Launch TUI if no subcommand was given
+    # Default (no subcommand): GUI, or TUI if --tui flag passed
     if ctx.invoked_subcommand is None:
-        launch_tui()
+        if tui:
+            launch_tui(mock=mock)
+        else:
+            launch_gui(mock=mock)

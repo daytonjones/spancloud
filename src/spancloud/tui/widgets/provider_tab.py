@@ -23,6 +23,116 @@ logger = get_logger(__name__)
 
 _ANALYSIS_ITEMS = ["cost", "audit", "unused", "relationships", "alerts", "metrics"]
 
+_MOCK_COST_TUI: dict[str, tuple[str, str, str, str]] = {
+    "aws":          ("$4,821.40", "+$312.90", "$4,508.50", "EC2 Instances, S3 Storage, RDS, Lambda"),
+    "gcp":          ("$2,340.10", "+$187.20", "$2,152.90", "Compute Engine, Cloud Storage, Cloud SQL, Functions"),
+    "azure":        ("$3,102.75", "+$241.30", "$2,861.45", "Virtual Machines, Blob Storage, Azure SQL, App Service"),
+    "digitalocean": ("$890.50",   "+$62.10",  "$828.40",   "Droplets, Spaces, Managed DBs, Kubernetes"),
+    "vultr":        ("$412.20",   "+$28.80",  "$383.40",   "Cloud Compute, Block Storage, Managed DBs"),
+    "oci":          ("$1,230.60", "+$94.50",  "$1,136.10", "Compute Instances, Object Storage, Autonomous DB"),
+    "alibaba":      ("$1,875.30", "+$143.70", "$1,731.60", "ECS Instances, OSS Storage, ApsaraDB RDS"),
+}
+_MOCK_FINDINGS_TUI: dict[str, list[tuple[str, str]]] = {
+    "aws":          [("HIGH",   "S3 bucket 'dev-scratch-bucket' has public read ACL"),
+                     ("MEDIUM", "IAM user 'alice@example.com' has no MFA enabled"),
+                     ("LOW",    "EC2 instance 'dev-sandbox' uses default security group")],
+    "gcp":          [("MEDIUM", "Cloud Storage bucket 'demo-staging-data' is publicly accessible"),
+                     ("LOW",    "GKE cluster 'prod-gke' has legacy ABAC enabled")],
+    "azure":        [("HIGH",   "Storage account 'devstgacct' allows public blob access"),
+                     ("MEDIUM", "VM 'dev-vm-01' has no disk encryption")],
+    "digitalocean": [("LOW",    "Droplet 'staging-droplet' has no firewall rule assigned")],
+    "vultr":        [("MEDIUM", "Instance 'staging-01' uses SSH password authentication")],
+    "oci":          [("LOW",    "Object storage bucket 'archive-storage' has no lifecycle policy")],
+    "alibaba":      [("MEDIUM", "ECS instance 'worker-ecs-01' security group allows 0.0.0.0/0 on port 22")],
+}
+_MOCK_UNUSED_TUI: dict[str, list[tuple[str, str, str, str]]] = {
+    "aws":          [("COMPUTE",  "dev-sandbox",         "Stopped 47 days",   "$14.40/mo"),
+                     ("STORAGE",  "dev-scratch-bucket",  "No access 90+ days","$2.10/mo"),
+                     ("DATABASE", "analytics-pg",        "Stopped 62 days",   "$48.20/mo")],
+    "gcp":          [("COMPUTE",  "worker-01",           "Stopped 31 days",   "$38.50/mo")],
+    "azure":        [("COMPUTE",  "dev-vm-01",           "Stopped 28 days",   "$31.20/mo")],
+    "digitalocean": [("COMPUTE",  "staging-droplet",     "Stopped 19 days",   "$12.00/mo"),
+                     ("STORAGE",  "staging-data-volume", "Unattached 14 days","$5.00/mo")],
+    "vultr":        [("COMPUTE",  "staging-01",          "Stopped 22 days",   "$6.00/mo")],
+    "oci":          [],
+    "alibaba":      [],
+}
+_MOCK_RELS_TUI: dict[str, list[tuple[str, str, str, str, str]]] = {
+    "aws":          [("ALB",     "prod-alb",       "routes to",   "EC2",      "web-prod-01"),
+                     ("ALB",     "prod-alb",       "routes to",   "EC2",      "api-prod-01"),
+                     ("EC2",     "web-prod-01",    "writes to",   "S3",       "prod-assets-bucket"),
+                     ("EC2",     "api-prod-01",    "connects to", "RDS",      "prod-postgres"),
+                     ("Lambda",  "api-handler",    "connects to", "RDS",      "prod-mysql"),
+                     ("EKS",     "prod-cluster",   "runs in",     "VPC",      "prod-vpc")],
+    "gcp":          [("GKE",     "prod-gke",       "runs in",     "VPC",      "default"),
+                     ("VM",      "api-01",         "connects to", "CloudSQL", "prod-postgres"),
+                     ("Function","api-handler",    "connects to", "CloudSQL", "prod-postgres")],
+    "azure":        [("VM",      "web-vm-01",      "reads from",  "Storage",  "prodstgacct"),
+                     ("VM",      "api-vm-01",      "connects to", "SQL",      "prod-sql")],
+    "digitalocean": [("Droplet", "web-droplet-01", "attached to", "Volume",   "prod-data-volume")],
+    "vultr":        [("VM",      "web-01",         "attached to", "Block",    "prod-block-storage")],
+    "oci":          [("VM",      "web-instance-01","runs in",     "VCN",      "prod-vcn")],
+    "alibaba":      [("ECS",     "web-ecs-01",     "connects to", "RDS",      "prod-rds")],
+}
+
+
+def _mock_analysis_tui(name: str, key: str) -> str:
+    if key == "cost":
+        total, delta, last, svcs = _MOCK_COST_TUI.get(
+            name, ("—", "—", "—", "no data")
+        )
+        lines = [
+            f"[bold]Cost Summary[/bold]  [dim]Demo data · current month[/dim]\n",
+            f"  [cyan]Total (MTD)[/cyan]       [bold green]{total}[/bold green]",
+            f"  [cyan]vs last month[/cyan]     [yellow]{delta}[/yellow]",
+            f"  [cyan]Last month[/cyan]        {last}\n",
+            f"  [dim]Top services:[/dim]  {svcs}",
+        ]
+        return "\n".join(lines)
+
+    if key == "audit":
+        findings = _MOCK_FINDINGS_TUI.get(name, [])
+        if not findings:
+            return "[bold green]No security issues found (demo data)[/bold green]"
+        sev_color = {"HIGH": "bold red", "CRITICAL": "bold red", "MEDIUM": "yellow", "LOW": "dim"}
+        lines = [f"[bold]Security Audit[/bold]  [dim]Demo data · {len(findings)} finding(s)[/dim]\n"]
+        for sev, msg in findings:
+            color = sev_color.get(sev, "white")
+            lines.append(f"  [{color}][{sev}][/{color}]  {msg}")
+        return "\n".join(lines)
+
+    if key == "unused":
+        items = _MOCK_UNUSED_TUI.get(name, [])
+        if not items:
+            return "[bold green]No idle resources detected (demo data)[/bold green]"
+        lines = [f"[bold]Unused Resources[/bold]  [dim]Demo data · {len(items)} item(s)[/dim]\n"]
+        for rtype, rname, age, cost in items:
+            lines.append(f"  [bold]{rtype}[/bold]  {rname}")
+            lines.append(f"    {age}  [yellow]{cost}[/yellow]")
+            lines.append("")
+        return "\n".join(lines)
+
+    if key == "relationships":
+        edges = _MOCK_RELS_TUI.get(name, [])
+        if not edges:
+            return "[dim]No relationships to display (demo data)[/dim]"
+        from collections import defaultdict
+        by_src: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
+        for ft, fn, edge, tt, tn in edges:
+            by_src[f"{ft}:{fn}"].append((edge, tt, tn))
+        lines = [f"[bold]Resource Relationships[/bold]  [dim]Demo data · {len(edges)} connection(s)[/dim]\n"]
+        for src, rels in by_src.items():
+            lines.append(f"  [bold]{src}[/bold]")
+            for edge, tt, tn in rels:
+                lines.append(f"    [cyan]{edge}[/cyan] → [{tt}] {tn}")
+            lines.append("")
+        return "\n".join(lines)
+
+    if key == "alerts":
+        return "[bold]Monitoring Alerts[/bold]  [dim]Demo data[/dim]\n\n  [green]✓ No active alerts — all systems nominal[/green]"
+
+    return f"[yellow]Analysis not available in demo mode.[/yellow]"
+
 _RT_ICONS: dict[str, str] = {
     "compute": "\U0001f5a5  compute",
     "storage": "\U0001f4e6 storage",
@@ -920,6 +1030,8 @@ class AnalysisPanel(VerticalScroll):
 
     async def _fetch_analysis(self, analysis_type: str) -> str:
         name = self._provider.name
+        if not hasattr(self._provider, "_auth") and analysis_type != "metrics":
+            return _mock_analysis_tui(name, analysis_type)
         if analysis_type == "cost":
             return await self._run_cost(name)
         elif analysis_type == "audit":
