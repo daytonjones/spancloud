@@ -56,6 +56,7 @@ class SpancloudApp(App):  # type: ignore[type-arg]
         if self._mock:
             from spancloud.providers.mock import build_mock_providers
             from spancloud.core.registry import registry
+            registry._providers.clear()
             for p in build_mock_providers():
                 registry.register(p)
             self.sub_title = "DEMO MODE"
