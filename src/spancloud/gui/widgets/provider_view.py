@@ -663,6 +663,139 @@ async def _run_relationships_html(name: str, auth: object) -> str:
 
 
 # ---------------------------------------------------------------------------
+# AWS per-type metrics dispatcher
+# ---------------------------------------------------------------------------
+
+_AWS_NO_METRICS: dict[str, str] = {
+    "network":  "VPCs and subnets don't publish CloudWatch performance metrics. "
+                "Enable VPC Flow Logs for traffic analysis.",
+    "iam":      "IAM resources don't publish CloudWatch metrics. "
+                "Use CloudTrail for IAM activity.",
+    "dns":      "Route 53 hosted zones don't publish per-zone CloudWatch metrics. "
+                "Health check metrics are available per health check.",
+    "storage":  "S3 bucket-level metrics require Storage Lens or per-bucket "
+                "request metrics to be enabled in the AWS console.",
+}
+
+
+async def _run_aws_metrics(resource: Resource, auth: object) -> str:
+    from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer, ResourceMetrics, MetricPoint
+    from datetime import datetime, timezone, timedelta
+
+    rt = resource.resource_type.value
+    region = resource.region or "us-east-1"
+    rid = resource.id
+
+    no_metrics_msg = _AWS_NO_METRICS.get(rt)
+    if no_metrics_msg:
+        C = {"title": "#7aa2f7", "muted": "#565f89", "warn": "#e0af68"}
+        body = (
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span><br><br>'
+            f'<span style="color:{C["warn"]};">ℹ {no_metrics_msg}</span>'
+        )
+        return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{body}</div>'
+
+    cw = CloudWatchAnalyzer(auth)  # type: ignore[arg-type]
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(hours=3)
+    period = 300
+
+    def _query(qid: str, namespace: str, metric: str, dims: list[dict], stat: str = "Average") -> dict:
+        return {
+            "Id": qid,
+            "MetricStat": {
+                "Metric": {"Namespace": namespace, "MetricName": metric, "Dimensions": dims},
+                "Period": period, "Stat": stat,
+            },
+        }
+
+    try:
+        client = auth.client("cloudwatch", region=region)  # type: ignore[attr-defined]
+
+        if rt == "compute":
+            queries = [
+                _query("cpu",    "AWS/EC2", "CPUUtilization", [{"Name": "InstanceId", "Value": rid}]),
+                _query("net_in", "AWS/EC2", "NetworkIn",      [{"Name": "InstanceId", "Value": rid}]),
+                _query("net_out","AWS/EC2", "NetworkOut",     [{"Name": "InstanceId", "Value": rid}]),
+                _query("disk_r", "AWS/EC2", "DiskReadBytes",  [{"Name": "InstanceId", "Value": rid}]),
+            ]
+            label_map = {"cpu": "CPUUtilization", "net_in": "NetworkIn",
+                         "net_out": "NetworkOut", "disk_r": "DiskReadBytes"}
+            unit_map  = {"cpu": "Percent", "net_in": "Bytes", "net_out": "Bytes", "disk_r": "Bytes"}
+
+        elif rt == "database":
+            db_id = rid.split(":")[-1] if ":" in rid else rid
+            dims = [{"Name": "DBInstanceIdentifier", "Value": db_id}]
+            queries = [
+                _query("cpu",  "AWS/RDS", "CPUUtilization",    dims),
+                _query("conn", "AWS/RDS", "DatabaseConnections", dims),
+                _query("mem",  "AWS/RDS", "FreeableMemory",    dims),
+                _query("iops", "AWS/RDS", "ReadIOPS",          dims),
+            ]
+            label_map = {"cpu": "CPUUtilization", "conn": "DatabaseConnections",
+                         "mem": "FreeableMemory", "iops": "ReadIOPS"}
+            unit_map  = {"cpu": "Percent", "conn": "Count", "mem": "Bytes", "iops": "Count/Second"}
+
+        elif rt == "serverless":
+            fn_name = rid.split(":")[-1] if ":" in rid else rid
+            dims = [{"Name": "FunctionName", "Value": fn_name}]
+            queries = [
+                _query("inv",  "AWS/Lambda", "Invocations", dims, "Sum"),
+                _query("dur",  "AWS/Lambda", "Duration",    dims),
+                _query("err",  "AWS/Lambda", "Errors",      dims, "Sum"),
+                _query("thr",  "AWS/Lambda", "Throttles",   dims, "Sum"),
+            ]
+            label_map = {"inv": "Invocations", "dur": "Duration",
+                         "err": "Errors", "thr": "Throttles"}
+            unit_map  = {"inv": "Count", "dur": "Milliseconds", "err": "Count", "thr": "Count"}
+
+        elif rt == "load_balancer":
+            lb_suffix = rid.split("/", 2)[-1] if "/" in rid else rid
+            ns = "AWS/ApplicationELB" if "app/" in rid else "AWS/NetworkELB"
+            dims = [{"Name": "LoadBalancer", "Value": lb_suffix}]
+            queries = [
+                _query("req",  ns, "RequestCount",        dims, "Sum"),
+                _query("lat",  ns, "TargetResponseTime",  dims),
+                _query("h5xx", ns, "HTTPCode_ELB_5XX_Count", dims, "Sum"),
+            ]
+            label_map = {"req": "RequestCount", "lat": "TargetResponseTime", "h5xx": "5xx Errors"}
+            unit_map  = {"req": "Count", "lat": "Seconds", "h5xx": "Count"}
+
+        elif rt == "container":
+            return (
+                '  EKS metrics require Container Insights to be enabled on the cluster.\n'
+                '  Run: aws eks update-addon --addon-name amazon-cloudwatch-observability\n'
+            )
+        else:
+            return f"  Metrics not available for AWS {rt} resources.\n"
+
+        def _fetch() -> dict:
+            return client.get_metric_data(
+                MetricDataQueries=queries,
+                StartTime=start, EndTime=end,
+            )
+
+        import asyncio
+        resp = await asyncio.get_event_loop().run_in_executor(None, _fetch)
+
+        metrics: dict[str, list[MetricPoint]] = {}
+        for result in resp.get("MetricDataResults", []):
+            qid = result["Id"]
+            label = label_map.get(qid, qid)
+            unit  = unit_map.get(qid, "")
+            pts = sorted(zip(result.get("Timestamps", []), result.get("Values", [])))
+            metrics[label] = [
+                MetricPoint(timestamp=ts, value=v, unit=unit) for ts, v in pts
+            ]
+
+        rm = ResourceMetrics(resource_id=rid, resource_type=rt, metrics=metrics)
+        return _format_cloudwatch_metrics(resource, rm)
+
+    except Exception as exc:
+        return f"  Could not fetch CloudWatch metrics: {exc}\n"
+
+
+# ---------------------------------------------------------------------------
 # Analyzer factory — mirrors TUI's _run_cost / _run_audit / _run_unused
 # ---------------------------------------------------------------------------
 
@@ -754,15 +887,9 @@ async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | N
     if key == "metrics":
         if resource is None:
             return _metrics_no_selection_html()
-        if name == "aws" and resource.resource_type.value == "compute":
-            from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
-            try:
-                cw = CloudWatchAnalyzer(auth)
-                metrics = await cw.get_instance_metrics(resource.id, resource.region or "us-east-1")
-                return _format_cloudwatch_metrics(resource, metrics)
-            except Exception as exc:
-                return f"  Could not fetch metrics: {exc}\n"
-        return f"  Metrics not yet available for {name} {resource.resource_type.value} resources.\n"
+        if name == "aws":
+            return await _run_aws_metrics(resource, auth)
+        return f"  Metrics not available for {name} {resource.resource_type.value} resources.\n"
     return f"  Unknown analysis type: {key}\n"
 
 
