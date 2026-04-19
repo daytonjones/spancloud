@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -20,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from spancloud.gui.async_worker import AsyncWorker
 from spancloud.gui.theme import (
     ACCENT_BLUE,
     ACCENT_YELLOW,
@@ -27,7 +30,6 @@ from spancloud.gui.theme import (
     BG_SURFACE,
     BORDER_SUBTLE,
     STATUS_ERROR,
-    STATUS_MUTED,
     STATUS_OK,
     TEXT_MUTED,
     TEXT_PRIMARY,
@@ -35,110 +37,13 @@ from spancloud.gui.theme import (
 )
 from spancloud.gui.widgets.provider_controls import ProviderControls
 
-# ---------------------------------------------------------------------------
-# Mock data
-# ---------------------------------------------------------------------------
-_MOCK_RESOURCES: dict[str, dict[str, list[dict]]] = {
-    "aws": {
-        "compute": [
-            {"id": "i-0a1b2c3d4e5f", "name": "web-prod-01",    "state": "running",  "region": "us-east-1", "type": "t3.medium",   "public_ip": "54.210.167.99",  "private_ip": "10.0.1.42",  "launched": "2025-11-15T08:23:11Z", "vpc": "vpc-0a1b2c3d", "az": "us-east-1a"},
-            {"id": "i-1b2c3d4e5f6g", "name": "web-prod-02",    "state": "running",  "region": "us-east-1", "type": "t3.medium",   "public_ip": "54.210.167.100", "private_ip": "10.0.1.43",  "launched": "2025-11-15T08:25:00Z", "vpc": "vpc-0a1b2c3d", "az": "us-east-1b"},
-            {"id": "i-2c3d4e5f6g7h", "name": "api-prod-01",    "state": "running",  "region": "us-west-2", "type": "c6i.large",   "public_ip": "35.160.100.50",  "private_ip": "10.1.0.10",  "launched": "2025-12-01T14:00:00Z", "vpc": "vpc-1b2c3d4e", "az": "us-west-2a"},
-            {"id": "i-3d4e5f6g7h8i", "name": "batch-worker-1", "state": "stopped",  "region": "us-east-1", "type": "m5.xlarge",   "public_ip": "",               "private_ip": "10.0.2.55",  "launched": "2025-10-01T09:00:00Z", "vpc": "vpc-0a1b2c3d", "az": "us-east-1c"},
-            {"id": "i-4e5f6g7h8i9j", "name": "db-replica",     "state": "running",  "region": "eu-west-1", "type": "r6i.large",   "public_ip": "",               "private_ip": "172.16.0.5", "launched": "2026-01-10T00:00:00Z", "vpc": "vpc-2c3d4e5f", "az": "eu-west-1a"},
-            {"id": "i-5f6g7h8i9j0k", "name": "dev-sandbox",    "state": "stopped",  "region": "us-east-1", "type": "t3.small",    "public_ip": "",               "private_ip": "10.0.3.7",   "launched": "2025-09-20T11:00:00Z", "vpc": "vpc-0a1b2c3d", "az": "us-east-1a"},
-        ],
-        "storage": [
-            {"id": "arn:aws:s3:::prod-assets",  "name": "prod-assets",  "state": "running", "region": "us-east-1", "type": "S3 Bucket",     "size": "14.2 GB",  "objects": "41,230", "versioning": "Enabled",  "encryption": "AES-256"},
-            {"id": "arn:aws:s3:::data-archive", "name": "data-archive", "state": "running", "region": "us-east-1", "type": "S3 Bucket",     "size": "220.5 GB", "objects": "8,412",  "versioning": "Suspended","encryption": "AES-256"},
-            {"id": "arn:aws:s3:::logs-bucket",  "name": "logs-bucket",  "state": "running", "region": "us-east-1", "type": "S3 Bucket",     "size": "3.1 GB",   "objects": "120,000","versioning": "Disabled", "encryption": "None"},
-            {"id": "vol-0a1b2c3d",              "name": "db-data-vol",  "state": "running", "region": "us-east-1", "type": "EBS gp3 500GB", "size": "500 GB",   "objects": "",       "versioning": "",         "encryption": "KMS"},
-        ],
-        "database": [
-            {"id": "prod-mysql",    "name": "prod-mysql",    "state": "running", "region": "us-east-1", "type": "RDS MySQL 8.0",       "engine": "MySQL 8.0",      "size": "db.r6g.large",   "multi_az": "Yes", "storage": "200 GB"},
-            {"id": "analytics-pg",  "name": "analytics-pg",  "state": "running", "region": "us-east-1", "type": "RDS PostgreSQL 15",   "engine": "PostgreSQL 15",  "size": "db.m6g.xlarge",  "multi_az": "No",  "storage": "500 GB"},
-            {"id": "cache-prod",    "name": "cache-prod",    "state": "running", "region": "us-east-1", "type": "ElastiCache Redis",   "engine": "Redis 7.0",      "size": "cache.r6g.large","multi_az": "Yes", "storage": ""},
-        ],
-        "network": [
-            {"id": "vpc-0a1b2c3d", "name": "prod-vpc",    "state": "running", "region": "us-east-1", "type": "VPC",            "cidr": "10.0.0.0/16",  "subnets": "6", "igw": "Yes"},
-            {"id": "vpc-1b2c3d4e", "name": "staging-vpc", "state": "running", "region": "us-west-2", "type": "VPC",            "cidr": "10.1.0.0/16",  "subnets": "4", "igw": "Yes"},
-            {"id": "sg-0a1b2c3d",  "name": "web-sg",      "state": "running", "region": "us-east-1", "type": "Security Group", "cidr": "",             "subnets": "", "igw": ""},
-        ],
-        "serverless": [
-            {"id": "api-handler",   "name": "api-handler",   "state": "running", "region": "us-east-1", "type": "Lambda Python 3.12", "memory": "512 MB",  "timeout": "30s",  "invocations": "2.4M/mo"},
-            {"id": "image-resizer", "name": "image-resizer", "state": "running", "region": "us-east-1", "type": "Lambda Node.js 20",  "memory": "1024 MB", "timeout": "60s",  "invocations": "180K/mo"},
-            {"id": "scheduled-job", "name": "scheduled-job", "state": "stopped", "region": "us-east-1", "type": "Lambda Python 3.12", "memory": "256 MB",  "timeout": "300s", "invocations": "0/mo"},
-        ],
-        "container": [
-            {"id": "prod-eks",  "name": "prod-eks",  "state": "running", "region": "us-east-1", "type": "EKS 1.29",     "nodes": "6", "version": "1.29", "endpoint": "https://abc.eks.amazonaws.com"},
-            {"id": "ecs-tasks", "name": "ecs-tasks", "state": "running", "region": "us-east-1", "type": "ECS Fargate",  "nodes": "",  "version": "",     "endpoint": ""},
-        ],
-    },
-    "gcp": {
-        "compute": [
-            {"id": "web-1", "name": "web-1", "state": "running", "region": "us-central1", "type": "n2-standard-2", "public_ip": "34.132.10.1",  "private_ip": "10.128.0.2", "launched": "2026-01-01T00:00:00Z", "vpc": "default", "az": "us-central1-a"},
-            {"id": "web-2", "name": "web-2", "state": "running", "region": "us-central1", "type": "n2-standard-2", "public_ip": "34.132.10.2",  "private_ip": "10.128.0.3", "launched": "2026-01-01T00:00:00Z", "vpc": "default", "az": "us-central1-b"},
-            {"id": "api-1", "name": "api-1", "state": "running", "region": "us-east1",    "type": "c2-standard-4", "public_ip": "35.231.20.5",  "private_ip": "10.142.0.2", "launched": "2026-02-15T00:00:00Z", "vpc": "default", "az": "us-east1-b"},
-        ],
-        "storage": [
-            {"id": "gs://prod-data",   "name": "prod-data",   "state": "running", "region": "US",          "type": "GCS Standard", "size": "88.3 GB",  "objects": "12,400", "versioning": "Enabled",  "encryption": "Google-managed"},
-            {"id": "gs://ml-datasets", "name": "ml-datasets", "state": "running", "region": "US-CENTRAL1", "type": "GCS Nearline", "size": "420.1 GB", "objects": "3,200",  "versioning": "Disabled", "encryption": "Google-managed"},
-        ],
-        "database": [
-            {"id": "prod-pg",  "name": "prod-pg",  "state": "running", "region": "us-central1", "type": "Cloud SQL PostgreSQL 15", "engine": "PostgreSQL 15", "size": "db-n1-standard-4", "multi_az": "Yes", "storage": "200 GB"},
-            {"id": "analytics","name": "analytics","state": "running", "region": "US",           "type": "BigQuery Dataset",        "engine": "BigQuery",      "size": "",                  "multi_az": "",    "storage": "1.2 TB"},
-        ],
-        "container": [
-            {"id": "prod-gke", "name": "prod-gke", "state": "running", "region": "us-central1", "type": "GKE 1.29", "nodes": "4", "version": "1.29", "endpoint": "https://34.72.100.1"},
-        ],
-    },
-    "digitalocean": {
-        "compute": [
-            {"id": "12345678", "name": "web-1", "state": "running", "region": "nyc3", "type": "s-2vcpu-4gb", "public_ip": "104.236.1.1",  "private_ip": "10.0.0.2", "launched": "2026-01-10T00:00:00Z", "vpc": "prod-vpc", "az": "nyc3"},
-            {"id": "12345679", "name": "web-2", "state": "running", "region": "nyc3", "type": "s-2vcpu-4gb", "public_ip": "104.236.1.2",  "private_ip": "10.0.0.3", "launched": "2026-01-10T00:00:00Z", "vpc": "prod-vpc", "az": "nyc3"},
-            {"id": "12345680", "name": "db-01", "state": "running", "region": "sfo3", "type": "s-4vcpu-8gb", "public_ip": "165.227.10.1", "private_ip": "10.1.0.2", "launched": "2025-12-01T00:00:00Z", "vpc": "prod-vpc", "az": "sfo3"},
-        ],
-        "database": [
-            {"id": "db-abc123", "name": "prod-pg", "state": "running", "region": "nyc3", "type": "PostgreSQL 15", "engine": "PostgreSQL 15", "size": "db-s-2vcpu-4gb", "multi_az": "No", "storage": "25 GB"},
-        ],
-        "storage": [
-            {"id": "vol-abc", "name": "data-vol", "state": "running", "region": "nyc3", "type": "Block 100GB", "size": "100 GB", "objects": "", "versioning": "", "encryption": ""},
-        ],
-        "network": [
-            {"id": "vpc-1", "name": "prod-vpc", "state": "running", "region": "nyc3", "type": "VPC", "cidr": "10.0.0.0/16", "subnets": "", "igw": ""},
-        ],
-        "container": [
-            {"id": "k8s-1", "name": "prod-doks", "state": "running", "region": "nyc3", "type": "DOKS 1.29", "nodes": "3", "version": "1.29", "endpoint": "https://k8s.do.com/k8s-1"},
-        ],
-    },
-    "oci": {
-        "compute": [
-            {"id": "ocid1.instance.oc1..aaa", "name": "web-prod-1", "state": "running", "region": "us-ashburn-1", "type": "VM.Standard.E4.Flex", "public_ip": "130.35.10.1", "private_ip": "10.0.1.10", "launched": "2026-01-05T00:00:00Z", "vpc": "prod-vcn", "az": "AD-1"},
-            {"id": "ocid1.instance.oc1..bbb", "name": "app-server", "state": "running", "region": "us-ashburn-1", "type": "VM.Standard.E4.Flex", "public_ip": "130.35.10.2", "private_ip": "10.0.1.11", "launched": "2026-02-01T00:00:00Z", "vpc": "prod-vcn", "az": "AD-2"},
-        ],
-        "storage": [
-            {"id": "ocid1.bucket..xyz", "name": "data-bucket", "state": "running", "region": "us-ashburn-1", "type": "Object Storage", "size": "22.4 GB",  "objects": "5,100", "versioning": "Disabled", "encryption": "Oracle-managed"},
-            {"id": "ocid1.volume..abc", "name": "data-vol",    "state": "running", "region": "us-ashburn-1", "type": "Block Volume",    "size": "200 GB",   "objects": "",      "versioning": "",          "encryption": "Oracle-managed"},
-        ],
-        "database": [
-            {"id": "ocid1.autonomousdb..a1", "name": "prod-adb", "state": "running", "region": "us-ashburn-1", "type": "Autonomous DB", "engine": "ATP OLTP", "size": "1 OCPU", "multi_az": "Yes", "storage": "1 TB"},
-        ],
-        "network": [
-            {"id": "ocid1.vcn..v1", "name": "prod-vcn", "state": "running", "region": "us-ashburn-1", "type": "VCN", "cidr": "10.0.0.0/16", "subnets": "4", "igw": "Yes"},
-        ],
-        "container": [
-            {"id": "ocid1.cluster..c1", "name": "prod-oke", "state": "running", "region": "us-ashburn-1", "type": "OKE 1.29", "nodes": "3", "version": "1.29", "endpoint": "https://cluster.io"},
-        ],
-        "load_balancer": [
-            {"id": "ocid1.lb..l1", "name": "main-lb", "state": "running", "region": "us-ashburn-1", "type": "Flexible LB", "public_ip": "130.35.20.1", "private_ip": "", "launched": "", "vpc": "prod-vcn", "az": ""},
-        ],
-        "dns": [
-            {"id": "ocid1.dns-zone..z1", "name": "example.com", "state": "running", "region": "global", "type": "DNS Zone", "public_ip": "", "private_ip": "", "launched": "", "vpc": "", "az": ""},
-        ],
-    },
-}
+if TYPE_CHECKING:
+    from spancloud.core.provider import BaseProvider
+    from spancloud.core.resource import Resource
 
-
+# ---------------------------------------------------------------------------
+# Analysis-type sidebar items
+# ---------------------------------------------------------------------------
 _ANALYSIS_ITEMS = [
     ("cost",          "💰 Cost Summary"),
     ("audit",         "🛡  Security Audit"),
@@ -148,7 +53,7 @@ _ANALYSIS_ITEMS = [
     ("metrics",       "📊 Metrics"),
 ]
 
-_STATE_COLOR = {
+_STATE_COLOR: dict[str, str] = {
     "running":    STATUS_OK,
     "stopped":    STATUS_ERROR,
     "pending":    ACCENT_YELLOW,
@@ -157,97 +62,206 @@ _STATE_COLOR = {
     "unknown":    TEXT_MUTED,
 }
 
-def _build_cost_text() -> str:
+
+# ---------------------------------------------------------------------------
+# Analysis text formatters (plain monospace, no Rich markup)
+# ---------------------------------------------------------------------------
+
+def _format_cost(summary: object) -> str:  # CostSummary
+    from decimal import Decimal
     M = "  "
     LW, AW = 42, 14
     SEP = M + "─" * (LW + AW)
+
     def row(label: str, amount: str, indent: str = "") -> str:
         return f"{M}{indent}{label:<{LW - len(indent)}}{amount:>{AW}}"
+
     lines = [
-        row("Monthly cost estimate", ""),
+        row(f"Monthly cost  ({summary.period_start} → {summary.period_end})", ""),
         SEP,
-        row("EC2 Instances", "$1,240.00 / mo"),
-        row("web-prod-01", "$30.37 / mo",   "  ├─ "),
-        row("web-prod-02", "$30.37 / mo",   "  ├─ "),
-        row("api-prod-01", "$61.20 / mo",   "  ├─ "),
-        row("db-replica",  "$91.98 / mo",   "  ├─ "),
-        row("2 others",    "$26.08 / mo",   "  └─ "),
-        "",
-        row("RDS / ElastiCache",    "$480.00 / mo"),
-        row("S3 Storage",           " $18.40 / mo"),
-        row("Data Transfer",        " $62.00 / mo"),
-        row("Lambda Invocations",   "  $3.20 / mo"),
-        SEP,
-        row("Estimated total",      "$1,803.60 / mo"),
-        "",
     ]
+    if summary.notes:
+        lines.append(f"{M}Note: {summary.notes}")
+        lines.append("")
+
+    for svc in summary.by_service[:15]:
+        pct = (
+            f"{float(svc.cost / summary.total_cost * 100):.1f}%"
+            if summary.total_cost > 0 else "—"
+        )
+        lines.append(row(f"{svc.service}  ({pct})", f"${svc.cost:>10,.2f} / mo"))
+
+    lines.append(SEP)
+    lines.append(row("Estimated total", f"${summary.total_cost:>10,.2f} / mo"))
+
+    if summary.daily_costs:
+        recent = summary.daily_costs[-7:]
+        max_cost = max(d.cost for d in recent) if recent else Decimal(1)
+        lines += ["", row("Daily trend (last 7 days)", ""), SEP]
+        for day in recent:
+            bar_len = int(float(day.cost / max_cost) * 20) if max_cost > 0 else 0
+            lines.append(row(str(day.date), f"${day.cost:>10,.2f}") + "  " + "█" * bar_len)
+
+    lines.append("")
     return "\n".join(lines)
 
 
-def _build_audit_text() -> str:
+def _format_audit(result: object) -> str:  # SecurityAuditResult
     M = "  "
     SEP = M + "─" * 58
-    def row(dot: str, sev: str, finding: str) -> str:
-        return f"{M}{dot}  {sev:<10}  {finding}"
+    SEV_DOT = {
+        "critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪",
+    }
+
+    def row(dot: str, sev: str, text: str) -> str:
+        return f"{M}{dot}  {sev:<10}  {text}"
+
     lines = [
-        f"{M}Security Audit — 6 findings",
+        f"{M}Security Audit — {len(result.findings)} finding(s)  ({result.summary})",
         SEP,
-        row("🔴", "CRITICAL", "S3 bucket prod-assets has public read ACL"),
-        row("🔴", "CRITICAL", "Security group sg-0a1b2c3d allows 0.0.0.0/0:22"),
-        row("🟡", "MEDIUM",   "RDS prod-mysql multi-AZ not enabled"),
-        row("🟡", "MEDIUM",   "2 EC2 instances missing IMDSv2 enforcement"),
-        row("🔵", "LOW",      "3 S3 buckets missing access logging"),
-        row("🔵", "LOW",      "Lambda api-handler has overly broad IAM role"),
-        "",
     ]
+    if not result.findings:
+        lines.append(f"{M}No security issues found ✓")
+    else:
+        for f in sorted(result.findings, key=lambda x: x.severity.value):
+            dot = SEV_DOT.get(f.severity.value, "⚪")
+            lines.append(row(dot, f.severity.value.upper(), f"{f.resource_type}/{f.resource_id}"))
+            lines.append(f"{M}               {f.title}")
+            lines.append(f"{M}               → {f.recommendation}")
+            lines.append("")
+    lines.append("")
     return "\n".join(lines)
 
 
-def _build_unused_text() -> str:
+def _format_unused(report: object) -> str:  # UnusedResourceReport
     M = "  "
-    NW, TW, IW, SW = 22, 20, 20, 14
-    SEP = M + "─" * (NW + TW + IW + SW)
-    def header() -> str:
-        return f"{M}{'Resource':<{NW}}{'Type':<{TW}}{'Idle':<{IW}}{'Est. Cost':>{SW}}"
-    def row(name: str, rtype: str, idle: str, cost: str) -> str:
-        return f"{M}{name:<{NW}}{rtype:<{TW}}{idle:<{IW}}{cost:>{SW}}"
+    NW, TW, RW, SW = 20, 18, 24, 14
+    SEP = M + "─" * (NW + TW + RW + SW)
+
+    def hdr() -> str:
+        return f"{M}{'Resource':<{NW}}{'Type':<{TW}}{'Reason':<{RW}}{'Savings':>{SW}}"
+
+    def row(name: str, rtype: str, reason: str, cost: str) -> str:
+        return f"{M}{name:<{NW}}{rtype:<{TW}}{reason:<{RW}}{cost:>{SW}}"
+
+    total = report.total_estimated_monthly_savings
     lines = [
-        f"{M}Unused / Idle Resources",
+        f"{M}Unused / Idle Resources — {report.total_count} item(s)",
+        f"{M}Potential savings: ${total:,.2f}/mo" if total > 0 else f"{M}No cost estimates available.",
         SEP,
-        header(),
+        hdr(),
         SEP,
-        row("dev-sandbox",    "EC2 t3.small",    "Stopped 47 days",   "$8.00 / mo"),
-        row("data-archive",   "S3 Bucket",        "No GETs in 90 days","$4.20 / mo"),
-        row("vol-0a1b2c3d",   "EBS gp3 500GB",    "Unattached 12 days","$40.00 / mo"),
-        row("scheduled-job",  "Lambda",            "0 invocations 30d", "—"),
-        SEP,
-        row("4 resources", "", "Total waste:", "$52.20 / mo"),
-        "",
     ]
+    for r in report.resources:
+        lines.append(row(
+            r.resource_name[:NW - 1],
+            r.resource_type[:TW - 1],
+            r.reason[:RW - 1],
+            r.estimated_monthly_savings or "—",
+        ))
+    lines += [SEP, ""]
     return "\n".join(lines)
 
 
-_MOCK_COST   = _build_cost_text()
-_MOCK_AUDIT  = _build_audit_text()
-_MOCK_UNUSED = _build_unused_text()
+# ---------------------------------------------------------------------------
+# Analyzer factory — mirrors TUI's _run_cost / _run_audit / _run_unused
+# ---------------------------------------------------------------------------
 
-# Fields to show in the right-side detail drawer per resource type
-_DETAIL_FIELDS: dict[str, list[str]] = {
-    "compute":      ["state", "region", "type", "public_ip", "private_ip", "vpc", "az", "launched"],
-    "storage":      ["state", "region", "type", "size", "objects", "versioning", "encryption"],
-    "database":     ["state", "region", "type", "engine", "size", "multi_az", "storage"],
-    "network":      ["state", "region", "type", "cidr", "subnets", "igw"],
-    "serverless":   ["state", "region", "type", "memory", "timeout", "invocations"],
-    "container":    ["state", "region", "type", "nodes", "version", "endpoint"],
-    "load_balancer":["state", "region", "type", "public_ip", "private_ip", "vpc"],
-    "dns":          ["state", "region", "type"],
-}
+async def _run_analysis(provider: BaseProvider, key: str) -> str:
+    """Dispatch to the right analyzer and return formatted plain text."""
+    name = provider.name
+    auth = provider._auth  # type: ignore[attr-defined]
 
+    if key == "cost":
+        if name == "aws":
+            from spancloud.providers.aws.cost import AWSCostAnalyzer
+            return _format_cost(await AWSCostAnalyzer(auth).get_cost_summary())
+        elif name == "gcp":
+            from spancloud.providers.gcp.cost import GCPCostAnalyzer
+            return _format_cost(await GCPCostAnalyzer(auth).get_cost_summary())
+        elif name == "vultr":
+            from spancloud.providers.vultr.cost import VultrCostAnalyzer
+            return _format_cost(await VultrCostAnalyzer(auth).get_cost_summary())
+        elif name == "digitalocean":
+            from spancloud.providers.digitalocean.cost import DigitalOceanCostAnalyzer
+            return _format_cost(await DigitalOceanCostAnalyzer(auth).get_cost_summary())
+        elif name == "azure":
+            from spancloud.providers.azure.cost import AzureCostAnalyzer
+            return _format_cost(await AzureCostAnalyzer(auth).get_cost_summary())
+        elif name == "oci":
+            from spancloud.providers.oci.cost import OCICostAnalyzer
+            return _format_cost(await OCICostAnalyzer(auth).get_cost_summary())
+        elif name == "alibaba":
+            from spancloud.providers.alibaba.cost import AlibabaCostAnalyzer
+            return _format_cost(await AlibabaCostAnalyzer(auth).get_cost_summary())
+        return f"  Cost analysis not available for {name}."
+
+    if key == "audit":
+        if name == "aws":
+            from spancloud.providers.aws.security import AWSSecurityAuditor
+            return _format_audit(await AWSSecurityAuditor(auth).run_audit())
+        elif name == "gcp":
+            from spancloud.providers.gcp.security import GCPSecurityAuditor
+            return _format_audit(await GCPSecurityAuditor(auth).run_audit())
+        elif name == "vultr":
+            from spancloud.providers.vultr.security import VultrSecurityAuditor
+            return _format_audit(await VultrSecurityAuditor(auth).run_audit())
+        elif name == "digitalocean":
+            from spancloud.providers.digitalocean.security import DigitalOceanSecurityAuditor
+            return _format_audit(await DigitalOceanSecurityAuditor(auth).run_audit())
+        elif name == "azure":
+            from spancloud.providers.azure.security import AzureSecurityAuditor
+            return _format_audit(await AzureSecurityAuditor(auth).run_audit())
+        elif name == "oci":
+            from spancloud.providers.oci.security import OCISecurityAuditor
+            return _format_audit(await OCISecurityAuditor(auth).run_audit())
+        elif name == "alibaba":
+            from spancloud.providers.alibaba.security import AlibabaSecurityAuditor
+            return _format_audit(await AlibabaSecurityAuditor(auth).run_audit())
+        return f"  Security audit not available for {name}."
+
+    if key == "unused":
+        if name == "aws":
+            from spancloud.providers.aws.unused import AWSUnusedDetector
+            return _format_unused(await AWSUnusedDetector(auth).scan())
+        elif name == "gcp":
+            from spancloud.providers.gcp.unused import GCPUnusedDetector
+            return _format_unused(await GCPUnusedDetector(auth).scan())
+        elif name == "vultr":
+            from spancloud.providers.vultr.unused import VultrUnusedDetector
+            return _format_unused(await VultrUnusedDetector(auth).scan())
+        elif name == "digitalocean":
+            from spancloud.providers.digitalocean.unused import DigitalOceanUnusedDetector
+            return _format_unused(await DigitalOceanUnusedDetector(auth).scan())
+        elif name == "azure":
+            from spancloud.providers.azure.unused import AzureUnusedDetector
+            return _format_unused(await AzureUnusedDetector(auth).scan())
+        elif name == "oci":
+            from spancloud.providers.oci.unused import OCIUnusedDetector
+            return _format_unused(await OCIUnusedDetector(auth).scan())
+        elif name == "alibaba":
+            from spancloud.providers.alibaba.unused import AlibabaUnusedDetector
+            return _format_unused(await AlibabaUnusedDetector(auth).scan())
+        return f"  Unused detection not available for {name}."
+
+    if key == "relationships":
+        return "  Relationships graph coming soon…\n"
+    if key == "alerts":
+        return "  No active alerts — all systems nominal ✓\n"
+    if key == "metrics":
+        return "  Select a resource first, then view metrics here.\n"
+    return f"  Unknown analysis type: {key}\n"
+
+
+# ---------------------------------------------------------------------------
+# Main widget
+# ---------------------------------------------------------------------------
 
 class ProviderViewWidget(QWidget):
     def __init__(self, provider: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._provider = provider
+        self._provider_meta = provider
+        self._provider: BaseProvider | None = provider.get("provider")
         self._current_rt: str | None = None
         self._rt_buttons: dict[str, QPushButton] = {}
         self._analysis_buttons: dict[str, QPushButton] = {}
@@ -256,6 +270,8 @@ class ProviderViewWidget(QWidget):
         self._current_profile = ""
         self._current_project = ""
         self.region_changed_hint = "All Regions"
+        self._active_workers: list[AsyncWorker] = []
+        self._current_load_key: str | None = None  # stale-result guard
         self._build()
 
     def _build(self) -> None:
@@ -263,7 +279,6 @@ class ProviderViewWidget(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Inner nav sidebar (resource types + analysis) ───────────────
         root.addWidget(self._make_nav())
 
         sep = QFrame()
@@ -271,12 +286,10 @@ class ProviderViewWidget(QWidget):
         sep.setObjectName("divider")
         root.addWidget(sep)
 
-        # ── Main content + right drawer in a splitter ───────────────────
         self._h_splitter = QSplitter(Qt.Orientation.Horizontal)
         self._h_splitter.setHandleWidth(1)
         self._h_splitter.setStyleSheet("QSplitter::handle { background: #3b4261; }")
 
-        # Centre: stacked (resource table | analysis | empty)
         self._right_stack = QStackedWidget()
         self._empty_view = self._make_empty_view()
         self._resource_view = self._make_resource_view()
@@ -286,7 +299,6 @@ class ProviderViewWidget(QWidget):
         self._right_stack.addWidget(self._analysis_view)
         self._h_splitter.addWidget(self._right_stack)
 
-        # Right: detail drawer (hidden until a row is clicked)
         self._drawer = self._make_drawer()
         self._drawer.hide()
         self._h_splitter.addWidget(self._drawer)
@@ -308,8 +320,8 @@ class ProviderViewWidget(QWidget):
         self._nav_layout.setContentsMargins(0, 0, 0, 0)
         self._nav_layout.setSpacing(0)
 
-        # ── Region / profile / project controls ─────────────────────────
-        self._controls = ProviderControls(self._provider["name"])
+        pname = self._provider_meta["name"]
+        self._controls = ProviderControls(pname)
         self._controls.region_changed.connect(self._on_region_changed)
         self._controls.profile_changed.connect(self._on_profile_changed)
         self._controls.project_changed.connect(self._on_project_changed)
@@ -319,7 +331,6 @@ class ProviderViewWidget(QWidget):
         self._nav_resources_label.setObjectName("sidebar-section")
         self._nav_layout.addWidget(self._nav_resources_label)
 
-        # Dynamic resource-type button area
         self._nav_rt_container = QWidget()
         self._nav_rt_layout = QVBoxLayout(self._nav_rt_container)
         self._nav_rt_layout.setContentsMargins(0, 0, 0, 0)
@@ -337,7 +348,6 @@ class ProviderViewWidget(QWidget):
 
         self._nav_layout.addStretch()
 
-        # ── Settings button at the bottom ───────────────────────────────
         settings_btn = QPushButton("⚙  Configure Sidebar")
         settings_btn.setFlat(True)
         settings_btn.setStyleSheet(f"""
@@ -361,34 +371,35 @@ class ProviderViewWidget(QWidget):
         return nav
 
     def _rebuild_rt_buttons(self) -> None:
-        """Rebuild the resource-type nav buttons from the current sidebar config."""
         from spancloud.config.sidebar import get_sidebar_items
+        from spancloud.core.resource import ResourceType
 
-        # Clear existing buttons
         while self._nav_rt_layout.count():
             item = self._nav_rt_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
         self._rt_buttons.clear()
 
-        pname = self._provider["name"]
-        provider_resources = _MOCK_RESOURCES.get(pname, {})
-        seen_types: set[str] = set()
+        pname = self._provider_meta["name"]
+        if self._provider is None:
+            return
+
+        supported = {rt.value for rt in self._provider.supported_resource_types}
+        seen: set[str] = set()
 
         for svc in get_sidebar_items(pname):
             rt = svc["type"]
-            if rt in seen_types or rt not in provider_resources:
+            if rt in seen or rt not in supported:
                 continue
-            seen_types.add(rt)
-            count = len(provider_resources[rt])
-            btn = self._make_nav_button(rt, svc["label"], count, "rt")
+            seen.add(rt)
+            btn = self._make_nav_button(rt, svc["label"], None, "rt")
             self._rt_buttons[rt] = btn
             self._nav_rt_layout.addWidget(btn)
 
     def _open_sidebar_settings(self) -> None:
         from spancloud.gui.widgets.sidebar_settings_dialog import SidebarSettingsDialog
         dlg = SidebarSettingsDialog(
-            self._provider["name"], self._provider["display"], self
+            self._provider_meta["name"], self._provider_meta["display"], self
         )
         if dlg.exec():
             self._rebuild_rt_buttons()
@@ -454,6 +465,7 @@ class ProviderViewWidget(QWidget):
         sh.setContentsMargins(16, 10, 16, 10)
         self._search = QLineEdit()
         self._search.setPlaceholderText("🔍  Filter resources…")
+        self._search.textChanged.connect(self._filter_table)
         sh.addWidget(self._search)
         v.addWidget(search_bar)
 
@@ -487,7 +499,6 @@ class ProviderViewWidget(QWidget):
         v.setContentsMargins(16, 16, 16, 16)
         v.setSpacing(12)
 
-        # Header row: title + close button
         header_row = QHBoxLayout()
         self._drawer_title = QLabel("Resource Details")
         self._drawer_title.setObjectName("detail-title")
@@ -517,7 +528,6 @@ class ProviderViewWidget(QWidget):
         sep.setStyleSheet(f"color: {BORDER_SUBTLE};")
         v.addWidget(sep)
 
-        # Scrollable key-value fields
         self._drawer_scroll = QScrollArea()
         self._drawer_scroll.setWidgetResizable(True)
         self._drawer_scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -530,25 +540,31 @@ class ProviderViewWidget(QWidget):
 
         self._drawer_scroll.setWidget(self._drawer_fields)
         v.addWidget(self._drawer_scroll, stretch=1)
-
         return drawer
 
-    def _populate_drawer(self, r: dict, rt: str) -> None:
+    def _populate_drawer(self, resource: Resource) -> None:
         layout = self._drawer_fields_layout
-
-        # Clear existing fields (keep trailing stretch)
         while layout.count() > 1:
             item = layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget() if item else None
+            if w:
+                w.deleteLater()
 
-        fields = _DETAIL_FIELDS.get(rt, list(r.keys()))
-        for field in fields:
-            val = r.get(field, "")
-            if val == "" or val is None:
-                continue
-            row = self._make_field_row(field.replace("_", " ").title(), str(val))
-            layout.insertWidget(layout.count() - 1, row)
+        def add(key: str, value: str) -> None:
+            if not value:
+                return
+            layout.insertWidget(layout.count() - 1, self._make_field_row(key, value))
+
+        add("ID", resource.id)
+        add("State", resource.state.value)
+        add("Region", resource.region)
+        add("Type", resource.resource_type.value)
+        if resource.created_at:
+            add("Created", resource.created_at.strftime("%Y-%m-%d %H:%M UTC"))
+        for k, v in resource.metadata.items():
+            add(k.replace("_", " ").title(), str(v))
+        if resource.tags:
+            add("Tags", "  ".join(f"{k}={v}" for k, v in resource.tags.items()))
 
     def _make_field_row(self, key: str, value: str) -> QWidget:
         w = QWidget()
@@ -573,9 +589,9 @@ class ProviderViewWidget(QWidget):
         v.addWidget(v_lbl)
         return w
 
-    def _open_drawer(self, r: dict, rt: str) -> None:
-        self._drawer_title.setText(r["name"])
-        self._populate_drawer(r, rt)
+    def _open_drawer(self, resource: Resource) -> None:
+        self._drawer_title.setText(resource.display_name)
+        self._populate_drawer(resource)
         if not self._drawer_open:
             self._drawer.show()
             total = self._h_splitter.width()
@@ -634,22 +650,27 @@ class ProviderViewWidget(QWidget):
     # ------------------------------------------------------------------
     def _on_region_changed(self, region: str) -> None:
         self._current_region = region
-        display = region if region else "All Regions"
-        # Reload current resource type with new region filter (mockup: just refreshes)
+        self.region_changed_hint = region if region else "All Regions"
         if self._current_rt:
             self._load_table(self._current_rt)
         self._close_drawer()
-        # Bubble up to toolbar via parent chain — toolbar will be updated by MainWindow
-        self.region_changed_hint = display
 
     def _on_profile_changed(self, profile: str) -> None:
         self._current_profile = profile
+        if self._provider and hasattr(self._provider, "_auth"):
+            auth = self._provider._auth  # type: ignore[attr-defined]
+            if hasattr(auth, "set_profile"):
+                auth.set_profile(profile)
         if self._current_rt:
             self._load_table(self._current_rt)
         self._close_drawer()
 
     def _on_project_changed(self, project: str) -> None:
         self._current_project = project
+        if self._provider and hasattr(self._provider, "_auth"):
+            auth = self._provider._auth  # type: ignore[attr-defined]
+            if hasattr(auth, "set_project"):
+                auth.set_project(project)
         if self._current_rt:
             self._load_table(self._current_rt)
         self._close_drawer()
@@ -671,8 +692,8 @@ class ProviderViewWidget(QWidget):
             btn.setProperty("active", "true")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
-        self._load_table(rt)
         self._close_drawer()
+        self._load_table(rt)
         self._right_stack.setCurrentWidget(self._resource_view)
 
     def _select_analysis(self, key: str) -> None:
@@ -688,24 +709,81 @@ class ProviderViewWidget(QWidget):
         self._right_stack.setCurrentWidget(self._analysis_view)
 
     def _load_table(self, rt: str) -> None:
+        if self._provider is None:
+            self._table.clear()
+            self._show_table_message("Provider not available.")
+            return
+
+        from spancloud.core.resource import ResourceType
+        load_key = f"rt:{rt}:{self._current_region}"
+        self._current_load_key = load_key
+
+        self._table.setSortingEnabled(False)
         self._table.clear()
-        resources = _MOCK_RESOURCES.get(self._provider["name"], {}).get(rt, [])
+        self._show_table_message(f"Loading {rt}…")
+
+        region = self._current_region or None
+        worker = AsyncWorker(
+            self._provider.list_resources(ResourceType(rt), region=region)
+        )
+        worker.result_ready.connect(
+            lambda res, k=load_key: self._on_resources_loaded(res, k)
+        )
+        worker.error_occurred.connect(
+            lambda err, k=load_key: self._on_load_error(err, k)
+        )
+        worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
+        self._active_workers.append(worker)
+        worker.start()
+
+    def _on_resources_loaded(self, resources: list[Resource], key: str) -> None:
+        if key != self._current_load_key:
+            return
+        self._table.clear()
+        self._table.setSortingEnabled(False)
         for r in resources:
-            item = QTreeWidgetItem([
-                r["name"],
-                r["id"],
-                r["state"],
-                r["region"],
-                r["type"],
-            ])
-            item.setForeground(2, QColor(_STATE_COLOR.get(r["state"], TEXT_MUTED)))
+            subtype = (
+                r.metadata.get("instance_type")
+                or r.metadata.get("machine_type")
+                or r.metadata.get("size")
+                or r.metadata.get("shape")
+                or r.resource_type.value
+            )
+            item = QTreeWidgetItem([r.name, r.id, r.state.value, r.region, subtype])
+            item.setForeground(2, QColor(_STATE_COLOR.get(r.state.value, TEXT_MUTED)))
             item.setData(0, Qt.ItemDataRole.UserRole, r)
             self._table.addTopLevelItem(item)
+        self._table.setSortingEnabled(True)
+        if not resources:
+            self._show_table_message("No resources found.")
+
+    def _on_load_error(self, error: str, key: str) -> None:
+        if key != self._current_load_key:
+            return
+        self._table.clear()
+        self._show_table_message(f"Error: {error}")
+
+    def _show_table_message(self, msg: str) -> None:
+        item = QTreeWidgetItem([msg])
+        item.setForeground(0, QColor(TEXT_MUTED))
+        item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self._table.addTopLevelItem(item)
+
+    def _filter_table(self, text: str) -> None:
+        q = text.lower()
+        for i in range(self._table.topLevelItemCount()):
+            item = self._table.topLevelItem(i)
+            if item is None:
+                continue
+            visible = not q or any(
+                q in (item.text(col) or "").lower() for col in range(item.columnCount())
+            )
+            item.setHidden(not visible)
 
     def _on_row_clicked(self, item: QTreeWidgetItem) -> None:
-        data = item.data(0, Qt.ItemDataRole.UserRole)
-        if data and self._current_rt:
-            self._open_drawer(data, self._current_rt)
+        resource: Resource | None = item.data(0, Qt.ItemDataRole.UserRole)
+        if resource is not None:
+            self._open_drawer(resource)
 
     def _load_analysis(self, key: str) -> None:
         titles = {
@@ -716,13 +794,39 @@ class ProviderViewWidget(QWidget):
             "alerts":        "🔔 Monitoring Alerts",
             "metrics":       "📊 Metrics",
         }
-        content = {
-            "cost":          _MOCK_COST,
-            "audit":         _MOCK_AUDIT,
-            "unused":        _MOCK_UNUSED,
-            "relationships": "\n  Relationships graph coming soon…\n",
-            "alerts":        "\n  No active alerts — all systems nominal ✓\n",
-            "metrics":       "\n  Select a resource first, then view metrics here.\n",
-        }
         self._analysis_title.setText(titles.get(key, key))
-        self._analysis_content.setText(content.get(key, ""))
+
+        if self._provider is None:
+            self._analysis_content.setText("  Provider not available.")
+            return
+
+        load_key = f"analysis:{key}"
+        self._current_load_key = load_key
+        self._analysis_content.setText("  Loading…")
+
+        worker = AsyncWorker(_run_analysis(self._provider, key))
+        worker.result_ready.connect(
+            lambda text, k=load_key: self._on_analysis_done(text, k)
+        )
+        worker.error_occurred.connect(
+            lambda err, k=load_key: self._on_analysis_error(err, k)
+        )
+        worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
+        self._active_workers.append(worker)
+        worker.start()
+
+    def _on_analysis_done(self, text: str, key: str) -> None:
+        if key != self._current_load_key:
+            return
+        self._analysis_content.setText(text)
+
+    def _on_analysis_error(self, error: str, key: str) -> None:
+        if key != self._current_load_key:
+            return
+        self._analysis_content.setText(f"  Error: {error}")
+
+    def _cleanup_worker(self, worker: AsyncWorker) -> None:
+        try:
+            self._active_workers.remove(worker)
+        except ValueError:
+            pass

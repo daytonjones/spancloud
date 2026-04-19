@@ -25,26 +25,6 @@ from spancloud.gui.theme import (
     TEXT_PRIMARY,
 )
 
-_RESOURCE_TYPE_COLORS: dict[str, str] = {
-    "compute":       ACCENT_CYAN,
-    "storage":       ACCENT_BLUE,
-    "network":       "#73daca",
-    "database":      "#bb9af7",
-    "container":     "#7aa2f7",
-    "serverless":    "#e0af68",
-    "load_balancer": "#9ece6a",
-    "dns":           "#7dcfff",
-}
-
-_MOCK_RESOURCE_BREAKDOWN: dict[str, dict[str, int]] = {
-    "aws":          {"compute": 24, "storage": 18, "network": 31, "database": 9, "container": 5, "serverless": 42, "load_balancer": 8, "dns": 5},
-    "gcp":          {"compute": 12, "storage": 27, "network": 18, "database": 6, "container": 11, "serverless": 8, "load_balancer": 3, "dns": 2},
-    "digitalocean": {"compute": 8,  "storage": 5,  "network": 4,  "database": 2, "container": 3, "load_balancer": 1},
-    "oci":          {"compute": 10, "storage": 8,  "network": 7,  "database": 3, "container": 2, "load_balancer": 1},
-    "azure":        {},
-    "vultr":        {},
-    "alibaba":      {},
-}
 
 
 class ProviderCard(QFrame):
@@ -53,7 +33,7 @@ class ProviderCard(QFrame):
     def __init__(self, provider: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._name = provider["name"]
-        status = provider["status"]
+        status = provider.get("status", "checking")
 
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setProperty("class", "provider-card")
@@ -62,9 +42,9 @@ class ProviderCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(140)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(4)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(16, 14, 16, 14)
+        self._layout.setSpacing(4)
 
         # Header row: name + status badge
         header = QHBoxLayout()
@@ -73,76 +53,42 @@ class ProviderCard(QFrame):
         header.addWidget(name_lbl)
         header.addStretch()
 
-        status_text = {
+        self._status_lbl = QLabel(self._status_text(status))
+        self._status_lbl.setObjectName("card-status")
+        self._status_lbl.setProperty("status", status)
+        header.addWidget(self._status_lbl)
+        self._layout.addLayout(header)
+
+        count = provider.get("resources", 0)
+        self._count_lbl = QLabel(str(count) if count else "—")
+        self._count_lbl.setObjectName("card-count")
+        self._layout.addWidget(self._count_lbl)
+        self._layout.addWidget(self._small_label("resources", "card-count-label"))
+
+    def set_status(self, status: str, resource_count: int = 0) -> None:
+        """Update displayed status and resource count."""
+        self._status_lbl.setText(self._status_text(status))
+        self._status_lbl.setProperty("status", status)
+        self._status_lbl.style().unpolish(self._status_lbl)
+        self._status_lbl.style().polish(self._status_lbl)
+        self.setProperty("status", status)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self._count_lbl.setText(str(resource_count) if resource_count else "—")
+
+    @staticmethod
+    def _status_text(status: str) -> str:
+        return {
             "authenticated":   "● Connected",
             "error":           "● Auth Error",
             "unauthenticated": "○ Not Connected",
+            "checking":        "○ Checking…",
         }.get(status, status)
-        status_lbl = QLabel(status_text)
-        status_lbl.setObjectName("card-status")
-        status_lbl.setProperty("status", status)
-        header.addWidget(status_lbl)
-        layout.addLayout(header)
-
-        # Resource count
-        count = provider["resources"]
-        count_lbl = QLabel(str(count) if count else "—")
-        count_lbl.setObjectName("card-count")
-        layout.addWidget(count_lbl)
-        layout.addWidget(self._small_label("resources", "card-count-label"))
-
-        layout.addSpacing(6)
-
-        # Mini breakdown bar
-        if count and _MOCK_RESOURCE_BREAKDOWN.get(provider["name"]):
-            layout.addWidget(self._make_breakdown(provider["name"], count))
 
     def _small_label(self, text: str, obj_name: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setObjectName(obj_name)
         return lbl
-
-    def _make_breakdown(self, name: str, total: int) -> QWidget:
-        breakdown = _MOCK_RESOURCE_BREAKDOWN[name]
-        bar = QFrame()
-        bar.setFixedHeight(6)
-        bar.setStyleSheet(f"background: #292e42; border-radius: 3px;")
-
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(0)
-
-        for rt, count in breakdown.items():
-            if count == 0:
-                continue
-            color = _RESOURCE_TYPE_COLORS.get(rt, TEXT_MUTED)
-            pct = max(1, int(count / total * 100))
-            seg = QFrame()
-            seg.setFixedHeight(6)
-            seg.setStyleSheet(f"background: {color}; border-radius: 2px;")
-            row.addWidget(seg, stretch=pct)
-
-        bar.setLayout(row)
-
-        legend = QHBoxLayout()
-        legend.setContentsMargins(0, 4, 0, 0)
-        legend.setSpacing(10)
-        for rt, count in list(breakdown.items())[:4]:
-            if count == 0:
-                continue
-            color = _RESOURCE_TYPE_COLORS.get(rt, TEXT_MUTED)
-            dot = QLabel(f"<span style='color:{color}'>●</span> <span style='color:{TEXT_MUTED};font-size:10px'>{rt} {count}</span>")
-            dot.setTextFormat(Qt.TextFormat.RichText)
-            legend.addWidget(dot)
-        legend.addStretch()
-
-        container = QWidget()
-        v = QVBoxLayout(container)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(0)
-        v.addWidget(bar)
-        v.addLayout(legend)
-        return container
 
     def mousePressEvent(self, event: object) -> None:
         self.clicked.emit(self._name)
@@ -153,7 +99,25 @@ class OverviewWidget(QWidget):
 
     def __init__(self, providers: list[dict], parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._providers = providers
+        self._cards: dict[str, ProviderCard] = {}
+        self._summary_frame: QWidget | None = None
+        self._summary_container: QVBoxLayout | None = None
         self._build(providers)
+
+    def update_provider_status(self, name: str, status: str, resource_count: int = 0) -> None:
+        """Update a provider card's status after an async auth check."""
+        card = self._cards.get(name)
+        if card is None:
+            return
+        card.set_status(status, resource_count)
+        # Refresh summary bar counts
+        if self._summary_frame and self._summary_container:
+            idx = self._summary_container.indexOf(self._summary_frame)
+            self._summary_container.removeWidget(self._summary_frame)
+            self._summary_frame.deleteLater()
+            self._summary_frame = self._make_summary(self._providers)
+            self._summary_container.insertWidget(idx, self._summary_frame)
 
     def _build(self, providers: list[dict]) -> None:
         root = QVBoxLayout(self)
@@ -170,8 +134,9 @@ class OverviewWidget(QWidget):
         v.setContentsMargins(24, 20, 24, 24)
         v.setSpacing(20)
 
-        # Summary bar
-        v.addWidget(self._make_summary(providers))
+        self._summary_container = v
+        self._summary_frame = self._make_summary(providers)
+        v.addWidget(self._summary_frame)
 
         # Provider cards grid
         grid = QGridLayout()
@@ -180,6 +145,7 @@ class OverviewWidget(QWidget):
         for i, p in enumerate(providers):
             card = ProviderCard(p)
             card.clicked.connect(self.provider_clicked)
+            self._cards[p["name"]] = card
             grid.addWidget(card, i // cols, i % cols)
         v.addLayout(grid)
         v.addStretch()

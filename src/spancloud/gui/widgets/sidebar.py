@@ -45,6 +45,7 @@ class ProviderSidebar(QWidget):
         super().__init__(parent)
         self.setObjectName("sidebar")
         self._buttons: dict[str, QPushButton] = {}
+        self._dots: dict[str, QLabel] = {}
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -102,10 +103,11 @@ class ProviderSidebar(QWidget):
         row.setSpacing(8)
 
         if status is not None:
-            dot = QLabel(_STATUS_DOT[status])
+            dot = QLabel(_STATUS_DOT.get(status, "○"))
             dot.setObjectName(f"dot-{status}")
             dot.setFixedWidth(14)
             row.addWidget(dot)
+            self._dots[name] = dot
 
         lbl = QLabel(label)
         lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -127,3 +129,13 @@ class ProviderSidebar(QWidget):
             btn.setProperty("active", "true" if n == name else "false")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def update_status(self, name: str, status: str) -> None:
+        """Update the status dot for a provider button after auth check."""
+        dot = self._dots.get(name)
+        if dot is None:
+            return
+        dot.setText(_STATUS_DOT.get(status, "○"))
+        dot.setObjectName(f"dot-{status}")
+        dot.style().unpolish(dot)
+        dot.style().polish(dot)

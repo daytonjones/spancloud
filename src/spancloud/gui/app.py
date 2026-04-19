@@ -1,4 +1,4 @@
-"""Spancloud desktop GUI — PySide6 mockup (visual only)."""
+"""Spancloud desktop GUI — PySide6 application."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
-    QHBoxLayout,
     QLabel,
     QMainWindow,
     QSplitter,
@@ -27,15 +26,21 @@ from spancloud.gui.widgets.sidebar import ProviderSidebar
 from spancloud.gui.widgets.toolbar import AppToolbar
 
 
-_MOCK_PROVIDERS = [
-    {"name": "aws",          "display": "Amazon Web Services", "status": "authenticated", "resources": 142},
-    {"name": "gcp",          "display": "Google Cloud",        "status": "authenticated", "resources": 87},
-    {"name": "azure",        "display": "Microsoft Azure",     "status": "error",         "resources": 0},
-    {"name": "digitalocean", "display": "DigitalOcean",        "status": "authenticated", "resources": 23},
-    {"name": "vultr",        "display": "Vultr",               "status": "unauthenticated","resources": 0},
-    {"name": "oci",          "display": "Oracle Cloud (OCI)",  "status": "authenticated", "resources": 31},
-    {"name": "alibaba",      "display": "Alibaba Cloud",       "status": "unauthenticated","resources": 0},
-]
+def _build_provider_list() -> list[dict]:
+    """Return provider dicts populated from the live registry."""
+    import spancloud.providers  # noqa: F401 — triggers provider self-registration
+    from spancloud.core.registry import registry
+
+    providers = []
+    for p in registry.list_providers():
+        providers.append({
+            "name":     p.name,
+            "display":  p.display_name,
+            "status":   "checking",
+            "resources": 0,
+            "provider": p,
+        })
+    return providers
 
 
 def _load_window_icon() -> QIcon:
@@ -64,8 +69,13 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(_load_window_icon())
 
         apply_stylesheet(self)
+
+        self._providers = _build_provider_list()
+        self._auth_workers: list = []
+
         self._build_ui()
         self._setup_statusbar()
+        self._start_auth_checks()
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -75,32 +85,28 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Full-width toolbar ──────────────────────────────────────────
         self._toolbar = AppToolbar()
         self._toolbar.refresh_clicked.connect(self._on_refresh)
         self._toolbar.settings_clicked.connect(self._on_settings)
         root.addWidget(self._toolbar)
 
-        # ── Body: resizable sidebar + content ───────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setHandleWidth(1)
         self._splitter.setStyleSheet("QSplitter::handle { background: #3b4261; }")
 
-        self._sidebar = ProviderSidebar(_MOCK_PROVIDERS)
+        self._sidebar = ProviderSidebar(self._providers)
         self._sidebar.provider_selected.connect(self._on_provider_selected)
         self._splitter.addWidget(self._sidebar)
 
-        # Content stack
         self._stack = QStackedWidget()
 
-        self._overview = OverviewWidget(_MOCK_PROVIDERS)
+        self._overview = OverviewWidget(self._providers)
         self._overview.provider_clicked.connect(self._on_provider_selected)
         self._stack.addWidget(self._overview)
 
         self._provider_views: dict[str, ProviderViewWidget] = {}
-        for p in _MOCK_PROVIDERS:
+        for p in self._providers:
             view = ProviderViewWidget(p)
-            # Forward region/profile/project changes to the toolbar subtitle
             view._controls.region_changed.connect(
                 lambda region, pname=p["name"]: self._on_context_changed(pname)
             )
@@ -114,8 +120,6 @@ class MainWindow(QMainWindow):
             self._stack.addWidget(view)
 
         self._splitter.addWidget(self._stack)
-
-        # Sidebar starts at 220px, content takes the rest; both resizable
         self._splitter.setSizes([220, 1180])
         self._splitter.setCollapsible(0, False)
         self._splitter.setCollapsible(1, False)
@@ -127,17 +131,52 @@ class MainWindow(QMainWindow):
         bar.setContentsMargins(8, 0, 8, 0)
         self.setStatusBar(bar)
 
-        self._status_label = QLabel("Ready")
+        self._status_label = QLabel("Checking provider connections…")
         bar.addWidget(self._status_label, 1)
 
-        total = sum(p["resources"] for p in _MOCK_PROVIDERS)
-        authed = sum(1 for p in _MOCK_PROVIDERS if p["status"] == "authenticated")
-        summary = QLabel(
-            f"{authed}/{len(_MOCK_PROVIDERS)} providers connected   ·   "
+        self._summary_label = QLabel("")
+        self._summary_label.setStyleSheet(f"color: {TEXT_MUTED}; padding-right: 8px;")
+        bar.addPermanentWidget(self._summary_label)
+        self._update_statusbar_summary()
+
+    def _update_statusbar_summary(self) -> None:
+        total = sum(p["resources"] for p in self._providers)
+        authed = sum(1 for p in self._providers if p["status"] == "authenticated")
+        self._summary_label.setText(
+            f"{authed}/{len(self._providers)} providers connected   ·   "
             f"{total:,} total resources"
         )
-        summary.setStyleSheet(f"color: {TEXT_MUTED}; padding-right: 8px;")
-        bar.addPermanentWidget(summary)
+
+    def _start_auth_checks(self) -> None:
+        from spancloud.gui.async_worker import AsyncWorker
+
+        for p_dict in self._providers:
+            provider = p_dict.get("provider")
+            if provider is None:
+                p_dict["status"] = "unauthenticated"
+                continue
+            worker = AsyncWorker(provider.is_authenticated())
+            worker.result_ready.connect(
+                lambda ok, pd=p_dict: self._on_auth_checked(pd, ok)
+            )
+            worker.error_occurred.connect(
+                lambda err, pd=p_dict: self._on_auth_error(pd, err)
+            )
+            worker.start()
+            self._auth_workers.append(worker)
+
+    def _on_auth_checked(self, p_dict: dict, is_authed: bool) -> None:
+        status = "authenticated" if is_authed else "unauthenticated"
+        p_dict["status"] = status
+        self._sidebar.update_status(p_dict["name"], status)
+        self._overview.update_provider_status(p_dict["name"], status)
+        self._update_statusbar_summary()
+
+    def _on_auth_error(self, p_dict: dict, error: str) -> None:
+        p_dict["status"] = "error"
+        self._sidebar.update_status(p_dict["name"], "error")
+        self._overview.update_provider_status(p_dict["name"], "error")
+        self._update_statusbar_summary()
 
     def _on_provider_selected(self, name: str) -> None:
         self._sidebar.select(name)
@@ -147,9 +186,10 @@ class MainWindow(QMainWindow):
             self._status_label.setText("Overview")
         elif name in self._provider_views:
             self._stack.setCurrentWidget(self._provider_views[name])
-            p = next(p for p in _MOCK_PROVIDERS if p["name"] == name)
+            p = next(p for p in self._providers if p["name"] == name)
             status_str = {
                 "authenticated":   f"{p['resources']} resources",
+                "checking":        "Checking connection…",
                 "error":           "Authentication error",
                 "unauthenticated": "Not connected",
             }.get(p["status"], "")
@@ -157,11 +197,10 @@ class MainWindow(QMainWindow):
             self._status_label.setText(f"{p['display']} — {status_str}")
 
     def _on_context_changed(self, provider_name: str) -> None:
-        """Update toolbar subtitle when region/profile/project changes."""
         view = self._provider_views.get(provider_name)
         if view is None or self._stack.currentWidget() is not view:
             return
-        p = next(p for p in _MOCK_PROVIDERS if p["name"] == provider_name)
+        p = next(p for p in self._providers if p["name"] == provider_name)
         parts = []
         if view._current_region:
             parts.append(view._current_region)
@@ -175,6 +214,12 @@ class MainWindow(QMainWindow):
 
     def _on_refresh(self) -> None:
         self._status_label.setText("Refreshing…")
+        # Reset all to "checking" then re-run auth
+        for p in self._providers:
+            p["status"] = "checking"
+            self._sidebar.update_status(p["name"], "checking")
+            self._overview.update_provider_status(p["name"], "checking")
+        self._start_auth_checks()
 
     def _on_settings(self) -> None:
         self._status_label.setText("Settings (not yet implemented)")
