@@ -67,8 +67,11 @@ class ProviderCard(QFrame):
         self._layout.addWidget(self._count_lbl)
         self._layout.addWidget(self._small_label("resources", "card-count-label"))
 
-    def set_status(self, status: str, resource_count: int = 0) -> None:
-        """Update displayed status and resource count."""
+    def set_status(self, status: str, resource_count: int | None = 0) -> None:
+        """Update displayed status and resource count.
+
+        Pass resource_count=None to show a loading indicator.
+        """
         self._status = status
         self._status_lbl.setText(self._status_text(status))
         self._status_lbl.setProperty("status", status)
@@ -77,7 +80,10 @@ class ProviderCard(QFrame):
         self.setProperty("status", status)
         self.style().unpolish(self)
         self.style().polish(self)
-        self._count_lbl.setText(str(resource_count) if resource_count else "—")
+        if resource_count is None:
+            self._count_lbl.setText("…")
+        else:
+            self._count_lbl.setText(str(resource_count) if resource_count else "—")
 
     @staticmethod
     def _status_text(status: str) -> str:
@@ -112,7 +118,7 @@ class OverviewWidget(QWidget):
         self._summary_container: QVBoxLayout | None = None
         self._build(providers)
 
-    def update_provider_status(self, name: str, status: str, resource_count: int = 0) -> None:
+    def update_provider_status(self, name: str, status: str, resource_count: int | None = 0) -> None:
         """Update a provider card's status after an async auth check."""
         card = self._cards.get(name)
         if card is None:

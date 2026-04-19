@@ -207,7 +207,9 @@ class MainWindow(QMainWindow):
         status = "authenticated" if is_authed else "unauthenticated"
         p_dict["status"] = status
         self._sidebar.update_status(p_dict["name"], status)
-        self._overview.update_provider_status(p_dict["name"], status)
+        # Pass None to show "…" while the count fetch is in progress
+        count_now: int | None = None if is_authed else 0
+        self._overview.update_provider_status(p_dict["name"], status, count_now)
         self._update_statusbar_summary()
         view = self._provider_views.get(p_dict["name"])
         if view:
