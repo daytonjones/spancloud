@@ -28,12 +28,14 @@ from spancloud.gui.theme import (
 
 
 class ProviderCard(QFrame):
-    clicked = Signal(str)
+    clicked        = Signal(str)
+    connect_clicked = Signal(str)   # emitted when card is clicked while unauthed
 
     def __init__(self, provider: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._name = provider["name"]
-        status = provider.get("status", "checking")
+        self._status = provider.get("status", "checking")
+        status = self._status
 
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setProperty("class", "provider-card")
@@ -67,6 +69,7 @@ class ProviderCard(QFrame):
 
     def set_status(self, status: str, resource_count: int = 0) -> None:
         """Update displayed status and resource count."""
+        self._status = status
         self._status_lbl.setText(self._status_text(status))
         self._status_lbl.setProperty("status", status)
         self._status_lbl.style().unpolish(self._status_lbl)
@@ -91,11 +94,15 @@ class ProviderCard(QFrame):
         return lbl
 
     def mousePressEvent(self, event: object) -> None:
-        self.clicked.emit(self._name)
+        if self._status in ("unauthenticated", "error"):
+            self.connect_clicked.emit(self._name)
+        else:
+            self.clicked.emit(self._name)
 
 
 class OverviewWidget(QWidget):
-    provider_clicked = Signal(str)
+    provider_clicked  = Signal(str)
+    connect_requested = Signal(str)   # unauthenticated card clicked
 
     def __init__(self, providers: list[dict], parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -145,6 +152,7 @@ class OverviewWidget(QWidget):
         for i, p in enumerate(providers):
             card = ProviderCard(p)
             card.clicked.connect(self.provider_clicked)
+            card.connect_clicked.connect(self.connect_requested)
             self._cards[p["name"]] = card
             grid.addWidget(card, i // cols, i % cols)
         v.addLayout(grid)

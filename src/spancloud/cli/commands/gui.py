@@ -7,7 +7,7 @@ from rich.console import Console
 console = Console()
 
 
-def launch_gui() -> None:
+def launch_gui(mock: bool = False) -> None:
     """Import and run the PySide6 desktop GUI application."""
     try:
         import PySide6  # noqa: F401
@@ -20,4 +20,4 @@ def launch_gui() -> None:
 
     from spancloud.gui.app import main
 
-    main()
+    main(mock=mock)

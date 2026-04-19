@@ -28,21 +28,26 @@ from spancloud.gui.widgets.sidebar import ProviderSidebar
 from spancloud.gui.widgets.toolbar import AppToolbar
 
 
-def _build_provider_list() -> list[dict]:
-    """Return provider dicts populated from the live registry."""
-    import spancloud.providers  # noqa: F401 — triggers provider self-registration
-    from spancloud.core.registry import registry
+def _build_provider_list(mock: bool = False) -> list[dict]:
+    """Return provider dicts — from the live registry, or mock data."""
+    if mock:
+        from spancloud.providers.mock import build_mock_providers
+        providers_list = build_mock_providers()
+    else:
+        import spancloud.providers  # noqa: F401 — triggers provider self-registration
+        from spancloud.core.registry import registry
+        providers_list = registry.list_providers()
 
-    providers = []
-    for p in registry.list_providers():
-        providers.append({
-            "name":     p.name,
-            "display":  p.display_name,
-            "status":   "checking",
+    return [
+        {
+            "name":      p.name,
+            "display":   p.display_name,
+            "status":    "authenticated" if mock else "checking",
             "resources": 0,
-            "provider": p,
-        })
-    return providers
+            "provider":  p,
+        }
+        for p in providers_list
+    ]
 
 
 def _load_window_icon() -> QIcon:
@@ -63,22 +68,29 @@ def _load_window_icon() -> QIcon:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, mock: bool = False) -> None:
         super().__init__()
-        self.setWindowTitle("Spancloud — Multi-Cloud Dashboard")
+        self._mock = mock
+        title = "Spancloud — Multi-Cloud Dashboard"
+        if mock:
+            title += "  [DEMO MODE]"
+        self.setWindowTitle(title)
         self.resize(1400, 900)
         self.setMinimumSize(1000, 650)
         self.setWindowIcon(_load_window_icon())
 
         apply_stylesheet(self)
 
-        self._providers = _build_provider_list()
+        self._providers = _build_provider_list(mock=mock)
         self._auth_workers: list = []
 
         self._build_ui()
         self._setup_statusbar()
         self._restore_geometry()
-        self._start_auth_checks()
+        if mock:
+            self._init_mock_ui()
+        else:
+            self._start_auth_checks()
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -105,6 +117,7 @@ class MainWindow(QMainWindow):
 
         self._overview = OverviewWidget(self._providers)
         self._overview.provider_clicked.connect(self._on_provider_selected)
+        self._overview.connect_requested.connect(self._open_auth_dialog)
         self._stack.addWidget(self._overview)
 
         self._provider_views: dict[str, ProviderViewWidget] = {}
@@ -152,6 +165,17 @@ class MainWindow(QMainWindow):
             f"{authed}/{len(self._providers)} providers connected   ·   "
             f"{total:,} total resources"
         )
+
+    def _init_mock_ui(self) -> None:
+        """Immediately mark all providers authenticated and fetch resource counts."""
+        for p in self._providers:
+            self._sidebar.update_status(p["name"], "authenticated")
+            self._overview.update_provider_status(p["name"], "authenticated")
+            view = self._provider_views.get(p["name"])
+            if view:
+                view.notify_auth_status("authenticated")
+            self._fetch_resource_count(p)
+        self._status_label.setText("Demo mode — showing sample data")
 
     def _start_auth_checks(self) -> None:
         from spancloud.gui.async_worker import AsyncWorker
@@ -297,10 +321,18 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)  # type: ignore[misc]
 
     def _on_settings(self) -> None:
-        self._status_label.setText("Settings (not yet implemented)")
+        from spancloud.gui.widgets.settings_dialog import SettingsDialog
+        dlg = SettingsDialog(self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            # Rebuild sidebar to reflect enable/disable changes
+            from spancloud.config.sidebar import get_enabled_providers
+            enabled = get_enabled_providers()
+            for p in self._providers:
+                visible = p["name"] in enabled
+                self._sidebar.set_provider_visible(p["name"], visible)
 
 
-def main() -> None:
+def main(mock: bool = False) -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("Spancloud")
     app.setOrganizationName("spancloud")
@@ -309,7 +341,7 @@ def main() -> None:
     icon = _load_window_icon()
     app.setWindowIcon(icon)
 
-    window = MainWindow()
+    window = MainWindow(mock=mock)
     window.show()
     sys.exit(app.exec())
 

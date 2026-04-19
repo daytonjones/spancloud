@@ -130,6 +130,12 @@ class ProviderSidebar(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
+    def set_provider_visible(self, name: str, visible: bool) -> None:
+        """Show or hide a provider button (used by settings dialog)."""
+        btn = self._buttons.get(name)
+        if btn:
+            btn.setVisible(visible)
+
     def update_status(self, name: str, status: str) -> None:
         """Update the status dot for a provider button after auth check."""
         dot = self._dots.get(name)

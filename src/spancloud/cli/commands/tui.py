@@ -7,7 +7,7 @@ from rich.console import Console
 console = Console()
 
 
-def launch_tui() -> None:
+def launch_tui(mock: bool = False) -> None:
     """Import and run the Textual TUI application."""
     try:
         import textual  # noqa: F401
@@ -20,5 +20,5 @@ def launch_tui() -> None:
 
     from spancloud.tui.app import SpancloudApp
 
-    app = SpancloudApp()
+    app = SpancloudApp(mock=mock)
     app.run()
