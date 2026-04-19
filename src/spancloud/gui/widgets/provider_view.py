@@ -258,12 +258,125 @@ def _format_unused(report: object) -> str:  # UnusedResourceReport
 
 
 # ---------------------------------------------------------------------------
+# Mock analysis — demo data for --mock mode
+# ---------------------------------------------------------------------------
+
+_MOCK_COST: dict[str, str] = {
+    "aws":          ("$4,821.40", "$312.90", "$4,508.50", "EC2 Instances,S3 Storage,RDS Databases,Lambda Functions"),
+    "gcp":          ("$2,340.10", "$187.20", "$2,152.90", "Compute Engine,Cloud Storage,Cloud SQL,Cloud Functions"),
+    "azure":        ("$3,102.75", "$241.30", "$2,861.45", "Virtual Machines,Blob Storage,Azure SQL,App Service"),
+    "digitalocean": ("$890.50",   "$62.10",  "$828.40",   "Droplets,Spaces,Managed Databases,Kubernetes"),
+    "vultr":        ("$412.20",   "$28.80",  "$383.40",   "Cloud Compute,Block Storage,Managed Databases"),
+    "oci":          ("$1,230.60", "$94.50",  "$1,136.10", "Compute Instances,Object Storage,Autonomous DB"),
+    "alibaba":      ("$1,875.30", "$143.70", "$1,731.60", "ECS Instances,OSS Storage,ApsaraDB RDS"),
+}
+
+_MOCK_FINDINGS: dict[str, list[tuple[str, str, str]]] = {
+    "aws":          [("HIGH", "S3 bucket 'dev-scratch-bucket' has public read ACL", "s3"), ("MEDIUM", "IAM user 'alice@example.com' has no MFA enabled", "iam"), ("LOW", "EC2 instance 'dev-sandbox' uses default security group", "ec2")],
+    "gcp":          [("MEDIUM", "Cloud Storage bucket 'demo-staging-data' is publicly accessible", "storage"), ("LOW", "GKE cluster 'prod-gke' has legacy ABAC enabled", "container")],
+    "azure":        [("HIGH", "Storage account 'devstgacct' allows public blob access", "storage"), ("MEDIUM", "VM 'dev-vm-01' has no disk encryption", "compute")],
+    "digitalocean": [("LOW", "Droplet 'staging-droplet' has no firewall rule assigned", "compute")],
+    "vultr":        [("MEDIUM", "Instance 'staging-01' uses SSH password authentication", "compute")],
+    "oci":          [("LOW", "Object storage bucket 'archive-storage' has no lifecycle policy", "storage")],
+    "alibaba":      [("MEDIUM", "ECS instance 'worker-ecs-01' security group allows 0.0.0.0/0 on port 22", "compute")],
+}
+
+_MOCK_UNUSED: dict[str, list[tuple[str, str, str, str]]] = {
+    "aws":          [("COMPUTE", "dev-sandbox", "Stopped 47 days", "$14.40/mo"), ("STORAGE", "dev-scratch-bucket", "No access in 90+ days", "$2.10/mo"), ("DATABASE", "analytics-pg", "Stopped 62 days", "$48.20/mo")],
+    "gcp":          [("COMPUTE", "worker-01", "Stopped 31 days", "$38.50/mo")],
+    "azure":        [("COMPUTE", "dev-vm-01", "Stopped 28 days", "$31.20/mo")],
+    "digitalocean": [("COMPUTE", "staging-droplet", "Stopped 19 days", "$12.00/mo"), ("STORAGE", "staging-data-volume", "Unattached 14 days", "$5.00/mo")],
+    "vultr":        [("COMPUTE", "staging-01", "Stopped 22 days", "$6.00/mo")],
+    "oci":          [],
+    "alibaba":      [],
+}
+
+
+def _mock_analysis(name: str, key: str) -> str:
+    C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a", "muted": "#565f89",
+         "warn": "#e0af68", "critical": "#f7768e", "high": "#ff9e64", "med": "#e0af68", "low": "#9ece6a", "purple": "#bb9af7"}
+
+    def wrap(body: str) -> str:
+        return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{body}</div>'
+
+    if key == "cost":
+        total, delta, last, services = _MOCK_COST.get(name, ("—", "—", "—", ""))
+        svc_rows = "".join(
+            f'<tr><td style="color:{C["label"]};padding:2px 16px 2px 8px;">{s.strip()}</td>'
+            f'<td style="color:{C["val"]};">included</td></tr>'
+            for s in services.split(",")
+        )
+        html = (
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Cost Summary</span><br>'
+            f'<span style="color:{C["muted"]};">Demo data · current month</span><br><br>'
+            f'<table cellspacing="0"><tr><td style="color:{C["label"]};padding:2px 16px 2px 8px;">Total (MTD)</td>'
+            f'<td style="color:{C["val"]};font-weight:bold;">{total}</td></tr>'
+            f'<tr><td style="color:{C["label"]};padding:2px 16px 2px 8px;">vs last month</td>'
+            f'<td style="color:{C["warn"]};">+{delta}</td></tr>'
+            f'<tr><td style="color:{C["label"]};padding:2px 16px 2px 8px;">Last month</td>'
+            f'<td style="color:{C["val"]};">{last}</td></tr>'
+            f'<tr><td colspan="2" style="padding:8px 0 4px 8px;color:{C["muted"]};">Top Services</td></tr>'
+            f'{svc_rows}</table>'
+        )
+        return wrap(html)
+
+    if key == "audit":
+        findings = _MOCK_FINDINGS.get(name, [])
+        if not findings:
+            body = f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Security Audit</span><br><br><span style="color:{C["val"]};">✓ No issues found (demo data)</span>'
+            return wrap(body)
+        color_map = {"HIGH": C["high"], "CRITICAL": C["critical"], "MEDIUM": C["med"], "LOW": C["low"]}
+        rows = "".join(
+            f'<tr><td style="color:{color_map.get(sev, C["muted"])};padding:3px 12px 3px 8px;font-weight:bold;">[{sev}]</td>'
+            f'<td style="color:#c0caf5;padding:3px 0;">{msg}</td></tr>'
+            for sev, msg, _ in findings
+        )
+        html = (
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Security Audit</span><br>'
+            f'<span style="color:{C["muted"]};">Demo data · {len(findings)} finding(s)</span><br><br>'
+            f'<table cellspacing="0">{rows}</table>'
+        )
+        return wrap(html)
+
+    if key == "unused":
+        items = _MOCK_UNUSED.get(name, [])
+        if not items:
+            body = f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Unused Resources</span><br><br><span style="color:{C["val"]};">✓ No idle resources detected (demo data)</span>'
+            return wrap(body)
+        rows = "".join(
+            f'<tr><td style="color:{C["label"]};padding:3px 12px 3px 8px;">{rtype}</td>'
+            f'<td style="color:#c0caf5;padding:3px 12px 3px 0;">{rname}</td>'
+            f'<td style="color:{C["muted"]};padding:3px 12px 3px 0;">{age}</td>'
+            f'<td style="color:{C["warn"]};padding:3px 0;">{cost}</td></tr>'
+            for rtype, rname, age, cost in items
+        )
+        html = (
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">Unused Resources</span><br>'
+            f'<span style="color:{C["muted"]};">Demo data · {len(items)} idle resource(s)</span><br><br>'
+            f'<table cellspacing="0">{rows}</table>'
+        )
+        return wrap(html)
+
+    if key == "relationships":
+        return "  Relationships graph coming soon…\n"
+    if key == "alerts":
+        return "  No active alerts — all systems nominal ✓\n"
+    if key == "metrics":
+        return "  Select a resource first, then view metrics here.\n"
+    return f"  Analysis not available in demo mode.\n"
+
+
+# ---------------------------------------------------------------------------
 # Analyzer factory — mirrors TUI's _run_cost / _run_audit / _run_unused
 # ---------------------------------------------------------------------------
 
 async def _run_analysis(provider: BaseProvider, key: str) -> str:
     """Dispatch to the right analyzer and return formatted plain text."""
     name = provider.name
+
+    if not hasattr(provider, "_auth"):
+        return _mock_analysis(name, key)
+
     auth = provider._auth  # type: ignore[attr-defined]
 
     if key == "cost":
