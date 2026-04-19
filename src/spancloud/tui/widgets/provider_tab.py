@@ -131,9 +131,6 @@ def _mock_analysis_tui(name: str, key: str) -> str:
     if key == "alerts":
         return "[bold]Monitoring Alerts[/bold]  [dim]Demo data[/dim]\n\n  [green]✓ No active alerts — all systems nominal[/green]"
 
-    if key == "metrics":
-        return "[dim]Select a resource from the table, then view its metrics here.[/dim]"
-
     return f"[yellow]Analysis not available in demo mode.[/yellow]"
 
 _RT_ICONS: dict[str, str] = {
@@ -1033,7 +1030,7 @@ class AnalysisPanel(VerticalScroll):
 
     async def _fetch_analysis(self, analysis_type: str) -> str:
         name = self._provider.name
-        if not hasattr(self._provider, "_auth"):
+        if not hasattr(self._provider, "_auth") and analysis_type != "metrics":
             return _mock_analysis_tui(name, analysis_type)
         if analysis_type == "cost":
             return await self._run_cost(name)
