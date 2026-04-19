@@ -32,6 +32,7 @@ def _r(
     return Resource(
         id=rid,
         name=name,
+        provider="mock",
         resource_type=rt,
         state=state,
         region=region,
@@ -185,6 +186,14 @@ _DEMO: dict[str, dict[ResourceType, list[Resource]]] = {
             _r("rm-demo-rds-001", "prod-rds", ResourceType.DATABASE, ResourceState.RUNNING, "cn-hangzhou", _dt(2023,5,1), engine="MySQL", engine_version="8.0"),
         ],
     },
+}
+
+_DEMO = {
+    pname: {
+        rt: [r.model_copy(update={"provider": pname}) for r in resources]
+        for rt, resources in type_map.items()
+    }
+    for pname, type_map in _DEMO.items()
 }
 
 _SUPPORTED_TYPES: dict[str, list[ResourceType]] = {
