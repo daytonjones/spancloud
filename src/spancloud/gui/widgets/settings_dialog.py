@@ -1,15 +1,17 @@
-"""Settings dialog — provider toggles and preferences."""
+"""Settings dialog — provider toggles and theme selection."""
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QRadioButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -22,6 +24,8 @@ from spancloud.gui.theme import (
     BORDER_SUBTLE,
     TEXT_MUTED,
     TEXT_PRIMARY,
+    THEME_NAMES,
+    get_active_theme_name,
 )
 
 _STYLE = f"""
@@ -37,23 +41,24 @@ _STYLE = f"""
         font-weight: 700;
         letter-spacing: 1px;
     }}
-    QCheckBox {{
+    QCheckBox, QRadioButton {{
         color: {TEXT_PRIMARY};
         font-size: 12px;
         spacing: 8px;
         padding: 5px 4px;
     }}
-    QCheckBox::indicator {{
+    QCheckBox::indicator, QRadioButton::indicator {{
         width: 15px; height: 15px;
         border: 1px solid {BORDER_SUBTLE};
         border-radius: 3px;
         background: {BG_ELEVATED};
     }}
-    QCheckBox::indicator:checked {{
+    QRadioButton::indicator {{ border-radius: 8px; }}
+    QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
         background: {ACCENT_BLUE};
         border-color: {ACCENT_BLUE};
     }}
-    QCheckBox:hover {{
+    QCheckBox:hover, QRadioButton:hover {{
         background: rgba(122,162,247,0.07);
         border-radius: 4px;
     }}
@@ -81,18 +86,28 @@ _STYLE = f"""
     QPushButton#btn-save:hover {{ background: #89b4fa; border-color: #89b4fa; color: #1a1b26; }}
 """
 
+# Swatch colours for theme radio buttons
+_THEME_SWATCHES: dict[str, str] = {
+    "Tokyo Night":    "#7aa2f7",
+    "Dark":           "#569cd6",
+    "Dracula":        "#bd93f9",
+    "Solarized Dark": "#268bd2",
+    "Light":          "#0366d6",
+}
+
 
 class SettingsDialog(QDialog):
-    """App-level settings: which providers are enabled."""
+    """App-level settings: theme selection and provider enable/disable."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Settings")
-        self.setMinimumWidth(420)
-        self.setMinimumHeight(400)
+        self.setMinimumWidth(440)
+        self.setMinimumHeight(480)
         self.setModal(True)
         self.setStyleSheet(_STYLE)
         self._checkboxes: list[tuple[QCheckBox, str]] = []
+        self._theme_group = QButtonGroup(self)
         self._build()
         self._populate()
 
@@ -105,14 +120,53 @@ class SettingsDialog(QDialog):
         title.setObjectName("dlg-title")
         root.addWidget(title)
 
+        # ── Theme section ──────────────────────────────────────────────────
+        theme_sec = QLabel("APPEARANCE")
+        theme_sec.setObjectName("section-header")
+        root.addWidget(theme_sec)
+
+        theme_frame = QFrame()
+        theme_frame.setStyleSheet(
+            f"QFrame {{ background: {BG_ELEVATED}; border: 1px solid {BORDER_SUBTLE};"
+            f" border-radius: 6px; padding: 4px; }}"
+        )
+        theme_layout = QVBoxLayout(theme_frame)
+        theme_layout.setContentsMargins(10, 6, 10, 6)
+        theme_layout.setSpacing(2)
+
+        current = get_active_theme_name()
+        for i, name in enumerate(THEME_NAMES):
+            row = QHBoxLayout()
+            row.setSpacing(8)
+            rb = QRadioButton(name)
+            rb.setChecked(name == current)
+            self._theme_group.addButton(rb, i)
+            row.addWidget(rb)
+
+            swatch_color = _THEME_SWATCHES.get(name, ACCENT_BLUE)
+            swatch = QLabel("  ")
+            swatch.setFixedSize(18, 18)
+            swatch.setStyleSheet(
+                f"background: {swatch_color}; border-radius: 3px; border: none;"
+            )
+            row.addWidget(swatch)
+            row.addStretch()
+            theme_layout.addLayout(row)
+
+        root.addWidget(theme_frame)
+
+        sep1 = QFrame()
+        sep1.setFrameShape(QFrame.Shape.HLine)
+        sep1.setStyleSheet(f"color: {BORDER_SUBTLE};")
+        root.addWidget(sep1)
+
         # ── Providers section ──────────────────────────────────────────────
-        sec = QLabel("ACTIVE PROVIDERS")
-        sec.setObjectName("section-header")
-        root.addWidget(sec)
+        prov_sec = QLabel("ACTIVE PROVIDERS")
+        prov_sec.setObjectName("section-header")
+        root.addWidget(prov_sec)
 
         hint = QLabel(
-            "Uncheck a provider to hide it from the sidebar and overview. "
-            "You can re-enable it here at any time."
+            "Uncheck a provider to hide it from the sidebar and overview."
         )
         hint.setWordWrap(True)
         hint.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
@@ -132,10 +186,10 @@ class SettingsDialog(QDialog):
         scroll.setWidget(self._list_widget)
         root.addWidget(scroll, stretch=1)
 
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: {BORDER_SUBTLE};")
-        root.addWidget(sep)
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.Shape.HLine)
+        sep2.setStyleSheet(f"color: {BORDER_SUBTLE};")
+        root.addWidget(sep2)
 
         btn_row = QHBoxLayout()
         self._btn_save = QPushButton("Save")
@@ -172,6 +226,10 @@ class SettingsDialog(QDialog):
                 cb.setToolTip("Not yet implemented")
             self._list_layout.insertWidget(self._list_layout.count() - 1, cb)
             self._checkboxes.append((cb, p.name))
+
+    def selected_theme(self) -> str:
+        btn = self._theme_group.checkedButton()
+        return btn.text() if btn else get_active_theme_name()
 
     def _save(self) -> None:
         from spancloud.config.sidebar import set_enabled_providers

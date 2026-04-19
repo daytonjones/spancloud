@@ -21,7 +21,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from spancloud.gui.theme import DARK_PALETTE, TEXT_MUTED, apply_stylesheet
+from spancloud.gui.theme import (
+    DARK_PALETTE,
+    TEXT_MUTED,
+    apply_stylesheet,
+    apply_theme,
+    build_palette,
+    get_active_theme_name,
+    get_tokens,
+)
 from spancloud.gui.widgets.overview import OverviewWidget
 from spancloud.gui.widgets.provider_view import ProviderViewWidget
 from spancloud.gui.widgets.sidebar import ProviderSidebar
@@ -79,7 +87,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1000, 650)
         self.setWindowIcon(_load_window_icon())
 
-        apply_stylesheet(self)
+        apply_stylesheet(self, get_active_theme_name())
 
         self._providers = _build_provider_list(mock=mock)
         self._auth_workers: list = []
@@ -324,6 +332,8 @@ class MainWindow(QMainWindow):
         from spancloud.gui.widgets.settings_dialog import SettingsDialog
         dlg = SettingsDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
+            # Apply theme if changed
+            apply_theme(self, dlg.selected_theme())
             # Rebuild sidebar to reflect enable/disable changes
             from spancloud.config.sidebar import get_enabled_providers
             enabled = get_enabled_providers()
@@ -336,7 +346,7 @@ def main(mock: bool = False) -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("Spancloud")
     app.setOrganizationName("spancloud")
-    app.setPalette(DARK_PALETTE)
+    app.setPalette(build_palette(get_tokens(get_active_theme_name())))
 
     icon = _load_window_icon()
     app.setWindowIcon(icon)
