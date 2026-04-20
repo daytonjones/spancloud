@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.azure._retry import AZURE_RETRY_ACTION
 
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
@@ -55,7 +55,7 @@ class AzureStorageDetailAnalyzer:
     def __init__(self, auth: AzureAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=1.0)
+    @AZURE_RETRY_ACTION
     async def get_account_details(
         self, account_name: str, resource_group: str
     ) -> AzureStorageDetails:

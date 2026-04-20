@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.azure._retry import AZURE_RETRY
 
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
@@ -31,7 +31,7 @@ class VMResources:
     def __init__(self, auth: AzureAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=0.5)
+    @AZURE_RETRY
     async def list_vms(self, region: str | None = None) -> list[Resource]:
         """List all VMs in the active subscription.
 

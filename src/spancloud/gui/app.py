@@ -8,7 +8,7 @@ import importlib.resources as pkg_resources
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import Qt
-from PySide6.QtCore import QByteArray, QSettings
+from PySide6.QtCore import QByteArray, QSettings, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -98,7 +98,11 @@ class MainWindow(QMainWindow):
         if mock:
             self._init_mock_ui()
         else:
-            self._start_auth_checks()
+            # Delay auth checks until the event loop is running.  Starting
+            # heavy credential init (DefaultAzureCredential subprocess probes,
+            # AWS profile reads, etc.) before exec() can race with Qt's own
+            # startup and cause an intermittent flash-and-exit on Linux.
+            QTimer.singleShot(200, self._start_auth_checks)
 
     def _build_ui(self) -> None:
         central = QWidget()

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.providers.azure.compute import _parse_resource_group
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.azure._retry import AZURE_RETRY
 
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
@@ -22,7 +22,7 @@ class SQLResources:
     def __init__(self, auth: AzureAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=0.5)
+    @AZURE_RETRY
     async def list_databases(self, region: str | None = None) -> list[Resource]:
         """List all SQL databases across all SQL servers in the subscription."""
         raw = await asyncio.to_thread(self._sync_list, region)
@@ -85,7 +85,7 @@ class CosmosDBResources:
     def __init__(self, auth: AzureAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=0.5)
+    @AZURE_RETRY
     async def list_accounts(self, region: str | None = None) -> list[Resource]:
         """List all Cosmos DB accounts in the subscription."""
         raw = await asyncio.to_thread(self._sync_list, region)

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from spancloud.providers.azure.compute import _parse_resource_group
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.azure._retry import AZURE_RETRY_ACTION
 
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
@@ -95,7 +95,7 @@ class VMActions:
             "resource_group": rg,
         }
 
-    @retry_with_backoff(max_retries=2, base_delay=1.0)
+    @AZURE_RETRY_ACTION
     async def execute(
         self,
         action: ActionVerb,
