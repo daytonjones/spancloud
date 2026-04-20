@@ -923,6 +923,7 @@ class ProviderViewWidget(QWidget):
         self._current_region = ""
         self._current_profile = ""
         self._current_project = ""
+        self._current_subscription = ""
         self.region_changed_hint = "All Regions"
         self._active_workers: list[AsyncWorker] = []
         self._current_load_key: str | None = None  # stale-result guard
@@ -983,6 +984,7 @@ class ProviderViewWidget(QWidget):
         self._controls.region_changed.connect(self._on_region_changed)
         self._controls.profile_changed.connect(self._on_profile_changed)
         self._controls.project_changed.connect(self._on_project_changed)
+        self._controls.subscription_changed.connect(self._on_subscription_changed)
         self._nav_layout.addWidget(self._controls)
 
         self._nav_resources_label = QLabel("RESOURCES")
@@ -1370,6 +1372,10 @@ class ProviderViewWidget(QWidget):
         if name == "gcp":
             self._fetch_gcp_projects()
 
+        # Populate Azure subscription list
+        if name == "azure":
+            self._fetch_azure_subscriptions()
+
     def _fetch_gcp_projects(self) -> None:
         if self._provider is None or not hasattr(self._provider, "_auth"):
             return
@@ -1386,6 +1392,27 @@ class ProviderViewWidget(QWidget):
         worker = AsyncWorker(_load())
         worker.result_ready.connect(
             lambda result: self._controls.populate_gcp_projects(result[0], result[1])
+        )
+        worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
+        self._active_workers.append(worker)
+        worker.start()
+
+    def _fetch_azure_subscriptions(self) -> None:
+        if self._provider is None or not hasattr(self._provider, "_auth"):
+            return
+        auth = self._provider._auth  # type: ignore[attr-defined]
+
+        async def _load() -> tuple[list[dict], str]:
+            try:
+                subs = await auth.list_subscriptions()
+            except Exception:
+                subs = []
+            active = getattr(auth, "subscription_id", "") or ""
+            return subs, active
+
+        worker = AsyncWorker(_load())
+        worker.result_ready.connect(
+            lambda result: self._controls.populate_azure_subscriptions(result[0], result[1])
         )
         worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
         self._active_workers.append(worker)
@@ -1417,6 +1444,18 @@ class ProviderViewWidget(QWidget):
             auth = self._provider._auth  # type: ignore[attr-defined]
             if hasattr(auth, "set_project"):
                 auth.set_project(project)
+        if self._current_rt:
+            self._load_table(self._current_rt)
+        self._close_drawer()
+
+    def _on_subscription_changed(self, subscription_id: str) -> None:
+        if not subscription_id or subscription_id == self._current_subscription:
+            return
+        self._current_subscription = subscription_id
+        if self._provider and hasattr(self._provider, "_auth"):
+            auth = self._provider._auth  # type: ignore[attr-defined]
+            if hasattr(auth, "set_subscription"):
+                auth.set_subscription(subscription_id)
         if self._current_rt:
             self._load_table(self._current_rt)
         self._close_drawer()

@@ -181,9 +181,10 @@ def _load_aws_profiles() -> list[tuple[str, str]]:
 class ProviderControls(QWidget):
     """Compact selector bar shown at the top of the provider inner sidebar."""
 
-    region_changed  = Signal(str)   # region slug, "" = all
-    profile_changed = Signal(str)   # AWS profile name
-    project_changed = Signal(str)   # GCP project ID
+    region_changed       = Signal(str)   # region slug, "" = all
+    profile_changed      = Signal(str)   # AWS profile name
+    project_changed      = Signal(str)   # GCP project ID
+    subscription_changed = Signal(str)   # Azure subscription ID
 
     def __init__(self, provider_name: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -204,6 +205,23 @@ class ProviderControls(QWidget):
                 _load_aws_profiles(), "profile_changed"
             )
             v.addWidget(self._profile_combo)
+
+        # Azure-specific: subscription picker — starts with current sub, filled after auth
+        if self._provider_name == "azure":
+            v.addWidget(self._label("SUBSCRIPTION"))
+            self._subscription_combo = QComboBox()
+            self._subscription_combo.setStyleSheet(_COMBO_STYLE)
+            self._subscription_combo.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            )
+            self._subscription_combo.setEnabled(False)
+            self._subscription_combo.addItem("loading…", "")
+            self._subscription_combo.currentIndexChanged.connect(
+                lambda idx, c=self._subscription_combo: self.subscription_changed.emit(
+                    c.itemData(idx) or ""
+                )
+            )
+            v.addWidget(self._subscription_combo)
 
         # GCP-specific: project picker — starts empty, filled after auth
         if self._provider_name == "gcp":
@@ -229,7 +247,7 @@ class ProviderControls(QWidget):
             v.addWidget(self._region_combo)
 
         # Separator line
-        if regions or self._provider_name in ("aws", "gcp"):
+        if regions or self._provider_name in ("aws", "gcp", "azure"):
             sep = QFrame()
             sep.setFrameShape(QFrame.Shape.HLine)
             sep.setStyleSheet(f"color: {BORDER_SUBTLE}; margin-top: 4px;")
@@ -287,6 +305,35 @@ class ProviderControls(QWidget):
                     break
         combo.blockSignals(False)
 
+    def populate_azure_subscriptions(
+        self, subscriptions: list[dict], active_id: str = ""
+    ) -> None:
+        """Fill the Azure subscription combo. Called after auth succeeds."""
+        if not hasattr(self, "_subscription_combo"):
+            return
+        combo = self._subscription_combo
+        combo.blockSignals(True)
+        combo.clear()
+        if not subscriptions:
+            label = active_id or "(none)"
+            combo.addItem(label, active_id)
+        else:
+            for s in subscriptions:
+                sid = s.get("id", "")
+                name = s.get("display_name", sid)
+                combo.addItem(f"{name}  ({sid[:8]}…)", sid)
+            if active_id and not any(
+                combo.itemData(i) == active_id for i in range(combo.count())
+            ):
+                combo.insertItem(0, active_id, active_id)
+        combo.setEnabled(len(subscriptions) > 1)
+        if active_id:
+            for i in range(combo.count()):
+                if combo.itemData(i) == active_id:
+                    combo.setCurrentIndex(i)
+                    break
+        combo.blockSignals(False)
+
     def set_active_profile(self, profile: str) -> None:
         """Select the given AWS profile in the combo (called after auth check)."""
         if not hasattr(self, "_profile_combo"):
@@ -312,4 +359,9 @@ class ProviderControls(QWidget):
     def current_project(self) -> str:
         if hasattr(self, "_project_combo"):
             return self._project_combo.currentData() or ""
+        return ""
+
+    def current_subscription(self) -> str:
+        if hasattr(self, "_subscription_combo"):
+            return self._subscription_combo.currentData() or ""
         return ""

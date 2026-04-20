@@ -144,6 +144,9 @@ class MainWindow(QMainWindow):
             view._controls.project_changed.connect(
                 lambda project, pname=p["name"]: self._on_context_changed(pname)
             )
+            view._controls.subscription_changed.connect(
+                lambda sub, pname=p["name"]: self._on_context_changed(pname)
+            )
             view.auth_requested.connect(
                 lambda pname=p["name"]: self._open_auth_dialog(pname)
             )

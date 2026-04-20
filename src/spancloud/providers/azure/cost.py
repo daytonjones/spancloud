@@ -16,6 +16,18 @@ def _is_azure_rate_limit(exc: Exception) -> bool:
     s = str(exc)
     return "429" in s or "Too many requests" in s or "TooManyRequests" in s
 
+
+def _is_permanent_cost_error(exc: Exception) -> bool:
+    s = str(exc)
+    return any(marker in s for marker in (
+        "valid WebDirect/AIRS offer type",
+        "BillingAccountNotFound",
+        "IndirectCostDisabled",
+        "Unauthorized",
+        "does not exist",
+        "SubscriptionNotFound",
+    ))
+
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
 
@@ -42,13 +54,21 @@ class AzureCostAnalyzer:
         except Exception as exc:
             if _is_azure_rate_limit(exc):
                 raise  # let the retry decorator handle it with a longer delay
-            logger.warning("Azure cost query failed: %s", exc)
+            note = str(exc)
+            if _is_permanent_cost_error(exc):
+                note = (
+                    "Cost Management API is not available for this subscription type "
+                    "(free trial / CSP / MPN / Dev-Test subscriptions are not supported). "
+                    "Upgrade to a pay-as-you-go subscription or check billing permissions."
+                )
+            else:
+                logger.warning("Azure cost query failed: %s", exc)
             return CostSummary(
                 provider="azure",
                 period_start=start,
                 period_end=today,
                 total_cost=Decimal("0.00"),
-                notes=f"Cost Management query failed: {exc}",
+                notes=note,
             )
 
         total = sum((sc.cost for sc in by_service), Decimal("0"))
