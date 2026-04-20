@@ -37,6 +37,7 @@ from spancloud.gui.theme import (
     TEXT_SECONDARY,
 )
 from spancloud.gui.widgets.provider_controls import ProviderControls
+from spancloud.utils.error_formatter import friendly_error as _fmt_error
 
 if TYPE_CHECKING:
     from spancloud.core.provider import BaseProvider
@@ -62,6 +63,16 @@ _STATE_COLOR: dict[str, str] = {
     "error":      STATUS_ERROR,
     "unknown":    TEXT_MUTED,
 }
+
+def _friendly_error(raw: str) -> tuple[str, str]:
+    """Return (short_message, color) for display in the resource table."""
+    from spancloud.utils.error_formatter import is_permanent_api_error
+    s = str(raw)
+    is_permanent = is_permanent_api_error(Exception(s))
+    is_quota = "quota" in s.lower() or "RESOURCE_EXHAUSTED" in s or "rateLimitExceeded" in s
+    is_auth = ("403" in s and any(k in s for k in ("PERMISSION_DENIED", "Forbidden"))) or "401" in s
+    color = ACCENT_YELLOW if (is_permanent or is_quota or is_auth) else STATUS_ERROR
+    return _fmt_error(s), color
 
 
 # ---------------------------------------------------------------------------
@@ -1555,11 +1566,12 @@ class ProviderViewWidget(QWidget):
         if key != self._current_load_key:
             return
         self._table.clear()
-        self._show_table_message(f"Error: {error}")
+        msg, color = _friendly_error(error)
+        self._show_table_message(msg, color)
 
-    def _show_table_message(self, msg: str) -> None:
+    def _show_table_message(self, msg: str, color: str = TEXT_MUTED) -> None:
         item = QTreeWidgetItem([msg])
-        item.setForeground(0, QColor(TEXT_MUTED))
+        item.setForeground(0, QColor(color))
         item.setFlags(Qt.ItemFlag.NoItemFlags)
         self._table.addTopLevelItem(item)
 
