@@ -16,7 +16,7 @@ from google.cloud import compute_v1, storage
 
 from spancloud.analysis.models import SecurityAuditResult, SecurityFinding, Severity
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY_SLOW
 from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ class GCPSecurityAuditor:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @GCP_RETRY_SLOW
     async def run_audit(self, region: str | None = None) -> SecurityAuditResult:
         """Run a full security audit.
 

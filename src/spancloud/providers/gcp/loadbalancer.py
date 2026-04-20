@@ -14,7 +14,7 @@ from google.cloud import compute_v1
 
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY
 
 if TYPE_CHECKING:
     from spancloud.providers.gcp.auth import GCPAuth
@@ -28,7 +28,7 @@ class LoadBalancerResources:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @GCP_RETRY
     async def list_load_balancers(self, region: str | None = None) -> list[Resource]:
         """List all load balancers (forwarding rules) in the project.
 

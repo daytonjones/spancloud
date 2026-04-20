@@ -9,7 +9,7 @@ from google.cloud import dns
 
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY
 from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class CloudDNSResources:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @GCP_RETRY
     async def list_zones(self) -> list[Resource]:
         """List all Cloud DNS managed zones.
 
@@ -68,7 +68,7 @@ class CloudDNSResources:
         logger.debug("Found %d Cloud DNS managed zones", len(resources))
         return resources
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @GCP_RETRY
     async def list_records(self, zone_name: str | None = None) -> list[Resource]:
         """List DNS record sets across all zones (or a specific zone).
 

@@ -9,7 +9,7 @@ from googleapiclient.discovery import build
 
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY
 
 if TYPE_CHECKING:
     from spancloud.providers.gcp.auth import GCPAuth
@@ -32,7 +32,7 @@ class CloudSQLResources:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @GCP_RETRY
     async def list_instances(self, region: str | None = None) -> list[Resource]:
         """List all Cloud SQL instances in the project.
 

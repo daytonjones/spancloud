@@ -18,7 +18,7 @@ from googleapiclient.discovery import build
 
 from spancloud.analysis.models import RelationshipMap, RelationshipType, ResourceRelationship
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY_SLOW
 from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ class GCPRelationshipMapper:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @GCP_RETRY_SLOW
     async def map_relationships(
         self, region: str | None = None
     ) -> RelationshipMap:

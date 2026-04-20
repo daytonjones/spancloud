@@ -14,7 +14,7 @@ from google.cloud import compute_v1
 from pydantic import BaseModel
 
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY_FAST
 from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
@@ -97,7 +97,7 @@ class GCEActions:
                 "machine_type": "",
             }
 
-    @retry_with_backoff(max_retries=2, base_delay=1.0)
+    @GCP_RETRY_FAST
     async def execute(
         self,
         action: ActionVerb,
