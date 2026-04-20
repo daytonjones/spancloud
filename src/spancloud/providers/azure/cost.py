@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
 from spancloud.utils.logging import get_logger
 from spancloud.utils.retry import retry_with_backoff
+
+
+def _is_azure_rate_limit(exc: Exception) -> bool:
+    s = str(exc)
+    return "429" in s or "Too many requests" in s or "TooManyRequests" in s
 
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
@@ -23,7 +28,7 @@ class AzureCostAnalyzer:
     def __init__(self, auth: AzureAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @retry_with_backoff(max_retries=3, base_delay=30.0, max_delay=120.0)
     async def get_cost_summary(self, period_days: int = 30) -> CostSummary:
         """Get cost summary grouped by service (ResourceType) and by day."""
         today = date.today()
@@ -35,6 +40,8 @@ class AzureCostAnalyzer:
                 asyncio.to_thread(self._sync_query_by_day, start, today),
             )
         except Exception as exc:
+            if _is_azure_rate_limit(exc):
+                raise  # let the retry decorator handle it with a longer delay
             logger.warning("Azure cost query failed: %s", exc)
             return CostSummary(
                 provider="azure",
@@ -69,8 +76,8 @@ class AzureCostAnalyzer:
             "type": "ActualCost",
             "timeframe": "Custom",
             "time_period": {
-                "from": datetime.combine(start, datetime.min.time()),
-                "to": datetime.combine(end, datetime.min.time()),
+                "from": datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
+                "to": datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc),
             },
             "dataset": {
                 "granularity": "None",
@@ -96,8 +103,8 @@ class AzureCostAnalyzer:
             "type": "ActualCost",
             "timeframe": "Custom",
             "time_period": {
-                "from": datetime.combine(start, datetime.min.time()),
-                "to": datetime.combine(end, datetime.min.time()),
+                "from": datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
+                "to": datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc),
             },
             "dataset": {
                 "granularity": "Daily",
