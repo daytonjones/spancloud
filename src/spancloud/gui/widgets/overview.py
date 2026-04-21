@@ -116,6 +116,7 @@ class OverviewWidget(QWidget):
         self._cards: dict[str, ProviderCard] = {}
         self._summary_frame: QWidget | None = None
         self._summary_container: QVBoxLayout | None = None
+        self._grid_layout: QGridLayout | None = None
         self._build(providers)
 
     def update_provider_status(self, name: str, status: str, resource_count: int | None = 0) -> None:
@@ -124,12 +125,44 @@ class OverviewWidget(QWidget):
         if card is None:
             return
         card.set_status(status, resource_count)
-        # Refresh summary bar counts
+        self._refresh_summary()
+
+    def set_provider_visible(self, name: str, visible: bool) -> None:
+        """Show or hide a provider card, then reflow the grid."""
+        card = self._cards.get(name)
+        if card:
+            card.setVisible(visible)
+        self._rebuild_grid()
+        self._refresh_summary()
+
+    def _rebuild_grid(self) -> None:
+        """Re-layout the grid to show only visible cards without gaps."""
+        if self._grid_layout is None:
+            return
+        # Remove all items from the grid (don't delete the widgets)
+        for card in self._cards.values():
+            self._grid_layout.removeWidget(card)
+        # Re-add only visible cards in provider order
+        cols = 3
+        visible = [
+            card for name in (p["name"] for p in self._providers)
+            if (card := self._cards.get(name)) is not None and card.isVisible()
+        ]
+        for i, card in enumerate(visible):
+            self._grid_layout.addWidget(card, i // cols, i % cols)
+
+    def _refresh_summary(self) -> None:
         if self._summary_frame and self._summary_container:
+            # Only count providers whose cards are visible
+            visible_providers = [
+                p for p in self._providers
+                if self._cards.get(p["name"], None) is None
+                or self._cards[p["name"]].isVisible()
+            ]
             idx = self._summary_container.indexOf(self._summary_frame)
             self._summary_container.removeWidget(self._summary_frame)
             self._summary_frame.deleteLater()
-            self._summary_frame = self._make_summary(self._providers)
+            self._summary_frame = self._make_summary(visible_providers)
             self._summary_container.insertWidget(idx, self._summary_frame)
 
     def _build(self, providers: list[dict]) -> None:
@@ -154,6 +187,7 @@ class OverviewWidget(QWidget):
         # Provider cards grid
         grid = QGridLayout()
         grid.setSpacing(16)
+        self._grid_layout = grid
         cols = 3
         for i, p in enumerate(providers):
             card = ProviderCard(p)

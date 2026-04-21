@@ -1381,17 +1381,24 @@ class ProviderViewWidget(QWidget):
             return
         auth = self._provider._auth  # type: ignore[attr-defined]
 
-        async def _load() -> tuple[list[dict], str]:
+        async def _load() -> tuple[list[dict], list[dict], str]:
+            try:
+                orgs = await auth.list_accessible_organizations()
+            except Exception:
+                orgs = []
             try:
                 projects = await auth.list_accessible_projects()
             except Exception:
                 projects = []
             active = getattr(auth, "project_id", "") or ""
-            return projects, active
+            return orgs, projects, active
 
         worker = AsyncWorker(_load())
         worker.result_ready.connect(
-            lambda result: self._controls.populate_gcp_projects(result[0], result[1])
+            lambda result: (
+                self._controls.populate_gcp_organizations(result[0]),
+                self._controls.populate_gcp_projects(result[1], result[2]),
+            )
         )
         worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
         self._active_workers.append(worker)

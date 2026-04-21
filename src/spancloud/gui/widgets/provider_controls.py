@@ -183,12 +183,14 @@ class ProviderControls(QWidget):
 
     region_changed       = Signal(str)   # region slug, "" = all
     profile_changed      = Signal(str)   # AWS profile name
+    organization_changed = Signal(str)   # GCP organization ID, "" = all
     project_changed      = Signal(str)   # GCP project ID
     subscription_changed = Signal(str)   # Azure subscription ID
 
     def __init__(self, provider_name: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._provider_name = provider_name
+        self._all_gcp_projects: list[dict] = []
         self._build()
 
     def _build(self) -> None:
@@ -223,8 +225,23 @@ class ProviderControls(QWidget):
             )
             v.addWidget(self._subscription_combo)
 
-        # GCP-specific: project picker — starts empty, filled after auth
+        # GCP-specific: org picker (hidden until ≥2 orgs known) + project picker
         if self._provider_name == "gcp":
+            self._org_label = self._label("GCP ORGANIZATION")
+            self._org_label.hide()
+            v.addWidget(self._org_label)
+
+            self._org_combo = QComboBox()
+            self._org_combo.setStyleSheet(_COMBO_STYLE)
+            self._org_combo.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            )
+            self._org_combo.hide()
+            self._org_combo.currentIndexChanged.connect(
+                lambda idx, c=self._org_combo: self._on_org_changed(c.itemData(idx) or "")
+            )
+            v.addWidget(self._org_combo)
+
             v.addWidget(self._label("GCP PROJECT"))
             self._project_combo = QComboBox()
             self._project_combo.setStyleSheet(_COMBO_STYLE)
@@ -273,15 +290,39 @@ class ProviderControls(QWidget):
         )
         return combo
 
+    def populate_gcp_organizations(self, orgs: list[dict]) -> None:
+        """Show the org picker only when ≥2 organizations are found.
+
+        Called by the parent view after auth succeeds and orgs are fetched.
+        """
+        if not hasattr(self, "_org_combo"):
+            return
+        if len(orgs) < 2:
+            return  # single org or personal account — keep picker hidden
+        combo = self._org_combo
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("All Organizations", "")
+        for org in orgs:
+            combo.addItem(org["display_name"], org["id"])
+        combo.blockSignals(False)
+        self._org_label.show()
+        self._org_combo.show()
+
     def populate_gcp_projects(
         self, projects: list[dict], active_project: str = ""
     ) -> None:
         """Fill the GCP project combo from the resource-manager API response.
 
         Called by the parent view after auth succeeds and projects are fetched.
+        Stores the full list for org-based filtering.
         """
         if not hasattr(self, "_project_combo"):
             return
+        self._all_gcp_projects = projects
+        self._fill_project_combo(projects, active_project)
+
+    def _fill_project_combo(self, projects: list[dict], active_project: str = "") -> None:
         combo = self._project_combo
         combo.blockSignals(True)
         combo.clear()
@@ -304,6 +345,15 @@ class ProviderControls(QWidget):
                     combo.setCurrentIndex(i)
                     break
         combo.blockSignals(False)
+
+    def _on_org_changed(self, org_id: str) -> None:
+        self.organization_changed.emit(org_id)
+        active = (self._project_combo.currentData() or "") if hasattr(self, "_project_combo") else ""
+        filtered = [
+            p for p in self._all_gcp_projects
+            if not org_id or p.get("org_id", "") == org_id
+        ]
+        self._fill_project_combo(filtered, active)
 
     def populate_azure_subscriptions(
         self, subscriptions: list[dict], active_id: str = ""
@@ -354,6 +404,11 @@ class ProviderControls(QWidget):
     def current_profile(self) -> str:
         if hasattr(self, "_profile_combo"):
             return self._profile_combo.currentData() or ""
+        return ""
+
+    def current_organization(self) -> str:
+        if hasattr(self, "_org_combo"):
+            return self._org_combo.currentData() or ""
         return ""
 
     def current_project(self) -> str:
