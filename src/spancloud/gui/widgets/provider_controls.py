@@ -166,6 +166,25 @@ _COMBO_STYLE = f"""
 _LABEL_STYLE = f"color: {TEXT_MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 1px;"
 
 
+_MOCK_AWS_PROFILES: list[tuple[str, str]] = [
+    ("default", "default"),
+    ("production", "production"),
+    ("staging", "staging"),
+    ("dev-account", "dev-account"),
+]
+
+_MOCK_GCP_PROJECTS: list[dict] = [
+    {"projectId": "my-prod-project", "name": "Production"},
+    {"projectId": "my-staging-project", "name": "Staging"},
+    {"projectId": "my-dev-project", "name": "Development"},
+]
+
+_MOCK_AZURE_SUBS: list[dict] = [
+    {"id": "aaaaaaaa-0000-0000-0000-000000000001", "display_name": "Production Subscription"},
+    {"id": "aaaaaaaa-0000-0000-0000-000000000002", "display_name": "Dev/Test Subscription"},
+]
+
+
 def _load_aws_profiles() -> list[tuple[str, str]]:
     """Return real AWS profiles from ~/.aws/config."""
     try:
@@ -187,9 +206,10 @@ class ProviderControls(QWidget):
     project_changed      = Signal(str)   # GCP project ID
     subscription_changed = Signal(str)   # Azure subscription ID
 
-    def __init__(self, provider_name: str, parent: QWidget | None = None) -> None:
+    def __init__(self, provider_name: str, mock: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._provider_name = provider_name
+        self._mock = mock
         self._all_gcp_projects: list[dict] = []
         self._build()
 
@@ -200,12 +220,11 @@ class ProviderControls(QWidget):
 
         regions = _REGIONS.get(self._provider_name)
 
-        # AWS-specific: profile picker populated from real ~/.aws/config
+        # AWS-specific: profile picker populated from real ~/.aws/config (or mock data)
         if self._provider_name == "aws":
             v.addWidget(self._label("AWS PROFILE"))
-            self._profile_combo = self._make_combo(
-                _load_aws_profiles(), "profile_changed"
-            )
+            profiles = _MOCK_AWS_PROFILES if self._mock else _load_aws_profiles()
+            self._profile_combo = self._make_combo(profiles, "profile_changed")
             v.addWidget(self._profile_combo)
 
         # Azure-specific: subscription picker — starts with current sub, filled after auth

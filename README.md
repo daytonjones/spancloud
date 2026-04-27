@@ -17,7 +17,7 @@
 
 Multi-cloud infrastructure orchestrator — an all-seeing eye into your cloud resources.
 
-Spancloud provides a unified interface to discover, inspect, and manage infrastructure across multiple cloud providers from a single CLI or TUI dashboard.
+Spancloud provides a unified interface to discover, inspect, and manage infrastructure across multiple cloud providers from a single CLI, TUI, or desktop GUI.
 
 ## Supported Providers
 
@@ -33,37 +33,27 @@ Spancloud provides a unified interface to discover, inspect, and manage infrastr
 
 ## Installation
 
-Requires Python 3.12+ (tested on 3.12, 3.13, 3.14).
+Requires Python 3.12+.
 
 ```bash
-# Development install (editable, with dev tools)
-pip install -e ".[dev]"
+pip install spancloud
+```
 
-# Build and install locally (like a real user would)
-pip install build
-python -m build                    # Creates dist/spancloud-0.1.0-py3-none-any.whl
-pip install dist/spancloud-0.1.0-py3-none-any.whl
+After install, two entry points are available:
 
-# After install, both entry points are available
-spancloud                           # Launches GUI (default, requires PySide6)
-sc                                  # Short alias — identical to spancloud
-spancloud gui                       # Launches desktop GUI (requires PySide6)
-spancloud --help                    # Shows all commands
+```bash
+spancloud          # Launch desktop GUI (default; requires PySide6)
+sc                 # Short alias — identical to spancloud
+spancloud --tui    # Launch TUI instead
+spancloud --help   # Show all CLI commands
 ```
 
 ## Quick Start
 
 ### Desktop GUI
 
-The GUI requires PySide6 (Qt6). Install it separately:
-
 ```bash
-pip install PySide6
-```
-
-Then launch:
-
-```bash
+pip install spancloud
 spancloud               # Default — launches GUI
 sc                      # Short alias, also launches GUI
 spancloud gui           # Explicit GUI launch
@@ -84,17 +74,19 @@ The desktop GUI provides a native Qt6 window with:
 - **Settings dialog** — toggle providers on/off; choose from 5 built-in themes (Tokyo Night, Dark, Dracula, Solarized Dark, Light)
 - **Status bar** — active context on the left, total provider/resource count on the right
 - **Region / profile / project selectors** — switch AWS region or profile, GCP project inline without relaunching
-- **Demo mode** — run `spancloud gui --mock` (or `spancloud --mock`) to explore with realistic sample data, no credentials needed
+- **Demo mode** — run `spancloud --mock` to explore with realistic sample data, no credentials needed; works in both GUI (`spancloud gui --mock`) and TUI (`spancloud --tui --mock`)
 
 #### Screenshots
 
-| Overview | Resource Table + Detail Drawer |
+| Overview | Provider View |
 |---|---|
-| *(screenshot)* | *(screenshot)* |
+| ![Overview](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-overview.png) | ![Provider View](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-provider.png) |
+
+| Resource Table + Detail Drawer | Metrics Panel |
+|---|---|
+| ![Resource Table](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-resources.png) | ![Metrics](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-metrics.png) |
 
 ### TUI Dashboard
-
-Running `spancloud` with no arguments launches the TUI dashboard:
 
 ```bash
 spancloud --tui         # Launch TUI (GUI is the default)
@@ -564,8 +556,10 @@ Per-provider resource coverage highlights:
 ## Development
 
 ```bash
-# Install dev dependencies
-uv pip install -e ".[dev]"
+# Clone and install in editable mode with dev + GUI deps
+git clone https://github.com/daytonjones/spancloud.git
+cd spancloud
+pip install -e ".[dev]"
 
 # Run tests
 pytest
