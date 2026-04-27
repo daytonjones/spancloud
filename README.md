@@ -80,11 +80,11 @@ The desktop GUI provides a native Qt6 window with:
 
 | Overview | Provider View |
 |---|---|
-| ![Overview](docs/screenshots/gui-overview.png) | ![Provider View](docs/screenshots/gui-provider.png) |
+| ![Overview](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-overview.png) | ![Provider View](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-provider.png) |
 
 | Resource Table + Detail Drawer | Metrics Panel |
 |---|---|
-| ![Resource Table](docs/screenshots/gui-resources.png) | ![Metrics](docs/screenshots/gui-metrics.png) |
+| ![Resource Table](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-resources.png) | ![Metrics](https://raw.githubusercontent.com/daytonjones/spancloud/main/docs/screenshots/gui-metrics.png) |
 
 ### TUI Dashboard
 
