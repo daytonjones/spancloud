@@ -78,7 +78,7 @@ The desktop GUI provides a native Qt6 window with:
 - **Settings dialog** — toggle providers on/off; choose from 5 built-in themes (Tokyo Night, Dark, Dracula, Solarized Dark, Light)
 - **Status bar** — active context on the left, total provider/resource count on the right
 - **Region / profile / project selectors** — switch AWS region or profile, GCP project inline without relaunching
-- **Demo mode** — run `spancloud gui --mock` (or `spancloud --mock`) to explore with realistic sample data, no credentials needed
+- **Demo mode** — run `spancloud --mock` to explore with realistic sample data, no credentials needed; works in both GUI (`spancloud gui --mock`) and TUI (`spancloud --tui --mock`)
 
 #### Screenshots
 
