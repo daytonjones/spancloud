@@ -524,6 +524,181 @@ def _format_cloudwatch_metrics(resource: Resource, metrics: object) -> str:
     return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{html}</div>'
 
 
+def _format_provider_metrics(resource: Resource, rm: object, source: str) -> str:
+    """Format a GCP/Azure ResourceMetrics object into HTML."""
+    C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a", "muted": "#565f89",
+         "warn": "#e0af68", "high": "#ff9e64"}
+
+    metrics_dict = getattr(rm, "metrics", {}) or {}
+    if not metrics_dict:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["muted"]};">No metrics data returned for this instance.<br>'
+            f'The instance may be stopped, or data may not yet be available.</span></div>'
+        )
+
+    metric_colors = {
+        "CPUUtilization": C["val"],
+        "MemoryUtilization": C["val"],
+        "DiskReadBytes": C["high"], "DiskWriteBytes": C["high"],
+        "DiskRead": C["high"], "DiskWrite": C["high"],
+        "NetworkReceived": C["warn"], "NetworkSent": C["warn"],
+        "BandwidthInbound": C["warn"], "BandwidthOutbound": C["warn"],
+    }
+
+    rows = []
+    for metric_name, points in metrics_dict.items():
+        if not points:
+            continue
+        sorted_pts = sorted(points, key=lambda p: p.timestamp)[-24:]
+        vals = [p.value for p in sorted_pts]
+        color = metric_colors.get(metric_name, C["label"])
+        unit = getattr(points[0], "unit", "")
+        cur = vals[-1] if vals else 0
+        spark = _sparkline(vals, color) if len(vals) > 1 else ""
+        rows.append(
+            f'<tr><td style="color:{C["label"]};padding:4px 12px 4px 8px;">{metric_name}</td>'
+            f'<td style="padding:4px 16px 4px 0;">{spark}</td>'
+            f'<td style="color:{color};font-weight:bold;">{cur:.4g} {unit}</td></tr>'
+        )
+
+    html = (
+        f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span><br>'
+        f'<span style="color:{C["muted"]};">{source} · {resource.name} · {resource.region}</span><br><br>'
+        f'<table cellspacing="0">{"".join(rows)}</table>'
+    )
+    return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{html}</div>'
+
+
+async def _run_do_metrics(resource: Resource, auth: object) -> str:
+    C = {"title": "#7aa2f7", "warn": "#e0af68", "muted": "#565f89"}
+    rt = resource.resource_type.value
+    if rt != "compute":
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["warn"]};">ℹ DO monitoring metrics are available for Droplets. '
+            f'Select a Droplet in the resource table.</span></div>'
+        )
+    from spancloud.providers.digitalocean.monitoring import DigitalOceanMonitoringAnalyzer
+    try:
+        rm = await DigitalOceanMonitoringAnalyzer(auth).get_instance_metrics(resource.id)  # type: ignore[arg-type]
+        return _format_provider_metrics(resource, rm, "DigitalOcean Monitoring")
+    except Exception as exc:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'Could not fetch DO metrics: {exc}</div>'
+        )
+
+
+async def _run_gcp_metrics(resource: Resource, auth: object) -> str:
+    C = {"title": "#7aa2f7", "warn": "#e0af68"}
+    rt = resource.resource_type.value
+    if rt != "compute":
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["warn"]};">ℹ Cloud Monitoring metrics are available for Compute Engine instances. '
+            f'Select a VM instance in the resource table.</span></div>'
+        )
+    from spancloud.providers.gcp.monitoring import CloudMonitoringAnalyzer
+    zone = resource.metadata.get("zone", "")
+    try:
+        rm = await CloudMonitoringAnalyzer(auth).get_instance_metrics(resource.id, zone)  # type: ignore[arg-type]
+        return _format_provider_metrics(resource, rm, "Cloud Monitoring")
+    except Exception as exc:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'Could not fetch GCP metrics: {exc}</div>'
+        )
+
+
+async def _run_azure_metrics(resource: Resource, auth: object) -> str:
+    C = {"title": "#7aa2f7", "warn": "#e0af68"}
+    rt = resource.resource_type.value
+    if rt != "compute":
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["warn"]};">ℹ Azure Monitor metrics are available for Virtual Machines. '
+            f'Select a VM in the resource table.</span></div>'
+        )
+    from spancloud.providers.azure.monitoring import AzureMonitoringAnalyzer
+    resource_group = resource.metadata.get("resource_group", "")
+    try:
+        rm = await AzureMonitoringAnalyzer(auth).get_instance_metrics(resource.id, resource_group)  # type: ignore[arg-type]
+        return _format_provider_metrics(resource, rm, "Azure Monitor")
+    except Exception as exc:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'Could not fetch Azure metrics: {exc}</div>'
+        )
+
+
+async def _run_vultr_metrics(resource: Resource, auth: object) -> str:
+    C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a",
+         "warn": "#e0af68", "muted": "#565f89"}
+    rt = resource.resource_type.value
+    if rt != "compute":
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["warn"]};">ℹ Vultr bandwidth metrics are available for instances. '
+            f'Select an instance in the resource table.</span></div>'
+        )
+
+    try:
+        data = await auth.get(f"/instances/{resource.id}/bandwidth")  # type: ignore[attr-defined]
+    except Exception as exc:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'Could not fetch Vultr bandwidth data: {exc}</div>'
+        )
+
+    # Response: {"bandwidth": {"2024-01-01": {"incoming_bytes": N, "outgoing_bytes": N}, ...}}
+    bw = data.get("bandwidth", {})
+    if not bw:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["muted"]};">No bandwidth data available for this instance.</span></div>'
+        )
+
+    # Sort dates, take last 14 days
+    dates = sorted(bw.keys())[-14:]
+    incoming = [bw[d].get("incoming_bytes", 0) / 1_048_576 for d in dates]  # → MiB
+    outgoing = [bw[d].get("outgoing_bytes", 0) / 1_048_576 for d in dates]
+
+    def _fmt_mib(v: float) -> str:
+        if v >= 1024:
+            return f"{v / 1024:.1f} GiB"
+        return f"{v:.1f} MiB"
+
+    spark_in  = _sparkline(incoming, C["val"])  if len(incoming)  > 1 else ""
+    spark_out = _sparkline(outgoing, C["warn"]) if len(outgoing) > 1 else ""
+
+    rows = (
+        f'<tr><td style="color:{C["label"]};padding:4px 12px 4px 8px;">Network In</td>'
+        f'<td style="padding:4px 16px 4px 0;">{spark_in}</td>'
+        f'<td style="color:{C["val"]};font-weight:bold;">{_fmt_mib(incoming[-1]) if incoming else "—"}</td></tr>'
+        f'<tr><td style="color:{C["label"]};padding:4px 12px 4px 8px;">Network Out</td>'
+        f'<td style="padding:4px 16px 4px 0;">{spark_out}</td>'
+        f'<td style="color:{C["warn"]};font-weight:bold;">{_fmt_mib(outgoing[-1]) if outgoing else "—"}</td></tr>'
+    )
+
+    note = (
+        f'<br><span style="color:{C["muted"]};font-size:11px;">'
+        f'Daily totals · last {len(dates)} days · CPU/memory not available via Vultr API</span>'
+    )
+    html = (
+        f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span><br>'
+        f'<span style="color:{C["muted"]};">Vultr Bandwidth · {resource.name} · {resource.region}</span><br><br>'
+        f'<table cellspacing="0">{rows}</table>{note}'
+    )
+    return f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">{html}</div>'
+
+
 def _mock_analysis(name: str, key: str, resource: Resource | None = None) -> str:
     C = {"title": "#7aa2f7", "label": "#7dcfff", "val": "#9ece6a", "muted": "#565f89",
          "warn": "#e0af68", "critical": "#f7768e", "high": "#ff9e64", "med": "#e0af68", "low": "#9ece6a", "purple": "#bb9af7"}
@@ -900,7 +1075,18 @@ async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | N
             return _metrics_no_selection_html()
         if name == "aws":
             return await _run_aws_metrics(resource, auth)
-        return f"  Metrics not available for {name} {resource.resource_type.value} resources.\n"
+        if name == "gcp":
+            return await _run_gcp_metrics(resource, auth)
+        if name == "azure":
+            return await _run_azure_metrics(resource, auth)
+        if name == "vultr":
+            return await _run_vultr_metrics(resource, auth)
+        if name == "digitalocean":
+            return await _run_do_metrics(resource, auth)
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'Metrics are not available for {name} {resource.resource_type.value} resources.</div>'
+        )
     return f"  Unknown analysis type: {key}\n"
 
 
@@ -929,6 +1115,7 @@ class ProviderViewWidget(QWidget):
         self._current_load_key: str | None = None  # stale-result guard
         self._selected_resource: Resource | None = None
         self._current_analysis_key: str | None = None
+        self._total_resource_count: int = 0
         self._build()
 
     def _build(self) -> None:
@@ -1127,6 +1314,9 @@ class ProviderViewWidget(QWidget):
         self._search.setPlaceholderText("🔍  Filter resources…")
         self._search.textChanged.connect(self._filter_table)
         sh.addWidget(self._search)
+        self._count_label = QLabel("")
+        self._count_label.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px; padding-left: 10px;")
+        sh.addWidget(self._count_label)
         v.addWidget(search_bar)
 
         self._table = QTreeWidget()
@@ -1529,6 +1719,8 @@ class ProviderViewWidget(QWidget):
         load_key = f"rt:{rt}:{self._current_region}"
         self._current_load_key = load_key
 
+        self._total_resource_count = 0
+        self._count_label.setText("")
         self._table.setSortingEnabled(False)
         self._table.clear()
         self._show_table_message(f"Loading {rt}…")
@@ -1556,6 +1748,8 @@ class ProviderViewWidget(QWidget):
         load_key = f"rt:_all:{self._current_region}"
         self._current_load_key = load_key
 
+        self._total_resource_count = 0
+        self._count_label.setText("")
         self._table.setSortingEnabled(False)
         self._table.clear()
         self._show_table_message("Loading all resources…")
@@ -1604,6 +1798,8 @@ class ProviderViewWidget(QWidget):
             item.setForeground(2, QColor(_STATE_COLOR.get(r.state.value, TEXT_MUTED)))
             item.setData(0, Qt.ItemDataRole.UserRole, r)
             self._table.addTopLevelItem(item)
+        self._total_resource_count = len(resources)
+        self._count_label.setText(f"{len(resources)} items" if resources else "")
         self._table.setSortingEnabled(True)
         if not resources:
             self._show_table_message("No resources found.")
@@ -1611,6 +1807,8 @@ class ProviderViewWidget(QWidget):
     def _on_load_error(self, error: str, key: str) -> None:
         if key != self._current_load_key:
             return
+        self._total_resource_count = 0
+        self._count_label.setText("")
         self._table.clear()
         msg, color = _friendly_error(error)
         self._show_table_message(msg, color)
@@ -1623,6 +1821,7 @@ class ProviderViewWidget(QWidget):
 
     def _filter_table(self, text: str) -> None:
         q = text.lower()
+        visible_count = 0
         for i in range(self._table.topLevelItemCount()):
             item = self._table.topLevelItem(i)
             if item is None:
@@ -1631,6 +1830,15 @@ class ProviderViewWidget(QWidget):
                 q in (item.text(col) or "").lower() for col in range(item.columnCount())
             )
             item.setHidden(not visible)
+            if visible and item.data(0, Qt.ItemDataRole.UserRole) is not None:
+                visible_count += 1
+        total = self._total_resource_count
+        if q and total:
+            self._count_label.setText(f"{visible_count} of {total} items")
+        elif total:
+            self._count_label.setText(f"{total} items")
+        else:
+            self._count_label.setText("")
 
     def _on_row_clicked(self, item: QTreeWidgetItem) -> None:
         resource: Resource | None = item.data(0, Qt.ItemDataRole.UserRole)

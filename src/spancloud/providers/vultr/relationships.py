@@ -62,16 +62,61 @@ class VultrRelationshipMapper:
     ) -> list[ResourceRelationship]:
         """Map instance → VPC, firewall, block storage relationships."""
         instances = await self._auth.get_paginated("/instances", "instances")
-        blocks = await self._auth.get_paginated("/blocks", "blocks")
 
-        # Build block storage lookup by attached instance
         block_by_instance: dict[str, list[dict]] = {}
-        for block in blocks:
-            attached = block.get("attached_to_instance", "")
-            if attached:
-                block_by_instance.setdefault(attached, []).append(block)
+        try:
+            blocks = await self._auth.get_paginated("/blocks", "blocks")
+            for block in blocks:
+                attached = block.get("attached_to_instance", "")
+                if attached:
+                    block_by_instance.setdefault(attached, []).append(block)
+        except Exception as exc:
+            logger.debug("Block storage fetch failed, skipping block relationships: %s", exc)
+
+        import ipaddress
 
         rels: list[ResourceRelationship] = []
+
+        # VPC 1.0 — match instances to networks by subnet (internal_ip field on instance)
+        try:
+            vpcs1 = await self._auth.get_paginated("/vpcs", "vpcs")
+            vpc1_subnets: list[tuple[dict, ipaddress.IPv4Network]] = []
+            for vpc in vpcs1:
+                subnet = vpc.get("v4_subnet", "")
+                mask = vpc.get("v4_subnet_mask", 0)
+                if subnet and mask:
+                    try:
+                        net = ipaddress.IPv4Network(f"{subnet}/{mask}", strict=False)
+                        vpc1_subnets.append((vpc, net))
+                    except Exception:
+                        pass
+            for inst in instances:
+                if region and inst.get("region") != region:
+                    continue
+                internal_ip = inst.get("internal_ip", "")
+                if not internal_ip:
+                    continue
+                try:
+                    ip = ipaddress.IPv4Address(internal_ip)
+                except Exception:
+                    continue
+                for vpc, net in vpc1_subnets:
+                    if region and vpc.get("region") != region:
+                        continue
+                    if ip in net:
+                        rels.append(ResourceRelationship(
+                            source_id=inst.get("id", ""),
+                            source_type="instance",
+                            source_name=inst.get("label", inst.get("id", "")),
+                            target_id=vpc.get("id", ""),
+                            target_type="vpc",
+                            relationship=RelationshipType.IN_VPC,
+                            provider="vultr",
+                            region=inst.get("region", ""),
+                        ))
+        except Exception as exc:
+            logger.debug("VPC 1.0 relationship mapping failed: %s", exc)
+
         for inst in instances:
             if region and inst.get("region") != region:
                 continue
@@ -79,9 +124,13 @@ class VultrRelationshipMapper:
             inst_id = inst.get("id", "")
             label = inst.get("label", inst_id)
 
-            # VPC
-            vpc_id = inst.get("vpc2_id", "") or ""
-            if vpc_id:
+            # VPC 2.0 — instance carries vpc2_ids list directly
+            vpc2_ids = list(inst.get("vpc2_ids") or [])
+            if not vpc2_ids and inst.get("vpc2_id"):
+                vpc2_ids = [inst["vpc2_id"]]
+            for vpc_id in vpc2_ids:
+                if not vpc_id:
+                    continue
                 rels.append(ResourceRelationship(
                     source_id=inst_id,
                     source_type="instance",

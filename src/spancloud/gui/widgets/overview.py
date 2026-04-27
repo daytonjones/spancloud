@@ -136,28 +136,32 @@ class OverviewWidget(QWidget):
         self._refresh_summary()
 
     def _rebuild_grid(self) -> None:
-        """Re-layout the grid to show only visible cards without gaps."""
+        """Re-layout the grid to show only enabled cards without gaps.
+
+        Uses isHidden() (widget-own state) not isVisible() (full parent chain),
+        because isVisible() returns False for all cards when OverviewWidget is
+        in a QStackedWidget that isn't currently shown.
+        """
         if self._grid_layout is None:
             return
-        # Remove all items from the grid (don't delete the widgets)
-        for card in self._cards.values():
-            self._grid_layout.removeWidget(card)
-        # Re-add only visible cards in provider order
+        # Remove all items from the grid layout without deleting widgets
+        while self._grid_layout.count():
+            self._grid_layout.takeAt(0)
+        # Re-add only non-hidden cards in provider order
         cols = 3
-        visible = [
+        shown = [
             card for name in (p["name"] for p in self._providers)
-            if (card := self._cards.get(name)) is not None and card.isVisible()
+            if (card := self._cards.get(name)) is not None and not card.isHidden()
         ]
-        for i, card in enumerate(visible):
+        for i, card in enumerate(shown):
             self._grid_layout.addWidget(card, i // cols, i % cols)
 
     def _refresh_summary(self) -> None:
         if self._summary_frame and self._summary_container:
-            # Only count providers whose cards are visible
+            # Only count providers whose cards are not explicitly hidden
             visible_providers = [
                 p for p in self._providers
-                if self._cards.get(p["name"], None) is None
-                or self._cards[p["name"]].isVisible()
+                if (c := self._cards.get(p["name"])) is None or not c.isHidden()
             ]
             idx = self._summary_container.indexOf(self._summary_frame)
             self._summary_container.removeWidget(self._summary_frame)

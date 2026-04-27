@@ -67,7 +67,9 @@ class VultrCostAnalyzer:
             if item_date < start:
                 continue
 
-            amount = abs(Decimal(str(item.get("amount", "0"))))
+            amount = Decimal(str(item.get("amount", "0")))
+            if amount <= 0:
+                continue  # skip credits and promotional items
             description = item.get("description", "Other")
 
             # Classify by description keywords

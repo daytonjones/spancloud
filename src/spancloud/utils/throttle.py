@@ -26,6 +26,10 @@ class RateLimiter:
         limiter = RateLimiter(calls_per_second=5.0, max_concurrency=10)
         async with limiter:
             await some_api_call()
+
+    asyncio primitives are created lazily and re-created whenever the running
+    event loop changes (e.g. across multiple asyncio.run() calls in the GUI's
+    AsyncWorker threads).
     """
 
     def __init__(
@@ -40,14 +44,29 @@ class RateLimiter:
             max_concurrency: Maximum number of in-flight requests.
         """
         self._interval = 1.0 / calls_per_second
-        self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._max_concurrency = max_concurrency
+        self._semaphore: asyncio.Semaphore | None = None
+        self._lock: asyncio.Lock | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._last_call: float = 0.0
-        self._lock = asyncio.Lock()
+
+    def _ensure_primitives(self) -> tuple[asyncio.Semaphore, asyncio.Lock]:
+        """Return primitives valid for the current event loop, creating new ones if needed."""
+        try:
+            loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is not self._loop or self._semaphore is None or self._lock is None:
+            self._semaphore = asyncio.Semaphore(self._max_concurrency)
+            self._lock = asyncio.Lock()
+            self._loop = loop
+        return self._semaphore, self._lock
 
     async def acquire(self) -> None:
         """Wait until a request slot is available."""
-        await self._semaphore.acquire()
-        async with self._lock:
+        sem, lock = self._ensure_primitives()
+        await sem.acquire()
+        async with lock:
             now = time.monotonic()
             wait = self._last_call + self._interval - now
             if wait > 0:
@@ -56,7 +75,8 @@ class RateLimiter:
 
     def release(self) -> None:
         """Release a request slot."""
-        self._semaphore.release()
+        if self._semaphore is not None:
+            self._semaphore.release()
 
     async def __aenter__(self) -> RateLimiter:
         await self.acquire()
