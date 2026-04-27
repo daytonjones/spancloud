@@ -36,11 +36,7 @@ Spancloud provides a unified interface to discover, inspect, and manage infrastr
 Requires Python 3.12+.
 
 ```bash
-# TUI + CLI only
 pip install spancloud
-
-# TUI + CLI + desktop GUI (includes PySide6/Qt6)
-pip install spancloud[gui]
 ```
 
 After install, two entry points are available:
@@ -57,7 +53,7 @@ spancloud --help   # Show all CLI commands
 ### Desktop GUI
 
 ```bash
-pip install spancloud[gui]
+pip install spancloud
 spancloud               # Default — launches GUI
 sc                      # Short alias, also launches GUI
 spancloud gui           # Explicit GUI launch
@@ -93,7 +89,6 @@ The desktop GUI provides a native Qt6 window with:
 ### TUI Dashboard
 
 ```bash
-pip install spancloud
 spancloud --tui         # Launch TUI (GUI is the default)
 spancloud tui           # Also launches TUI explicitly
 ```

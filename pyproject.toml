@@ -70,19 +70,16 @@ dependencies = [
     "alibabacloud-cms20190101>=2.0.0",
     "alibabacloud-fc3-20230330>=1.0.0",
     "oss2>=2.19.0",
+    "PySide6>=6.7.0",
 ]
 
 [project.optional-dependencies]
-gui = [
-    "PySide6>=6.7.0",
-]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "boto3-stubs[ec2,s3]>=1.35.0",
-    "PySide6>=6.7.0",
 ]
 
 [project.scripts]
