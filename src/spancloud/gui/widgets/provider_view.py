@@ -1167,7 +1167,8 @@ class ProviderViewWidget(QWidget):
         self._nav_layout.setSpacing(0)
 
         pname = self._provider_meta["name"]
-        self._controls = ProviderControls(pname)
+        is_mock = not hasattr(self._provider_meta.get("provider"), "_auth")
+        self._controls = ProviderControls(pname, mock=is_mock)
         self._controls.region_changed.connect(self._on_region_changed)
         self._controls.profile_changed.connect(self._on_profile_changed)
         self._controls.project_changed.connect(self._on_project_changed)
@@ -1551,20 +1552,32 @@ class ProviderViewWidget(QWidget):
         if self._provider is None:
             return
         name = self._provider_meta["name"]
+        is_mock = not hasattr(self._provider, "_auth")
 
         # Reflect the active AWS profile in the combo
-        if name == "aws" and hasattr(self._provider, "_auth"):
-            active = getattr(self._provider._auth, "active_profile", "")
+        if name == "aws" and not is_mock:
+            active = getattr(self._provider._auth, "active_profile", "")  # type: ignore[attr-defined]
             if active:
                 self._controls.set_active_profile(active)
 
-        # Populate GCP project list from the resource-manager API
+        # Populate GCP project list
         if name == "gcp":
-            self._fetch_gcp_projects()
+            if is_mock:
+                from spancloud.gui.widgets.provider_controls import _MOCK_GCP_PROJECTS
+                self._controls.populate_gcp_projects(_MOCK_GCP_PROJECTS, "my-prod-project")
+            else:
+                self._fetch_gcp_projects()
 
         # Populate Azure subscription list
         if name == "azure":
-            self._fetch_azure_subscriptions()
+            if is_mock:
+                from spancloud.gui.widgets.provider_controls import _MOCK_AZURE_SUBS
+                self._controls.populate_azure_subscriptions(
+                    _MOCK_AZURE_SUBS,
+                    "aaaaaaaa-0000-0000-0000-000000000001",
+                )
+            else:
+                self._fetch_azure_subscriptions()
 
     def _fetch_gcp_projects(self) -> None:
         if self._provider is None or not hasattr(self._provider, "_auth"):
