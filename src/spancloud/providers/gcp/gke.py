@@ -10,7 +10,7 @@ from google.cloud.container_v1.types import ListClustersRequest
 
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY
 
 if TYPE_CHECKING:
     from spancloud.providers.gcp.auth import GCPAuth
@@ -44,7 +44,7 @@ class GKEResources:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @GCP_RETRY
     async def list_clusters(self, region: str | None = None) -> list[Resource]:
         """List all GKE clusters in the project.
 
@@ -83,7 +83,7 @@ class GKEResources:
         logger.debug("Found %d GKE clusters", len(resources))
         return resources
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @GCP_RETRY
     async def list_node_pools(self, region: str | None = None) -> list[Resource]:
         """List all node pools across all GKE clusters in the project.
 

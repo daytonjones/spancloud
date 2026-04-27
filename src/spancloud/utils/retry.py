@@ -24,6 +24,7 @@ def retry_with_backoff(
     max_delay: float = 60.0,
     jitter: bool = True,
     retryable_exceptions: tuple[type[Exception], ...] = (Exception,),
+    non_retryable_if: Callable[[Exception], bool] | None = None,
 ) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
     """Decorator that retries an async function with exponential backoff.
 
@@ -36,6 +37,8 @@ def retry_with_backoff(
         max_delay: Cap on the delay between retries.
         jitter: Whether to add random jitter to the delay.
         retryable_exceptions: Exception types that trigger a retry.
+        non_retryable_if: Optional predicate; if it returns True for an
+            exception the error is raised immediately without any retries.
 
     Returns:
         Decorated async function with retry behavior.
@@ -51,6 +54,9 @@ def retry_with_backoff(
                     return await func(*args, **kwargs)
                 except retryable_exceptions as exc:
                     last_exception = exc
+
+                    if non_retryable_if is not None and non_retryable_if(exc):
+                        raise
 
                     if attempt == max_retries:
                         logger.error(

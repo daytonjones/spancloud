@@ -67,8 +67,11 @@ class ProviderCard(QFrame):
         self._layout.addWidget(self._count_lbl)
         self._layout.addWidget(self._small_label("resources", "card-count-label"))
 
-    def set_status(self, status: str, resource_count: int = 0) -> None:
-        """Update displayed status and resource count."""
+    def set_status(self, status: str, resource_count: int | None = 0) -> None:
+        """Update displayed status and resource count.
+
+        Pass resource_count=None to show a loading indicator.
+        """
         self._status = status
         self._status_lbl.setText(self._status_text(status))
         self._status_lbl.setProperty("status", status)
@@ -77,7 +80,10 @@ class ProviderCard(QFrame):
         self.setProperty("status", status)
         self.style().unpolish(self)
         self.style().polish(self)
-        self._count_lbl.setText(str(resource_count) if resource_count else "—")
+        if resource_count is None:
+            self._count_lbl.setText("…")
+        else:
+            self._count_lbl.setText(str(resource_count) if resource_count else "—")
 
     @staticmethod
     def _status_text(status: str) -> str:
@@ -110,20 +116,57 @@ class OverviewWidget(QWidget):
         self._cards: dict[str, ProviderCard] = {}
         self._summary_frame: QWidget | None = None
         self._summary_container: QVBoxLayout | None = None
+        self._grid_layout: QGridLayout | None = None
         self._build(providers)
 
-    def update_provider_status(self, name: str, status: str, resource_count: int = 0) -> None:
+    def update_provider_status(self, name: str, status: str, resource_count: int | None = 0) -> None:
         """Update a provider card's status after an async auth check."""
         card = self._cards.get(name)
         if card is None:
             return
         card.set_status(status, resource_count)
-        # Refresh summary bar counts
+        self._refresh_summary()
+
+    def set_provider_visible(self, name: str, visible: bool) -> None:
+        """Show or hide a provider card, then reflow the grid."""
+        card = self._cards.get(name)
+        if card:
+            card.setVisible(visible)
+        self._rebuild_grid()
+        self._refresh_summary()
+
+    def _rebuild_grid(self) -> None:
+        """Re-layout the grid to show only enabled cards without gaps.
+
+        Uses isHidden() (widget-own state) not isVisible() (full parent chain),
+        because isVisible() returns False for all cards when OverviewWidget is
+        in a QStackedWidget that isn't currently shown.
+        """
+        if self._grid_layout is None:
+            return
+        # Remove all items from the grid layout without deleting widgets
+        while self._grid_layout.count():
+            self._grid_layout.takeAt(0)
+        # Re-add only non-hidden cards in provider order
+        cols = 3
+        shown = [
+            card for name in (p["name"] for p in self._providers)
+            if (card := self._cards.get(name)) is not None and not card.isHidden()
+        ]
+        for i, card in enumerate(shown):
+            self._grid_layout.addWidget(card, i // cols, i % cols)
+
+    def _refresh_summary(self) -> None:
         if self._summary_frame and self._summary_container:
+            # Only count providers whose cards are not explicitly hidden
+            visible_providers = [
+                p for p in self._providers
+                if (c := self._cards.get(p["name"])) is None or not c.isHidden()
+            ]
             idx = self._summary_container.indexOf(self._summary_frame)
             self._summary_container.removeWidget(self._summary_frame)
             self._summary_frame.deleteLater()
-            self._summary_frame = self._make_summary(self._providers)
+            self._summary_frame = self._make_summary(visible_providers)
             self._summary_container.insertWidget(idx, self._summary_frame)
 
     def _build(self, providers: list[dict]) -> None:
@@ -148,6 +191,7 @@ class OverviewWidget(QWidget):
         # Provider cards grid
         grid = QGridLayout()
         grid.setSpacing(16)
+        self._grid_layout = grid
         cols = 3
         for i, p in enumerate(providers):
             card = ProviderCard(p)

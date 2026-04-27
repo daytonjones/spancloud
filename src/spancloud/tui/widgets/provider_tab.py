@@ -849,10 +849,18 @@ class ResourceContentArea(Vertical):
                         rt, region=region
                     )
                 except Exception as exc:
+                    from spancloud.utils.error_formatter import friendly_error, is_permanent_api_error
                     logger.warning(
                         "Failed to list %s from %s: %s",
                         rt.value, self._provider.name, exc,
                     )
+                    if is_permanent_api_error(exc):
+                        self.app.notify(
+                            friendly_error(exc),
+                            title=f"GCP API not enabled ({rt.value})",
+                            severity="warning",
+                            timeout=12,
+                        )
                     return []
 
             results = await asyncio.gather(

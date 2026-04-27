@@ -111,11 +111,14 @@ class GCPAuth:
                 for p in response.get("projects", []):
                     if p.get("lifecycleState") != "ACTIVE":
                         continue
+                    parent = p.get("parent", {})
+                    org_id = parent.get("id", "") if parent.get("type") == "organization" else ""
                     projects.append(
                         {
                             "project_id": p.get("projectId", ""),
                             "name": p.get("name", "") or p.get("projectId", ""),
                             "project_number": str(p.get("projectNumber", "")),
+                            "org_id": org_id,
                         }
                     )
                 request = service.projects().list_next(
@@ -125,6 +128,46 @@ class GCPAuth:
             return projects
         except Exception as exc:
             logger.warning("Could not list GCP projects: %s", exc)
+            return []
+
+    async def list_accessible_organizations(self) -> list[dict[str, str]]:
+        """List GCP organizations the current identity can access.
+
+        Only relevant for Google Workspace / Cloud Identity accounts.
+        Personal Gmail accounts have no organizations. Returns empty list
+        on any error or when no orgs are accessible.
+        """
+        if self._credentials is None and not await self.verify():
+            return []
+        return await asyncio.to_thread(self._sync_list_organizations)
+
+    def _sync_list_organizations(self) -> list[dict[str, str]]:
+        try:
+            from googleapiclient import discovery
+        except ImportError:
+            return []
+
+        try:
+            service = discovery.build(
+                "cloudresourcemanager",
+                "v1",
+                credentials=self._credentials,
+                cache_discovery=False,
+            )
+            resp = service.organizations().search(body={"filter": ""}).execute()
+            orgs = []
+            for o in resp.get("organizations", []):
+                if o.get("lifecycleState") != "ACTIVE":
+                    continue
+                # name field is "organizations/123456789"
+                org_id = o.get("name", "").split("/")[-1]
+                orgs.append({
+                    "id": org_id,
+                    "display_name": o.get("displayName", org_id),
+                })
+            return orgs
+        except Exception as exc:
+            logger.warning("Could not list GCP organizations: %s", exc)
             return []
 
     async def get_identity(self) -> dict[str, str]:

@@ -5,17 +5,18 @@ build-backend = "hatchling.build"
 [project]
 name = "spancloud"
 version = "0.1.0"
-description = "Multi-cloud infrastructure orchestrator — an all-seeing eye into AWS, GCP, Azure, Digital Ocean, and Vultr"
+description = "Multi-cloud infrastructure orchestrator — unified CLI, TUI, and GUI for AWS, GCP, Azure, DigitalOcean, Vultr, OCI, and Alibaba Cloud"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [
     { name = "Dayton Jones", email = "jones.dayton@gmail.com" },
 ]
-keywords = ["cloud", "infrastructure", "orchestrator", "aws", "gcp", "azure", "multi-cloud"]
+keywords = ["cloud", "infrastructure", "orchestrator", "aws", "gcp", "azure", "digitalocean", "vultr", "oci", "alibaba", "multi-cloud"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
+    "Environment :: X11 Applications :: Qt",
     "Intended Audience :: System Administrators",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -23,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
 ]
 dependencies = [
     "textual>=1.0.0",
@@ -71,12 +73,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = [
+    "PySide6>=6.7.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "boto3-stubs[ec2,s3]>=1.35.0",
+    "PySide6>=6.7.0",
 ]
 
 [project.scripts]

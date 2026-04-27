@@ -14,7 +14,7 @@ from google.cloud import monitoring_v3
 from pydantic import BaseModel, Field
 
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.gcp._retry import GCP_RETRY_SLOW
 from spancloud.utils.throttle import RateLimiter
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ class CloudMonitoringAnalyzer:
     def __init__(self, auth: GCPAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @GCP_RETRY_SLOW
     async def list_alert_policies(self) -> list[AlertInfo]:
         """List all alerting policies in the project.
 
@@ -93,7 +93,7 @@ class CloudMonitoringAnalyzer:
         logger.debug("Found %d alert policies", len(results))
         return results
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @GCP_RETRY_SLOW
     async def get_instance_metrics(
         self,
         instance_id: str,

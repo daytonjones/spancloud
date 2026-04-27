@@ -8,7 +8,7 @@ import importlib.resources as pkg_resources
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import Qt
-from PySide6.QtCore import QByteArray, QSettings
+from PySide6.QtCore import QByteArray, QSettings, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -37,14 +37,23 @@ from spancloud.gui.widgets.toolbar import AppToolbar
 
 
 def _build_provider_list(mock: bool = False) -> list[dict]:
-    """Return provider dicts — from the live registry, or mock data."""
+    """Return provider dicts — from the live registry, or mock data.
+
+    All providers are always built so that enable/disable toggles in settings
+    take effect immediately without a restart. The ``enabled`` flag controls
+    whether a provider appears in the sidebar/overview and whether auth is
+    attempted.
+    """
     if mock:
         from spancloud.providers.mock import build_mock_providers
         providers_list = build_mock_providers()
+        enabled: set[str] = {p.name for p in providers_list}
     else:
         import spancloud.providers  # noqa: F401 — triggers provider self-registration
         from spancloud.core.registry import registry
+        from spancloud.config.sidebar import get_enabled_providers
         providers_list = registry.list_providers()
+        enabled = get_enabled_providers()
 
     return [
         {
@@ -53,6 +62,7 @@ def _build_provider_list(mock: bool = False) -> list[dict]:
             "status":    "authenticated" if mock else "checking",
             "resources": 0,
             "provider":  p,
+            "enabled":   mock or p.name in enabled,
         }
         for p in providers_list
     ]
@@ -95,10 +105,15 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._setup_statusbar()
         self._restore_geometry()
+        self._apply_enabled_state()  # hide disabled providers before first paint
         if mock:
             self._init_mock_ui()
         else:
-            self._start_auth_checks()
+            # Delay auth checks until the event loop is running.  Starting
+            # heavy credential init (DefaultAzureCredential subprocess probes,
+            # AWS profile reads, etc.) before exec() can race with Qt's own
+            # startup and cause an intermittent flash-and-exit on Linux.
+            QTimer.singleShot(200, self._start_auth_checks)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -137,8 +152,14 @@ class MainWindow(QMainWindow):
             view._controls.profile_changed.connect(
                 lambda profile, pname=p["name"]: self._on_context_changed(pname)
             )
+            view._controls.organization_changed.connect(
+                lambda org, pname=p["name"]: self._on_context_changed(pname)
+            )
             view._controls.project_changed.connect(
                 lambda project, pname=p["name"]: self._on_context_changed(pname)
+            )
+            view._controls.subscription_changed.connect(
+                lambda sub, pname=p["name"]: self._on_context_changed(pname)
             )
             view.auth_requested.connect(
                 lambda pname=p["name"]: self._open_auth_dialog(pname)
@@ -174,9 +195,18 @@ class MainWindow(QMainWindow):
             f"{total:,} total resources"
         )
 
+    def _apply_enabled_state(self) -> None:
+        """Hide disabled providers from sidebar and overview without removing them."""
+        for p in self._providers:
+            if not p.get("enabled", True):
+                self._sidebar.set_provider_visible(p["name"], False)
+                self._overview.set_provider_visible(p["name"], False)
+
     def _init_mock_ui(self) -> None:
         """Immediately mark all providers authenticated and fetch resource counts."""
         for p in self._providers:
+            if not p.get("enabled", True):
+                continue
             self._sidebar.update_status(p["name"], "authenticated")
             self._overview.update_provider_status(p["name"], "authenticated")
             view = self._provider_views.get(p["name"])
@@ -189,6 +219,8 @@ class MainWindow(QMainWindow):
         from spancloud.gui.async_worker import AsyncWorker
 
         for p_dict in self._providers:
+            if not p_dict.get("enabled", True):
+                continue
             provider = p_dict.get("provider")
             if provider is None:
                 p_dict["status"] = "unauthenticated"
@@ -207,7 +239,9 @@ class MainWindow(QMainWindow):
         status = "authenticated" if is_authed else "unauthenticated"
         p_dict["status"] = status
         self._sidebar.update_status(p_dict["name"], status)
-        self._overview.update_provider_status(p_dict["name"], status)
+        # Pass None to show "…" while the count fetch is in progress
+        count_now: int | None = None if is_authed else 0
+        self._overview.update_provider_status(p_dict["name"], status, count_now)
         self._update_statusbar_summary()
         view = self._provider_views.get(p_dict["name"])
         if view:
@@ -312,6 +346,8 @@ class MainWindow(QMainWindow):
     def _on_refresh(self) -> None:
         self._status_label.setText("Refreshing…")
         for p in self._providers:
+            if not p.get("enabled", True):
+                continue
             p["status"] = "checking"
             self._sidebar.update_status(p["name"], "checking")
             self._overview.update_provider_status(p["name"], "checking")
@@ -332,17 +368,65 @@ class MainWindow(QMainWindow):
         from spancloud.gui.widgets.settings_dialog import SettingsDialog
         dlg = SettingsDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            # Apply theme if changed
             apply_theme(self, dlg.selected_theme())
-            # Rebuild sidebar to reflect enable/disable changes
             from spancloud.config.sidebar import get_enabled_providers
             enabled = get_enabled_providers()
+            newly_enabled: list[dict] = []
             for p in self._providers:
-                visible = p["name"] in enabled
-                self._sidebar.set_provider_visible(p["name"], visible)
+                was_enabled = p.get("enabled", True)
+                now_enabled = p["name"] in enabled
+                p["enabled"] = now_enabled
+                self._sidebar.set_provider_visible(p["name"], now_enabled)
+                self._overview.set_provider_visible(p["name"], now_enabled)
+                if now_enabled and not was_enabled:
+                    newly_enabled.append(p)
+            # Kick off auth for providers that were just re-enabled
+            if newly_enabled:
+                from spancloud.gui.async_worker import AsyncWorker
+                for p in newly_enabled:
+                    p["status"] = "checking"
+                    self._sidebar.update_status(p["name"], "checking")
+                    self._overview.update_provider_status(p["name"], "checking")
+                    provider = p.get("provider")
+                    if provider is None:
+                        continue
+                    worker = AsyncWorker(provider.authenticate())
+                    worker.result_ready.connect(
+                        lambda ok, pd=p: self._on_auth_checked(pd, ok)
+                    )
+                    worker.error_occurred.connect(
+                        lambda err, pd=p: self._on_auth_error(pd, err)
+                    )
+                    worker.start()
+                    self._auth_workers.append(worker)
 
 
 def main(mock: bool = False) -> None:
+    import threading
+    from spancloud.utils.logging import get_logger as _get_logger
+    _log = _get_logger(__name__)
+
+    # Log unhandled exceptions on the main thread instead of silently dying.
+    def _excepthook(exc_type: type, exc_val: BaseException, exc_tb: object) -> None:
+        import traceback
+        _log.error(
+            "Unhandled exception: %s",
+            "".join(traceback.format_exception(exc_type, exc_val, exc_tb)),  # type: ignore[arg-type]
+        )
+
+    sys.excepthook = _excepthook
+
+    # Log unhandled exceptions on background threads.
+    def _thread_excepthook(args: threading.ExceptHookArgs) -> None:
+        import traceback
+        _log.error(
+            "Unhandled exception in thread %s: %s",
+            args.thread,
+            "".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)),
+        )
+
+    threading.excepthook = _thread_excepthook
+
     app = QApplication(sys.argv)
     app.setApplicationName("Spancloud")
     app.setOrganizationName("spancloud")
@@ -351,7 +435,13 @@ def main(mock: bool = False) -> None:
     icon = _load_window_icon()
     app.setWindowIcon(icon)
 
-    window = MainWindow(mock=mock)
+    try:
+        window = MainWindow(mock=mock)
+    except Exception:
+        import traceback
+        _log.error("Failed to initialise MainWindow:\n%s", traceback.format_exc())
+        sys.exit(1)
+
     window.show()
     sys.exit(app.exec())
 

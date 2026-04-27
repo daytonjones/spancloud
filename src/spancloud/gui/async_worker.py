@@ -7,6 +7,10 @@ from typing import Any, Coroutine
 
 from PySide6.QtCore import QThread, Signal
 
+from spancloud.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class AsyncWorker(QThread):
     """Run a single async coroutine in a background thread.
@@ -35,3 +39,8 @@ class AsyncWorker(QThread):
             self.result_ready.emit(result)
         except Exception as exc:
             self.error_occurred.emit(str(exc))
+        except BaseException as exc:
+            # Catch SystemExit, KeyboardInterrupt, etc. — log and emit as error
+            # rather than letting them propagate and potentially kill the process.
+            logger.error("AsyncWorker: unhandled %s: %s", type(exc).__name__, exc)
+            self.error_occurred.emit(f"{type(exc).__name__}: {exc}")

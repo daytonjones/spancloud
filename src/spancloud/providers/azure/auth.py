@@ -102,7 +102,7 @@ class AzureAuth:
             "id": sub.subscription_id,
             "display_name": sub.display_name,
             "state": str(sub.state),
-            "tenant_id": sub.tenant_id or self._tenant_id,
+            "tenant_id": getattr(sub, "tenant_id", None) or self._tenant_id,
         }
 
     async def get_identity(self) -> dict[str, str]:
@@ -128,7 +128,7 @@ class AzureAuth:
                 "id": sub.subscription_id or "",
                 "display_name": sub.display_name or "",
                 "state": str(sub.state),
-                "tenant_id": sub.tenant_id or "",
+                "tenant_id": getattr(sub, "tenant_id", None) or "",
             }
             for sub in client.subscriptions.list()
         ]

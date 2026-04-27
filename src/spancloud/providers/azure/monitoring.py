@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.azure._retry import AZURE_RETRY_SLOW
 
 if TYPE_CHECKING:
     from spancloud.providers.azure.auth import AzureAuth
@@ -69,7 +69,7 @@ class AzureMonitoringAnalyzer:
     def __init__(self, auth: AzureAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @AZURE_RETRY_SLOW
     async def list_alert_policies(self) -> list[AlertInfo]:
         """List all metric alert rules in the subscription."""
         return await asyncio.to_thread(self._sync_list)
@@ -120,7 +120,7 @@ class AzureMonitoringAnalyzer:
             combiner=" | ".join(combiner_parts) or "—",
         )
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @AZURE_RETRY_SLOW
     async def get_instance_metrics(
         self,
         resource_id: str,

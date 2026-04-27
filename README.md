@@ -74,14 +74,17 @@ The desktop GUI provides a native Qt6 window with:
 
 - **Full-width toolbar** — icon, app name, current context breadcrumb, refresh and settings buttons
 - **Resizable sidebar** — provider list with colour-coded connection status dots; drag the splitter handle to adjust width
-- **Overview dashboard** — provider cards in a 3-column grid showing resource count, connection state, and a colour-coded breakdown bar by resource type
-- **Per-provider view** — inner nav sidebar with RESOURCES (Compute, Storage, …) and ANALYSIS (Cost Summary, Security Audit, …) sections, each with resource count badges
-- **Resource table** — Name / ID / State / Region / Type columns; State column colour-coded (green=running, red=stopped, yellow=pending)
+- **Overview dashboard** — provider cards in a 3-column grid showing live resource count, connection state, and a colour-coded breakdown bar by resource type
+- **Per-provider view** — inner nav sidebar with RESOURCES (Compute, Storage, …) and ANALYSIS (Cost Summary, Security Audit, Unused Resources, Relationships, Monitoring Alerts) sections, each with resource count badges
+- **Resource table** — Name / ID / State / Region / Type columns; State column colour-coded (green=running, red=stopped, yellow=pending); click any column header to sort
 - **Right-side detail drawer** — click any table row to open a scrollable key-value panel; close with ✕ or by clicking another resource type
-- **Analysis panels** — cost breakdown, security findings, unused resources, monitoring alerts
+- **Metrics panel** — select a resource row then open the Metrics analysis to see live CloudWatch / provider time-series charts with sparklines
+- **Relationships panel** — visualises resource dependency graphs (e.g. EC2 → VPC → Subnet → Security Group) as an inline tree
+- **Analysis panels** — cost breakdown, security findings, unused resources, monitoring alerts, all fetched live from the provider API
+- **Settings dialog** — toggle providers on/off; choose from 5 built-in themes (Tokyo Night, Dark, Dracula, Solarized Dark, Light)
 - **Status bar** — active context on the left, total provider/resource count on the right
-
-> **Note:** The GUI is currently a visual mockup — backend wiring (real authentication, live resource loading) is in progress.
+- **Region / profile / project selectors** — switch AWS region or profile, GCP project inline without relaunching
+- **Demo mode** — run `spancloud gui --mock` (or `spancloud --mock`) to explore with realistic sample data, no credentials needed
 
 #### Screenshots
 
@@ -558,7 +561,6 @@ Per-provider resource coverage highlights:
 - [ ] **Notifications / scheduled scans** — Cron-style monitoring with Slack/email alerts
 - [ ] **Vultr monitoring** — Only if/when Vultr publishes a public alerts API
 - [ ] **Additional Azure monitoring types** — Activity-log + scheduled-query alerts (currently metric alerts only)
-- [ ] **GUI** — PySide6 desktop application (Qt6) on top of the same core layer, giving spancloud a full CLI + TUI + GUI triple interface
 ## Development
 
 ```bash
