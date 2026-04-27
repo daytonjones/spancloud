@@ -174,9 +174,9 @@ _MOCK_AWS_PROFILES: list[tuple[str, str]] = [
 ]
 
 _MOCK_GCP_PROJECTS: list[dict] = [
-    {"projectId": "my-prod-project", "name": "Production"},
-    {"projectId": "my-staging-project", "name": "Staging"},
-    {"projectId": "my-dev-project", "name": "Development"},
+    {"project_id": "my-prod-project", "name": "Production"},
+    {"project_id": "my-staging-project", "name": "Staging"},
+    {"project_id": "my-dev-project", "name": "Development"},
 ]
 
 _MOCK_AZURE_SUBS: list[dict] = [
