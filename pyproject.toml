@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spancloud"
-version = "0.1.0"
+version = "0.1.1"
 description = "Multi-cloud infrastructure orchestrator — unified CLI, TUI, and GUI for AWS, GCP, Azure, DigitalOcean, Vultr, OCI, and Alibaba Cloud"
 readme = "README.md"
 license = "MIT"
