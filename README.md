@@ -533,6 +533,8 @@ Per-provider resource coverage highlights:
 - [ ] **Tag compliance** — Find resources missing required tags
 - [ ] **Cross-provider search** — Query `"prod-*"` across every authed provider in parallel
 - [ ] **Notifications / scheduled scans** — Cron-style monitoring with Slack/email alerts
+- [ ] **Multi-account profiles for API-key providers** — Named profiles (e.g. "personal", "work") for Vultr, DigitalOcean, and Alibaba Cloud so users can switch between accounts without re-entering keys; same UX as AWS profile switching
+- [ ] **Alibaba Cloud** — Re-enable once multi-account profile support is in place
 - [ ] **Vultr monitoring** — Only if/when Vultr publishes a public alerts API
 - [ ] **Additional Azure monitoring types** — Activity-log + scheduled-query alerts (currently metric alerts only)
 ## Development
