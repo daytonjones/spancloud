@@ -114,6 +114,7 @@ class MainWindow(QMainWindow):
             # AWS profile reads, etc.) before exec() can race with Qt's own
             # startup and cause an intermittent flash-and-exit on Linux.
             QTimer.singleShot(200, self._start_auth_checks)
+            QTimer.singleShot(3000, self._check_for_update)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -400,6 +401,25 @@ class MainWindow(QMainWindow):
                     )
                     worker.start()
                     self._auth_workers.append(worker)
+
+    def _check_for_update(self) -> None:
+        import spancloud as _sc
+        from spancloud.gui.async_worker import AsyncWorker
+        from spancloud.utils.version_check import get_latest_pypi_version, is_newer
+
+        async def _fetch() -> str | None:
+            return await get_latest_pypi_version()
+
+        def _on_result(latest: str | None) -> None:
+            if latest and is_newer(latest, _sc.__version__):
+                self._status_label.setText(
+                    f"⬆  Spancloud v{latest} available — pip install --upgrade spancloud"
+                )
+                self._status_label.setStyleSheet("color: #e0af68;")
+
+        worker = AsyncWorker(_fetch())
+        worker.result_ready.connect(_on_result)
+        worker.start()
 
     def _on_about(self) -> None:
         import spancloud as _sc

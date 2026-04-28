@@ -62,6 +62,8 @@ class SpancloudApp(App):  # type: ignore[type-arg]
                 registry.register(p)
             self.sub_title = "DEMO MODE"
         self.push_screen("dashboard")
+        if not self._mock:
+            self.run_worker(self._check_for_update(), name="version-check")
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated
@@ -84,6 +86,17 @@ class SpancloudApp(App):  # type: ignore[type-arg]
                     sidebar._check_auth(),
                     name=f"reauth-tab-switch-{id(sidebar)}",
                 )
+
+    async def _check_for_update(self) -> None:
+        import spancloud
+        from spancloud.utils.version_check import get_latest_pypi_version, is_newer
+        latest = await get_latest_pypi_version()
+        if latest and is_newer(latest, spancloud.__version__):
+            self.notify(
+                f"pip install --upgrade spancloud",
+                title=f"Spancloud v{latest} available",
+                timeout=15,
+            )
 
     def action_refresh(self) -> None:
         """Trigger a refresh of the current screen."""
