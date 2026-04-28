@@ -34,7 +34,7 @@ _PROVIDER_ICONS: dict[str, str] = {
     "digitalocean": "⋄",
     "vultr":        "⋄",
     "oci":          "☁",
-    "alibaba":      "☁",
+    # "alibaba": "☁",  # TODO: not yet available
 }
 
 

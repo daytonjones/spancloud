@@ -10,7 +10,7 @@
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue?style=flat-square)](https://mypy-lang.org/)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey?style=flat-square)]()
 [![Architecture](https://img.shields.io/badge/architecture-multi--cloud-blueviolet?style=flat-square)]()
-[![Providers](https://img.shields.io/badge/providers-AWS%20%7C%20GCP%20%7C%20Azure%20%7C%20OCI%20%7C%20Alibaba%20%7C%20DO%20%7C%20Vultr-orange?style=flat-square)]()
+[![Providers](https://img.shields.io/badge/providers-AWS%20%7C%20GCP%20%7C%20Azure%20%7C%20OCI%20%7C%20DO%20%7C%20Vultr-orange?style=flat-square)]()
 [![TUI](https://img.shields.io/badge/TUI-Textual-1F6FEB?style=flat-square)](https://textual.textualize.io/)
 [![GUI](https://img.shields.io/badge/GUI-PySide6%20%28Qt6%29-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython/)
 [![Works on my machine](https://img.shields.io/badge/works-on%20my%20machine-brightgreen?style=flat-square)]()
@@ -29,7 +29,7 @@ Spancloud provides a unified interface to discover, inspect, and manage infrastr
 | **Digital Ocean** | Implemented | Compute (Droplets), Storage (Volumes/Spaces), Network (VPC/Firewall), Database (Managed), Containers (DOKS), Load Balancers, DNS |
 | **Azure** (Microsoft Azure) | Implemented | Compute (VMs), Storage (Blob), Network (VNet/NSG/Public IP), Database (Azure SQL/Cosmos DB), Serverless (App Service/Functions), Containers (AKS), Load Balancers, DNS |
 | **Oracle Cloud** (OCI) | Implemented | Compute (Instances), Storage (Object Storage + Block Volumes), Network (VCN/Subnet/Security List/NSG), Database (Autonomous DB + DB Systems), Containers (OKE), Load Balancers (LB + NLB), DNS Zones |
-| **Alibaba Cloud** | Implemented | Compute (ECS), Storage (OSS + Disks), Network (VPC/VSwitch/Security Group), Database (RDS), Containers (ACK), Load Balancers (SLB/CLB), DNS (Alidns) |
+| **Alibaba Cloud** | Coming Soon | — |
 
 ## Installation
 
@@ -94,7 +94,7 @@ spancloud tui           # Also launches TUI explicitly
 ```
 
 The TUI provides:
-- **Tabbed layout** — Overview tab + one tab per enabled provider (AWS, GCP, Vultr, DigitalOcean, Azure, OCI, Alibaba)
+- **Tabbed layout** — Overview tab + one tab per enabled provider (AWS, GCP, Vultr, DigitalOcean, Azure, OCI)
 - **Region selector** — every provider tab has a region dropdown in the sidebar
 - **AWS profile switcher** — extra dropdown on the AWS tab for multi-account users
 - **GCP project switcher** — extra dropdown on the GCP tab populated from Cloud Resource Manager; swap between every project the signed-in identity can see
@@ -107,7 +107,7 @@ The TUI provides:
 - **Settings screen** — click the Settings sidebar item to pick which resource types appear; matches `spancloud config sidebar`
 - **Provider enable/disable** — `spancloud config providers` (or the settings screen) hides tabs you don't use
 - **Animated progress** — slow analysis runs show a spinner + elapsed timer so you know Vultr / large Azure subs are still working
-- **Auth modals** — click any unauthenticated provider tile on the Overview tab to log in; Vultr / DO / Alibaba save tokens to the OS keychain for the next session
+- **Auth modals** — click any unauthenticated provider tile on the Overview tab to log in; Vultr / DO save tokens to the OS keychain for the next session
 - **Keyboard navigation** — Tab/Shift+Tab providers, Up/Down sidebar, Enter to load, `/` search, `e` export, Escape close, `?` help, `q` quit
 - **Mouse support** — click sidebar items, table rows, dropdowns, search input
 
@@ -132,7 +132,6 @@ spancloud auth login vultr                       # API key
 spancloud auth login digitalocean                # Personal Access Token
 spancloud auth login azure                       # Wraps 'az login' + subscription selection
 spancloud auth login oci                         # Reads ~/.oci/config or shells to 'oci setup config'
-spancloud auth login alibaba                     # AccessKey ID + Secret
 
 # Check auth status for all providers at once
 spancloud auth status
@@ -212,7 +211,6 @@ spancloud action start my-vm -p gcp --region us-central1-a
 spancloud action stop <droplet-id> -p digitalocean
 spancloud action reboot web-1 -p azure --region eastus
 spancloud action start <ocid> -p oci --region us-ashburn-1
-spancloud action stop <i-id> -p alibaba --region us-west-1
 spancloud action stop <id> -p vultr
 spancloud action terminate i-0abc123            # AWS only — requires confirmation
 spancloud action start i-0abc123 --yes          # -y skips the confirmation prompt
@@ -226,7 +224,7 @@ spancloud vultr block-info <block-id>           # Vultr block storage detail
 spancloud vultr object-info <subscription-id>   # Vultr Object Storage detail
 
 # --- Monitoring ---
-# alerts works on AWS (CloudWatch alarms), GCP / DO / Azure / OCI / Alibaba (alert policies).
+# alerts works on AWS (CloudWatch alarms), GCP / DO / Azure / OCI (alert policies).
 # metrics is AWS + GCP only.
 spancloud monitor alerts aws                    # All CloudWatch alarms
 spancloud monitor alerts aws --state ALARM      # Only firing alarms
@@ -234,7 +232,6 @@ spancloud monitor alerts gcp                    # GCP alert policies
 spancloud monitor alerts digitalocean           # DO droplet alert policies
 spancloud monitor alerts azure                  # Azure metric alerts
 spancloud monitor alerts oci                    # OCI monitoring alarms
-spancloud monitor alerts alibaba                # Alibaba CloudMonitor alarms
 
 spancloud monitor metrics i-0abc123 --hours 3                 # AWS EC2 metrics (sparklines)
 spancloud monitor metrics 12345 -p gcp --region us-central1-a # GCE metrics
@@ -242,7 +239,7 @@ spancloud monitor metrics 12345 -p gcp --region us-central1-a # GCE metrics
 
 All `cost show`, `audit run`, `unused scan`, `map show`, and `resource list`
 commands accept any of the seven provider names, so the examples above with
-`aws` swap in `gcp` / `vultr` / `digitalocean` / `azure` / `oci` / `alibaba`
+`aws` swap in `gcp` / `vultr` / `digitalocean` / `azure` / `oci`
 with identical flags.
 
 ```bash
@@ -256,15 +253,12 @@ spancloud config sidebar aws --reset                  # Back to defaults
 
 # Enable/disable which providers show as TUI tabs
 spancloud config providers                            # Current state
-spancloud config providers --disable alibaba          # Hide a provider tab
-spancloud config providers --enable alibaba           # Re-enable it
 
 # --- Credential store management ---
 
 spancloud auth store-info                             # macOS Keychain / Secret Service / file fallback
 spancloud auth logout vultr                           # Forget stored Vultr key
 spancloud auth logout digitalocean
-spancloud auth logout alibaba                         # Clears ID + secret
 ```
 
 ### Run as a Python module
@@ -284,7 +278,6 @@ spancloud auth login vultr         # API key setup and validation
 spancloud auth login digitalocean  # Personal Access Token (saved to OS keychain)
 spancloud auth login azure         # Wraps 'az login' + subscription picker
 spancloud auth login oci           # Loads ~/.oci/config or runs 'oci setup config'
-spancloud auth login alibaba       # AccessKey ID + Secret (saved to OS keychain)
 spancloud auth status              # Check all providers at a glance
 
 # AWS multi-account profile management
@@ -360,16 +353,9 @@ Uses the native OCI SDK config file:
 - Chosen profile is persisted to `~/.config/spancloud/oci.env` for future runs
 - Optional `SPANCLOUD_OCI_COMPARTMENT_ID` overrides the tenancy-root compartment
 
-### Alibaba Cloud
-Uses AccessKey ID + Secret authentication:
-- Environment variables (`SPANCLOUD_ALIBABA_ACCESS_KEY_ID`, `SPANCLOUD_ALIBABA_ACCESS_KEY_SECRET`)
-- Interactive setup via `spancloud auth login alibaba` — keys are saved to
-  the OS keychain and reused on the next run
-- Generate keys at: https://ram.console.aliyun.com/manage/ak (use a RAM sub-user, not root)
-
 ### Credential store
 
-Vultr, DigitalOcean, and Alibaba API keys are saved via the `keyring`
+Vultr and DigitalOcean API keys are saved via the `keyring`
 library, which writes to the OS-native secret store (macOS Keychain,
 Linux Secret Service, Windows Credential Locker). On headless Linux or
 in containers where no keyring backend is available, Spancloud falls
@@ -387,7 +373,6 @@ spancloud auth store-info
 # Remove stored credentials for a provider
 spancloud auth logout vultr
 spancloud auth logout digitalocean
-spancloud auth logout alibaba
 ```
 
 ## Configuration
@@ -409,9 +394,6 @@ Spancloud reads configuration from environment variables prefixed with `SPANCLOU
 | `SPANCLOUD_OCI_PROFILE` | `DEFAULT` | OCI config profile name |
 | `SPANCLOUD_OCI_COMPARTMENT_ID` | — | Compartment OCID (defaults to tenancy root) |
 | `SPANCLOUD_OCI_DEFAULT_REGION` | `us-ashburn-1` | Default OCI region |
-| `SPANCLOUD_ALIBABA_ACCESS_KEY_ID` | — | Alibaba AccessKey ID (falls back to OS keychain) |
-| `SPANCLOUD_ALIBABA_ACCESS_KEY_SECRET` | — | Alibaba AccessKey Secret (falls back to OS keychain) |
-| `SPANCLOUD_ALIBABA_DEFAULT_REGION` | `us-west-1` | Default Alibaba region |
 
 ## Project Structure
 
@@ -506,7 +488,7 @@ src/spancloud/
 │   ├── digitalocean/       # Droplets, Volumes, VPC, DOKS, DBs, LBs, DNS 
 │   ├── azure/              # VMs, Blob Storage, VNet/NSG, AKS, SQL/Cosmos, App Service, LBs, DNS
 │   ├── oci/                # Instances, Object Storage, VCN, ADB, OKE, LBs, DNS
-│   └── alibaba/            # ECS, OSS, VPC, RDS, ACK, SLB, Alidns
+│   └── alibaba/            # TODO: coming in a future release
 ├── config/                 # Configuration management
 │   └── settings.py
 └── utils/                  # Shared utilities
@@ -529,7 +511,7 @@ lifecycle actions. The matrix below captures the current state:
 | DigitalOcean |    ✓      |  ✓*  |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
 | Vultr        |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   —**  |    ✓    |     —      |    —    |
 | OCI          |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
-| Alibaba      |    ✓      |  ✓   |   ✓   |   ✓    |       ✓       |   ✓    |    ✓    |     ✓      |    ✓    |
+| Alibaba      |   TODO    |      |       |        |               |        |         |            |         |
 
 \* DO cost requires an account with the **Billing** team role — full-access PATs on a Member account return 403.
 \** Vultr has no public alerts API; monitoring is dashboard-only.
@@ -541,7 +523,7 @@ Per-provider resource coverage highlights:
 - **DigitalOcean:** Droplets, Volumes, Spaces CDN, VPCs, Firewalls, Managed DBs, DOKS, Load Balancers, DNS, App Platform (serverless apps), Functions, Monitoring Alerts, Balance / Billing History
 - **Vultr:** Instances + Bare Metal, Block + Object Storage, VPCs, Firewalls, Managed DBs, VKE, Load Balancers, DNS, Billing History
 - **OCI:** Compute Instances, Object Storage + Block Volumes, VCN/Subnet/Security List/NSG, Autonomous DB + DB Systems, OKE, Oracle Functions, LB + NLB, DNS Zones, Monitoring Alarms, Usage API
-- **Alibaba Cloud:** ECS, OSS + Disks, VPC/VSwitch/Security Group, RDS, ACK, Function Compute (FC), SLB, Alidns, CloudMonitor, BSS OpenAPI
+- **Alibaba Cloud:** Coming in a future release
 
 ### Next up
 
