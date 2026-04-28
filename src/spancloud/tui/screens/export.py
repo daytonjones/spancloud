@@ -119,8 +119,8 @@ class ExportScreen(ModalScreen[bool]):
             result = formatter(self._resources)
             filepath.write_text(result)
             self.app.notify(
-                f"Exported {len(self._resources)} resource(s) to {filepath}",
-                timeout=5,
+                f"Exported {len(self._resources)} resource(s) to {filepath.resolve()}",
+                timeout=6,
             )
             self.dismiss(True)
         except Exception as exc:

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QAction, QColor, QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -26,6 +28,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from PySide6.QtGui import QDesktopServices
 
 from spancloud.gui.async_worker import AsyncWorker
 from spancloud.gui.theme import (
@@ -67,6 +70,78 @@ _STATE_COLOR: dict[str, str] = {
     "error":      STATUS_ERROR,
     "unknown":    TEXT_MUTED,
 }
+
+def _console_url(provider: str, resource: "Resource") -> str | None:
+    """Return a browser URL for the cloud console page for this resource, or None."""
+    rt = resource.resource_type.value
+    rid = resource.id
+    name = resource.name
+    region = resource.region
+    meta = resource.metadata
+
+    if provider == "aws":
+        base = f"https://console.aws.amazon.com"
+        if rt == "compute":
+            return f"{base}/ec2/v2/home?region={region}#Instances:instanceId={rid}"
+        if rt == "storage":
+            return f"https://s3.console.aws.amazon.com/s3/buckets/{name}"
+        if rt == "network":
+            return f"{base}/vpc/home?region={region}#vpcs:VpcId={rid}"
+        if rt == "database":
+            return f"{base}/rds/home?region={region}#database:id={name}"
+        if rt == "serverless":
+            return f"{base}/lambda/home?region={region}#/functions/{name}"
+        if rt == "container":
+            return f"{base}/eks/home?region={region}#/clusters/{name}"
+        if rt == "load_balancer":
+            return f"{base}/ec2/v2/home?region={region}#LoadBalancers:"
+        if rt == "dns":
+            return f"{base}/route53/v2/hostedzones"
+        if rt == "iam":
+            return f"{base}/iamv2/home"
+    elif provider == "gcp":
+        proj = meta.get("project_id", "")
+        proj_param = f"?project={proj}" if proj else ""
+        if rt == "compute":
+            zone = meta.get("zone", region)
+            return f"https://console.cloud.google.com/compute/instancesDetail/zones/{zone}/instances/{name}{proj_param}"
+        if rt == "storage":
+            return f"https://console.cloud.google.com/storage/browser/{name}{proj_param}"
+        if rt == "database":
+            return f"https://console.cloud.google.com/sql/instances/{name}/overview{proj_param}"
+        if rt == "container":
+            return f"https://console.cloud.google.com/kubernetes/clusters{proj_param}"
+        if rt == "serverless":
+            return f"https://console.cloud.google.com/functions/list{proj_param}"
+        if rt == "network":
+            return f"https://console.cloud.google.com/networking/networks/list{proj_param}"
+        return f"https://console.cloud.google.com/{proj_param}"
+    elif provider == "azure":
+        if rid.startswith("/subscriptions/"):
+            return f"https://portal.azure.com/#resource{rid}"
+        return "https://portal.azure.com/"
+    elif provider == "digitalocean":
+        if rt == "compute":
+            return f"https://cloud.digitalocean.com/droplets/{rid}"
+        if rt == "database":
+            return f"https://cloud.digitalocean.com/databases/{rid}"
+        if rt == "container":
+            return f"https://cloud.digitalocean.com/kubernetes/clusters/{rid}"
+        if rt == "load_balancer":
+            return f"https://cloud.digitalocean.com/networking/load_balancers/{rid}"
+        if rt == "network":
+            return "https://cloud.digitalocean.com/networking/vpc"
+        if rt == "storage":
+            return "https://cloud.digitalocean.com/spaces"
+        return "https://cloud.digitalocean.com/"
+    elif provider == "vultr":
+        if rt == "compute":
+            return f"https://my.vultr.com/servers/detail/?SERVER_ID={rid}"
+        return "https://my.vultr.com/"
+    elif provider == "oci":
+        return "https://cloud.oracle.com/"
+    return None
+
 
 def _friendly_error(raw: str) -> tuple[str, str]:
     """Return (short_message, color) for display in the resource table."""
@@ -1320,6 +1395,13 @@ class ProviderViewWidget(QWidget):
         self._search.setPlaceholderText("🔍  Filter resources…")
         self._search.textChanged.connect(self._filter_table)
         sh.addWidget(self._search)
+
+        self._tag_filter = QLineEdit()
+        self._tag_filter.setPlaceholderText("🏷  tag: key=value")
+        self._tag_filter.setFixedWidth(160)
+        self._tag_filter.textChanged.connect(self._filter_table)
+        sh.addWidget(self._tag_filter)
+
         self._count_label = QLabel("")
         self._count_label.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px; padding-left: 10px;")
         sh.addWidget(self._count_label)
@@ -1349,6 +1431,17 @@ class ProviderViewWidget(QWidget):
         sh.addWidget(self._export_btn)
         v.addWidget(search_bar)
 
+        self._loading_bar = QProgressBar()
+        self._loading_bar.setRange(0, 0)  # indeterminate
+        self._loading_bar.setFixedHeight(3)
+        self._loading_bar.setTextVisible(False)
+        self._loading_bar.setStyleSheet(
+            f"QProgressBar {{ background: transparent; border: none; }}"
+            f"QProgressBar::chunk {{ background: {ACCENT_BLUE}; }}"
+        )
+        self._loading_bar.hide()
+        v.addWidget(self._loading_bar)
+
         self._table = QTreeWidget()
         self._table.setAlternatingRowColors(True)
         self._table.setRootIsDecorated(False)
@@ -1363,7 +1456,14 @@ class ProviderViewWidget(QWidget):
         self._table.setColumnWidth(2, 85)
         self._table.setColumnWidth(3, 110)
         self._table.itemClicked.connect(self._on_row_clicked)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._on_table_context_menu)
         v.addWidget(self._table, stretch=1)
+
+        # Ctrl+E shortcut for export
+        export_shortcut = QShortcut(QKeySequence("Ctrl+E"), w)
+        export_shortcut.activated.connect(self._export_resources)
+
         return w
 
     # ------------------------------------------------------------------
@@ -1771,6 +1871,7 @@ class ProviderViewWidget(QWidget):
         self._export_btn.setEnabled(False)
         self._total_resource_count = 0
         self._count_label.setText("")
+        self._loading_bar.show()
         self._table.setSortingEnabled(False)
         self._table.clear()
         self._show_table_message(f"Loading {rt}…")
@@ -1801,8 +1902,11 @@ class ProviderViewWidget(QWidget):
         load_key = f"rt:_all:{self._current_region}"
         self._current_load_key = load_key
 
+        self._loaded_resources = []
+        self._export_btn.setEnabled(False)
         self._total_resource_count = 0
         self._count_label.setText("")
+        self._loading_bar.show()
         self._table.setSortingEnabled(False)
         self._table.clear()
         self._show_table_message("Loading all resources…")
@@ -1839,6 +1943,7 @@ class ProviderViewWidget(QWidget):
             return
         self._loaded_resources = resources
         self._export_btn.setEnabled(bool(resources))
+        self._loading_bar.hide()
         self._table.clear()
         self._table.setSortingEnabled(False)
         for r in resources:
@@ -1864,6 +1969,7 @@ class ProviderViewWidget(QWidget):
             return
         self._loaded_resources = []
         self._export_btn.setEnabled(False)
+        self._loading_bar.hide()
         self._total_resource_count = 0
         self._count_label.setText("")
         self._table.clear()
@@ -1936,26 +2042,77 @@ class ProviderViewWidget(QWidget):
         item.setFlags(Qt.ItemFlag.NoItemFlags)
         self._table.addTopLevelItem(item)
 
-    def _filter_table(self, text: str) -> None:
-        q = text.lower()
+    def _filter_table(self, _: str = "") -> None:
+        q = self._search.text().lower()
+        tag_text = self._tag_filter.text().strip()
+
+        # Parse tag filters: "env=prod team=api" or "env=prod,team=api"
+        tag_pairs: list[tuple[str, str]] = []
+        for part in tag_text.replace(",", " ").split():
+            if "=" in part:
+                k, _, v = part.partition("=")
+                tag_pairs.append((k.lower(), v.lower()))
+
         visible_count = 0
         for i in range(self._table.topLevelItemCount()):
             item = self._table.topLevelItem(i)
             if item is None:
                 continue
-            visible = not q or any(
+            resource: Resource | None = item.data(0, Qt.ItemDataRole.UserRole)
+
+            # Text match
+            text_ok = not q or any(
                 q in (item.text(col) or "").lower() for col in range(item.columnCount())
             )
+
+            # Tag match (AND logic — all pairs must match)
+            tag_ok = True
+            if tag_pairs and resource is not None:
+                rtags = {k.lower(): v.lower() for k, v in (resource.tags or {}).items()}
+                tag_ok = all(
+                    any(tv in rtags.get(tk, "") for tv in (v,))
+                    for tk, v in tag_pairs
+                )
+
+            visible = text_ok and tag_ok
             item.setHidden(not visible)
-            if visible and item.data(0, Qt.ItemDataRole.UserRole) is not None:
+            if visible and resource is not None:
                 visible_count += 1
+
         total = self._total_resource_count
-        if q and total:
+        active_filter = q or tag_pairs
+        if active_filter and total:
             self._count_label.setText(f"{visible_count} of {total} items")
         elif total:
             self._count_label.setText(f"{total} items")
         else:
             self._count_label.setText("")
+
+    def _on_table_context_menu(self, pos: object) -> None:
+        item = self._table.itemAt(pos)  # type: ignore[arg-type]
+        if item is None:
+            return
+        resource: Resource | None = item.data(0, Qt.ItemDataRole.UserRole)
+        if resource is None:
+            return
+
+        menu = QMenu(self)
+        copy_name = QAction(f'Copy Name  “{resource.name}”', self)
+        copy_id   = QAction(f'Copy ID  “{resource.id}”', self)
+        copy_name.triggered.connect(lambda: QGuiApplication.clipboard().setText(resource.name))
+        copy_id.triggered.connect(lambda: QGuiApplication.clipboard().setText(resource.id))
+        menu.addAction(copy_name)
+        menu.addAction(copy_id)
+
+        provider_name = self._provider_meta.get("name", "")
+        url = _console_url(provider_name, resource)
+        if url:
+            menu.addSeparator()
+            open_action = QAction("Open in Cloud Console ↗", self)
+            open_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
+            menu.addAction(open_action)
+
+        menu.exec(self._table.viewport().mapToGlobal(pos))  # type: ignore[arg-type]
 
     def _on_row_clicked(self, item: QTreeWidgetItem) -> None:
         resource: Resource | None = item.data(0, Qt.ItemDataRole.UserRole)
