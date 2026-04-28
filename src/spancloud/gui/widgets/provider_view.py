@@ -1554,9 +1554,9 @@ class ProviderViewWidget(QWidget):
         name = self._provider_meta["name"]
         is_mock = not hasattr(self._provider, "_auth")
 
-        # Reflect the active AWS profile in the combo
-        if name == "aws" and not is_mock:
-            active = getattr(self._provider._auth, "active_profile", "")  # type: ignore[attr-defined]
+        # Reflect the active profile in the combo (AWS and OCI)
+        if name in ("aws", "oci") and not is_mock:
+            active = getattr(self._provider._auth, "active_profile", "") or getattr(self._provider._auth, "profile", "")  # type: ignore[attr-defined]
             if active:
                 self._controls.set_active_profile(active)
 
@@ -1567,6 +1567,9 @@ class ProviderViewWidget(QWidget):
                 self._controls.populate_gcp_projects(_MOCK_GCP_PROJECTS, "my-prod-project")
             else:
                 self._fetch_gcp_projects()
+
+        # OCI profile combo is populated at build time from ~/.oci/config;
+        # in mock mode it uses _MOCK_OCI_PROFILES. No async fetch needed.
 
         # Populate Azure subscription list
         if name == "azure":

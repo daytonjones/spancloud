@@ -184,6 +184,24 @@ _MOCK_AZURE_SUBS: list[dict] = [
     {"id": "aaaaaaaa-0000-0000-0000-000000000002", "display_name": "Dev/Test Subscription"},
 ]
 
+_MOCK_OCI_PROFILES: list[tuple[str, str]] = [
+    ("DEFAULT", "DEFAULT"),
+    ("prod-tenancy", "prod-tenancy"),
+    ("staging", "staging"),
+]
+
+
+def _load_oci_profiles() -> list[tuple[str, str]]:
+    """Return OCI profiles from ~/.oci/config."""
+    try:
+        from spancloud.providers.oci.auth import OCIAuth
+        profiles = OCIAuth().list_profiles()
+        if profiles:
+            return [(p, p) for p in profiles]
+    except Exception:
+        pass
+    return [("DEFAULT", "DEFAULT")]
+
 
 def _load_aws_profiles() -> list[tuple[str, str]]:
     """Return real AWS profiles from ~/.aws/config."""
@@ -224,6 +242,13 @@ class ProviderControls(QWidget):
         if self._provider_name == "aws":
             v.addWidget(self._label("AWS PROFILE"))
             profiles = _MOCK_AWS_PROFILES if self._mock else _load_aws_profiles()
+            self._profile_combo = self._make_combo(profiles, "profile_changed")
+            v.addWidget(self._profile_combo)
+
+        # OCI-specific: profile picker populated from ~/.oci/config (or mock data)
+        if self._provider_name == "oci":
+            v.addWidget(self._label("OCI PROFILE"))
+            profiles = _MOCK_OCI_PROFILES if self._mock else _load_oci_profiles()
             self._profile_combo = self._make_combo(profiles, "profile_changed")
             v.addWidget(self._profile_combo)
 

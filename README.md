@@ -225,7 +225,7 @@ spancloud vultr object-info <subscription-id>   # Vultr Object Storage detail
 
 # --- Monitoring ---
 # alerts works on AWS (CloudWatch alarms), GCP / DO / Azure / OCI (alert policies).
-# metrics is AWS + GCP only.
+# metrics works on AWS, GCP, DigitalOcean, Azure, and OCI.
 spancloud monitor alerts aws                    # All CloudWatch alarms
 spancloud monitor alerts aws --state ALARM      # Only firing alarms
 spancloud monitor alerts gcp                    # GCP alert policies

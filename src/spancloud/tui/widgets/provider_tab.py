@@ -208,6 +208,15 @@ class ProjectChanged(Message):
         super().__init__()
 
 
+class SubscriptionChanged(Message):
+    """Emitted when the Azure subscription picker changes selection."""
+
+    def __init__(self, subscription_id: str, provider: BaseProvider) -> None:
+        self.subscription_id = subscription_id
+        self.provider = provider
+        super().__init__()
+
+
 class SettingsRequested(Message):
     """Emitted when sidebar settings is clicked."""
 
@@ -375,6 +384,31 @@ class ResourceTypeSidebar(Vertical):
                 disabled=True,
             )
 
+        # OCI profile picker — populated from ~/.oci/config at compose time
+        if self._provider.name == "oci":
+            try:
+                from spancloud.providers.oci.auth import OCIAuth
+                oci_profiles = [(p, p) for p in OCIAuth().list_profiles()]
+            except Exception:
+                oci_profiles = []
+            if len(oci_profiles) > 1:
+                yield Select(
+                    oci_profiles,
+                    prompt="\U0001f464 Profile",
+                    id=f"profile-select-{self._provider.name}",
+                    allow_blank=False,
+                )
+
+        # Azure subscription picker — populated after auth
+        if self._provider.name == "azure":
+            yield Select(
+                [("loading...", "")],
+                prompt="\U0001f4b3 Subscription",
+                id=f"subscription-select-{self._provider.name}",
+                allow_blank=False,
+                disabled=True,
+            )
+
         # Region selector
         region_options = {
             "aws": _AWS_REGIONS,
@@ -488,6 +522,21 @@ class ResourceTypeSidebar(Vertical):
                 # GCP: populate the project picker from the resource-manager API
                 if self._provider.name == "gcp":
                     await self._populate_gcp_projects()
+                # Azure: populate subscription picker
+                if self._provider.name == "azure":
+                    await self._populate_azure_subscriptions()
+                # OCI: reflect active profile in picker
+                if self._provider.name == "oci":
+                    active_profile = getattr(
+                        getattr(self._provider, "_auth", None), "profile", ""
+                    )
+                    if active_profile:
+                        import contextlib
+                        with contextlib.suppress(Exception):
+                            sel = self.query_one(
+                                f"#profile-select-{self._provider.name}", Select
+                            )
+                            sel.value = active_profile
             else:
                 status.update("[red]not authenticated[/red]")
         except Exception:
@@ -533,6 +582,34 @@ class ResourceTypeSidebar(Vertical):
             with contextlib.suppress(Exception):
                 select.value = active
 
+    async def _populate_azure_subscriptions(self) -> None:
+        """Fetch Azure subscriptions and fill the picker."""
+        import contextlib
+        try:
+            select = self.query_one(
+                f"#subscription-select-{self._provider.name}", Select
+            )
+        except Exception:
+            return
+        try:
+            auth = getattr(self._provider, "_auth", None)
+            subs = await auth.list_subscriptions() if auth else []
+        except Exception:
+            subs = []
+        if not subs:
+            select.set_options([("(no subscriptions found)", "")])
+            select.disabled = True
+            return
+        active = getattr(getattr(self._provider, "_auth", None), "subscription_id", "") or ""
+        options = [(s.get("display_name", s["id"]), s["id"]) for s in subs]
+        if active and not any(v == active for _, v in options):
+            options.insert(0, (active, active))
+        select.set_options(options)
+        select.disabled = len(options) <= 1
+        if active:
+            with contextlib.suppress(Exception):
+                select.value = active
+
     def on_select_changed(self, event: Select.Changed) -> None:
         if not event.value or event.value == Select.BLANK:
             return
@@ -541,6 +618,8 @@ class ResourceTypeSidebar(Vertical):
             self.post_message(ProfileChanged(str(event.value), self._provider))
         elif select_id.startswith("project-select-"):
             self.post_message(ProjectChanged(str(event.value), self._provider))
+        elif select_id.startswith("subscription-select-"):
+            self.post_message(SubscriptionChanged(str(event.value), self._provider))
         elif select_id.startswith("region-select-"):
             self.post_message(RegionChanged(str(event.value), self._provider))
 
@@ -1593,6 +1672,18 @@ class ProviderTab(Horizontal):
         )
         self.app.notify(
             f"Switched to project: {event.project_id}", timeout=3
+        )
+        self._reload_active_pane()
+
+    def on_subscription_changed(self, event: SubscriptionChanged) -> None:
+        auth = getattr(event.provider, "_auth", None)
+        if auth is None or not hasattr(auth, "set_subscription"):
+            return
+        if event.subscription_id == getattr(auth, "subscription_id", ""):
+            return
+        auth.set_subscription(event.subscription_id)
+        self.app.notify(
+            f"Switched to subscription: {event.subscription_id[:8]}…", timeout=3
         )
         self._reload_active_pane()
 
