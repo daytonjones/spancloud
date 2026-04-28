@@ -73,6 +73,25 @@ def version() -> None:
     console.print(f"[bold cyan]Spancloud[/bold cyan] v{spancloud.__version__}")
 
 
+@app.command()
+def about() -> None:
+    """Show information about Spancloud."""
+    console.print(f"""
+[bold cyan]Spancloud[/bold cyan] v{spancloud.__version__}
+Multi-cloud infrastructure orchestrator
+
+[bold]Supported providers:[/bold] AWS · GCP · Azure · DigitalOcean · Vultr · OCI
+[bold]Interfaces:[/bold]          Desktop GUI (PySide6/Qt6) · TUI (Textual) · CLI (Typer)
+
+[bold]Homepage:[/bold]  https://github.com/daytonjones/spancloud
+[bold]PyPI:[/bold]      https://pypi.org/project/spancloud
+[bold]License:[/bold]   MIT
+[bold]Author:[/bold]    Dayton Jones <jones.dayton@gmail.com>
+
+Run [bold]spancloud --help[/bold] for available commands.
+""")
+
+
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,

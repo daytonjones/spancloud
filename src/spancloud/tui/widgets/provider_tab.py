@@ -208,6 +208,15 @@ class ProjectChanged(Message):
         super().__init__()
 
 
+class SubscriptionChanged(Message):
+    """Emitted when the Azure subscription picker changes selection."""
+
+    def __init__(self, subscription_id: str, provider: BaseProvider) -> None:
+        self.subscription_id = subscription_id
+        self.provider = provider
+        super().__init__()
+
+
 class SettingsRequested(Message):
     """Emitted when sidebar settings is clicked."""
 
@@ -339,6 +348,7 @@ class ResourceTypeSidebar(Vertical):
     def __init__(self, provider: BaseProvider) -> None:
         super().__init__()
         self._provider = provider
+        self._gcp_selectors_loaded: bool = False
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -365,12 +375,45 @@ class ResourceTypeSidebar(Vertical):
                     allow_blank=False,
                 )
 
-        # GCP project picker — populated lazily in on_mount once auth is up
+        # GCP selectors — org (hidden until 2+ orgs found) + project
         if self._provider.name == "gcp":
+            yield Select(
+                [("", "")],
+                prompt="\U0001f3e2 Org",
+                id=f"org-select-{self._provider.name}",
+                allow_blank=False,
+                disabled=True,
+                classes="hidden",
+            )
             yield Select(
                 [("loading...", "")],
                 prompt="\U0001f5c2 Project",
                 id=f"project-select-{self._provider.name}",
+                allow_blank=False,
+                disabled=True,
+            )
+
+        # OCI profile picker — populated from ~/.oci/config at compose time
+        if self._provider.name == "oci":
+            try:
+                from spancloud.providers.oci.auth import OCIAuth
+                oci_profiles = [(p, p) for p in OCIAuth().list_profiles()]
+            except Exception:
+                oci_profiles = []
+            if len(oci_profiles) > 1:
+                yield Select(
+                    oci_profiles,
+                    prompt="\U0001f464 Profile",
+                    id=f"profile-select-{self._provider.name}",
+                    allow_blank=False,
+                )
+
+        # Azure subscription picker — populated after auth
+        if self._provider.name == "azure":
+            yield Select(
+                [("loading...", "")],
+                prompt="\U0001f4b3 Subscription",
+                id=f"subscription-select-{self._provider.name}",
                 allow_blank=False,
                 disabled=True,
             )
@@ -485,53 +528,151 @@ class ResourceTypeSidebar(Vertical):
                         pass
                 status.update(f"[green]authenticated[/green]{profile}")
 
-                # GCP: populate the project picker from the resource-manager API
-                if self._provider.name == "gcp":
-                    await self._populate_gcp_projects()
+                # GCP: populate selectors once — skip if already loaded to avoid 429s
+                if self._provider.name == "gcp" and not self._gcp_selectors_loaded:
+                    self._gcp_selectors_loaded = True
+                    await self._populate_gcp_selectors()
+                # Azure: populate subscription picker
+                if self._provider.name == "azure":
+                    await self._populate_azure_subscriptions()
+                # OCI: reflect active profile in picker
+                if self._provider.name == "oci":
+                    active_profile = getattr(
+                        getattr(self._provider, "_auth", None), "profile", ""
+                    )
+                    if active_profile:
+                        import contextlib
+                        with contextlib.suppress(Exception):
+                            sel = self.query_one(
+                                f"#profile-select-{self._provider.name}", Select
+                            )
+                            sel.value = active_profile
             else:
                 status.update("[red]not authenticated[/red]")
         except Exception:
             status.update("[red]auth error[/red]")
 
-    async def _populate_gcp_projects(self) -> None:
-        """Fetch the caller's visible GCP projects and fill the picker."""
-        try:
-            select = self.query_one(
-                f"#project-select-{self._provider.name}", Select
-            )
-        except Exception:
+    async def _populate_gcp_selectors(self) -> None:
+        """Fetch GCP orgs + projects and fill the pickers (called once after auth)."""
+        import contextlib
+        auth = getattr(self._provider, "_auth", None)
+        if auth is None:
             return
 
+        # Fetch orgs and projects concurrently
+        import asyncio
+        orgs, projects = await asyncio.gather(
+            self._safe_fetch(auth.list_accessible_organizations()),
+            self._safe_fetch(auth.list_accessible_projects()),
+        )
+
+        active_project = getattr(auth, "project_id", "") or ""
+
+        # --- Org selector (show only when 2+ orgs) ---
+        if len(orgs) >= 2:
+            try:
+                org_select = self.query_one(f"#org-select-{self._provider.name}", Select)
+                org_options = [
+                    (o.get("display_name", o["id"]), o["id"]) for o in orgs
+                ]
+                org_options.insert(0, ("All Organizations", ""))
+                org_select.set_options(org_options)
+                org_select.disabled = False
+                org_select.remove_class("hidden")
+            except Exception:
+                pass
+
+        # --- Project selector ---
         try:
-            projects = await self._provider._auth.list_accessible_projects()
+            proj_select = self.query_one(f"#project-select-{self._provider.name}", Select)
         except Exception:
-            projects = []
+            return
 
         if not projects:
-            active = getattr(self._provider._auth, "project_id", "") or "(none)"
-            select.set_options([(active, active)])
-            select.disabled = True
+            proj_select.set_options([(active_project or "(none)", active_project)])
+            proj_select.disabled = True
             return
 
-        active = getattr(self._provider._auth, "project_id", "")
         options = [
             (
-                f"{p['project_id']}"
-                + (f"  — {p['name']}" if p["name"] != p["project_id"] else ""),
+                f"{p['project_id']}" + (f"  — {p['name']}" if p["name"] != p["project_id"] else ""),
                 p["project_id"],
             )
             for p in projects
         ]
-        # Ensure the active project is selectable even if the API didn't list it
+        if active_project and not any(v == active_project for _, v in options):
+            options.insert(0, (active_project, active_project))
+
+        proj_select.set_options(options)
+        proj_select.disabled = False
+        if active_project:
+            with contextlib.suppress(Exception):
+                proj_select.value = active_project
+
+    @staticmethod
+    async def _safe_fetch(coro: object) -> list:  # type: ignore[type-arg]
+        """Await a coroutine, returning [] on any error."""
+        import asyncio
+        try:
+            result = await coro  # type: ignore[misc]
+            return result if isinstance(result, list) else []
+        except Exception:
+            return []
+
+    async def _populate_azure_subscriptions(self) -> None:
+        """Fetch Azure subscriptions and fill the picker."""
+        import contextlib
+        try:
+            select = self.query_one(
+                f"#subscription-select-{self._provider.name}", Select
+            )
+        except Exception:
+            return
+        try:
+            auth = getattr(self._provider, "_auth", None)
+            subs = await auth.list_subscriptions() if auth else []
+        except Exception:
+            subs = []
+        if not subs:
+            select.set_options([("(no subscriptions found)", "")])
+            select.disabled = True
+            return
+        active = getattr(getattr(self._provider, "_auth", None), "subscription_id", "") or ""
+        options = [(s.get("display_name", s["id"]), s["id"]) for s in subs]
         if active and not any(v == active for _, v in options):
             options.insert(0, (active, active))
-        import contextlib
-
         select.set_options(options)
-        select.disabled = False
+        select.disabled = len(options) <= 1
         if active:
             with contextlib.suppress(Exception):
                 select.value = active
+
+    def _filter_projects_by_org(self, org_id: str) -> None:
+        """Filter the project Select to only show projects from the given org."""
+        import contextlib
+        auth = getattr(self._provider, "_auth", None)
+        if auth is None:
+            return
+        try:
+            proj_select = self.query_one(f"#project-select-{self._provider.name}", Select)
+        except Exception:
+            return
+        all_projects = getattr(auth, "_cached_projects", [])
+        if not all_projects:
+            return
+        filtered = [p for p in all_projects if not org_id or p.get("org_id", "") == org_id]
+        if not filtered:
+            filtered = all_projects
+        options = [
+            (
+                f"{p['project_id']}" + (f"  — {p['name']}" if p["name"] != p["project_id"] else ""),
+                p["project_id"],
+            )
+            for p in filtered
+        ]
+        proj_select.set_options(options)
+        with contextlib.suppress(Exception):
+            proj_select.value = options[0][1]
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if not event.value or event.value == Select.BLANK:
@@ -539,8 +680,12 @@ class ResourceTypeSidebar(Vertical):
         select_id = event.select.id or ""
         if select_id.startswith("profile-select-"):
             self.post_message(ProfileChanged(str(event.value), self._provider))
+        elif select_id.startswith("org-select-"):
+            self._filter_projects_by_org(str(event.value))
         elif select_id.startswith("project-select-"):
             self.post_message(ProjectChanged(str(event.value), self._provider))
+        elif select_id.startswith("subscription-select-"):
+            self.post_message(SubscriptionChanged(str(event.value), self._provider))
         elif select_id.startswith("region-select-"):
             self.post_message(RegionChanged(str(event.value), self._provider))
 
@@ -1586,13 +1731,26 @@ class ProviderTab(Horizontal):
         if event.project_id == getattr(auth, "project_id", ""):
             return
         auth.set_project(event.project_id)
-        sidebar = self.query_one(ResourceTypeSidebar)
-        sidebar.run_worker(
-            sidebar._check_auth(),
-            name=f"reauth-{event.provider.name}",
-        )
+        # Update the status label directly — don't re-run _check_auth() as that
+        # re-populates the Select, which re-fires Changed, causing a loop.
+        try:
+            sidebar = self.query_one(ResourceTypeSidebar)
+            status = sidebar.query_one(f"#auth-{event.provider.name}", Static)
+            status.update(f"[green]authenticated[/green] ({event.project_id})")
+        except Exception:
+            pass
+        self.app.notify(f"Switched to project: {event.project_id}", timeout=3)
+        self._reload_active_pane()
+
+    def on_subscription_changed(self, event: SubscriptionChanged) -> None:
+        auth = getattr(event.provider, "_auth", None)
+        if auth is None or not hasattr(auth, "set_subscription"):
+            return
+        if event.subscription_id == getattr(auth, "subscription_id", ""):
+            return
+        auth.set_subscription(event.subscription_id)
         self.app.notify(
-            f"Switched to project: {event.project_id}", timeout=3
+            f"Switched to subscription: {event.subscription_id[:8]}…", timeout=3
         )
         self._reload_active_pane()
 

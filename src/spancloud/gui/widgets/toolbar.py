@@ -39,6 +39,7 @@ class AppToolbar(QWidget):
 
     refresh_clicked = Signal()
     settings_clicked = Signal()
+    about_clicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -106,6 +107,10 @@ class AppToolbar(QWidget):
         self._settings_btn = self._icon_button("⚙", "Settings")
         self._settings_btn.clicked.connect(self.settings_clicked)
         layout.addWidget(self._settings_btn)
+
+        self._about_btn = self._icon_button("ℹ", "About")
+        self._about_btn.clicked.connect(self.about_clicked)
+        layout.addWidget(self._about_btn)
 
     def _icon_button(self, icon: str, tooltip: str) -> QPushButton:
         btn = QPushButton(icon)

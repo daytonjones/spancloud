@@ -192,10 +192,11 @@ def show_metrics(
     instance_id: str = typer.Argument(help="Instance ID or name."),
     provider_name: str = typer.Option(
         "aws", "--provider", "-p",
-        help="Provider for metrics: 'aws' (CloudWatch) or 'gcp' (Cloud Monitoring).",
+        help="Provider: aws, gcp, azure, digitalocean, oci.",
     ),
     region: str | None = typer.Option(
-        None, "--region", "-r", help="Region or zone."
+        None, "--region", "-r",
+        help="Region or zone. Required for GCP (zone) and OCI. For Azure, pass resource group here.",
     ),
     hours: int = typer.Option(1, "--hours", "-H", help="Hours of data."),
     profile: str | None = typer.Option(
@@ -216,23 +217,34 @@ def show_metrics(
 
         if provider_name == "aws":
             from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
-
-            analyzer = CloudWatchAnalyzer(provider._auth)
-            return await analyzer.get_instance_metrics(
+            return await CloudWatchAnalyzer(provider._auth).get_instance_metrics(
                 instance_id, region=region, hours=hours
             )
         elif provider_name == "gcp":
             from spancloud.providers.gcp.monitoring import CloudMonitoringAnalyzer
-
             if not region:
                 console.print(
                     "[red]Zone is required for GCP metrics "
                     "(--region us-central1-a)[/red]"
                 )
                 raise typer.Exit(code=1)
-            analyzer = CloudMonitoringAnalyzer(provider._auth)
-            return await analyzer.get_instance_metrics(
+            return await CloudMonitoringAnalyzer(provider._auth).get_instance_metrics(
                 instance_id, zone=region, hours=hours
+            )
+        elif provider_name == "digitalocean":
+            from spancloud.providers.digitalocean.monitoring import DigitalOceanMonitoringAnalyzer
+            return await DigitalOceanMonitoringAnalyzer(provider._auth).get_instance_metrics(
+                instance_id, hours=hours
+            )
+        elif provider_name == "azure":
+            from spancloud.providers.azure.monitoring import AzureMonitoringAnalyzer
+            return await AzureMonitoringAnalyzer(provider._auth).get_instance_metrics(
+                instance_id, resource_group=region, hours=hours
+            )
+        elif provider_name == "oci":
+            from spancloud.providers.oci.monitoring import OCIMonitoringAnalyzer
+            return await OCIMonitoringAnalyzer(provider._auth).get_instance_metrics(
+                instance_id, region=region, hours=hours
             )
         else:
             console.print(

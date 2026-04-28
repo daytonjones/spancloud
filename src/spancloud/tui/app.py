@@ -36,6 +36,7 @@ class SpancloudApp(App):  # type: ignore[type-arg]
         Binding("q", "quit", "Quit", priority=True),
         Binding("r", "refresh", "Refresh"),
         Binding("?", "toggle_help", "Help"),
+        Binding("a", "about", "About"),
     ]
 
     SCREENS = {
@@ -93,14 +94,27 @@ class SpancloudApp(App):  # type: ignore[type-arg]
     def action_toggle_help(self) -> None:
         """Toggle the help panel."""
         self.notify(
-            "Spancloud TUI\n"
             "Tab / Shift+Tab — switch provider tabs\n"
             "Up / Down — navigate sidebar items\n"
             "Enter — load resource type or run analysis\n"
             "Click row — view resource details\n"
             "/ — search/filter resources\n"
             "Escape — close detail panel or search\n"
-            "[r] Refresh  [q] Quit",
+            "[r] Refresh  [a] About  [q] Quit",
             title="Keyboard Shortcuts",
             timeout=10,
+        )
+
+    def action_about(self) -> None:
+        """Show the About dialog."""
+        import spancloud
+        self.notify(
+            f"v{spancloud.__version__}\n"
+            "Multi-cloud infrastructure orchestrator\n\n"
+            "Providers: AWS · GCP · Azure · DigitalOcean · Vultr · OCI\n"
+            "License: MIT\n\n"
+            "github.com/daytonjones/spancloud\n"
+            "pypi.org/project/spancloud",
+            title="About Spancloud",
+            timeout=12,
         )
