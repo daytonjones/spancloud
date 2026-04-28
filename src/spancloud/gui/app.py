@@ -407,19 +407,18 @@ class MainWindow(QMainWindow):
         from spancloud.gui.async_worker import AsyncWorker
         from spancloud.utils.version_check import get_latest_pypi_version, is_newer
 
-        async def _fetch() -> str | None:
-            return await get_latest_pypi_version()
-
         def _on_result(latest: str | None) -> None:
             if latest and is_newer(latest, _sc.__version__):
                 self._status_label.setText(
                     f"⬆  Spancloud v{latest} available — pip install --upgrade spancloud"
                 )
                 self._status_label.setStyleSheet("color: #e0af68;")
+            self._update_worker = None
 
-        worker = AsyncWorker(_fetch())
-        worker.result_ready.connect(_on_result)
-        worker.start()
+        self._update_worker = AsyncWorker(get_latest_pypi_version())
+        self._update_worker.result_ready.connect(_on_result)
+        self._update_worker.error_occurred.connect(lambda _: setattr(self, "_update_worker", None))
+        self._update_worker.start()
 
     def _on_about(self) -> None:
         import spancloud as _sc
