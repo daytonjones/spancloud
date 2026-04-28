@@ -61,7 +61,7 @@ class LoadBalancerResources:
             metadata={
                 "ip": lb.get("ip", ""),
                 "algorithm": lb.get("algorithm", ""),
-                "size": lb.get("size_unit") or lb.get("size", ""),
+                "size": str(lb.get("size_unit") or lb.get("size") or ""),
                 "forwarding_rules": str(len(forwarding)),
                 "droplet_count": str(len(droplet_ids)),
                 "health_check_protocol": health.get("protocol", ""),

@@ -126,6 +126,7 @@ class MainWindow(QMainWindow):
         self._toolbar = AppToolbar()
         self._toolbar.refresh_clicked.connect(self._on_refresh)
         self._toolbar.settings_clicked.connect(self._on_settings)
+        self._toolbar.about_clicked.connect(self._on_about)
         root.addWidget(self._toolbar)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -399,6 +400,23 @@ class MainWindow(QMainWindow):
                     )
                     worker.start()
                     self._auth_workers.append(worker)
+
+    def _on_about(self) -> None:
+        import spancloud as _sc
+        from PySide6.QtWidgets import QMessageBox
+        msg = QMessageBox(self)
+        msg.setWindowTitle("About Spancloud")
+        msg.setTextFormat(Qt.TextFormat.RichText)
+        msg.setText(
+            f"<b>Spancloud</b> v{_sc.__version__}<br>"
+            "Multi-cloud infrastructure orchestrator<br><br>"
+            "<b>Providers:</b> AWS · GCP · Azure · DigitalOcean · Vultr · OCI<br>"
+            "<b>License:</b> MIT<br><br>"
+            "<a href='https://github.com/daytonjones/spancloud'>github.com/daytonjones/spancloud</a><br>"
+            "<a href='https://pypi.org/project/spancloud'>pypi.org/project/spancloud</a>"
+        )
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
 
 
 def main(mock: bool = False) -> None:

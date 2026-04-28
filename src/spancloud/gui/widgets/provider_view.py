@@ -1712,6 +1712,9 @@ class ProviderViewWidget(QWidget):
             self._table.clear()
             self._show_table_message("Provider not available.")
             return
+        if self._provider_meta.get("status") not in ("authenticated",):
+            self._right_stack.setCurrentWidget(self._unauthed_view)
+            return
 
         from spancloud.core.resource import ResourceType
 
@@ -1756,6 +1759,9 @@ class ProviderViewWidget(QWidget):
         if self._provider is None:
             self._table.clear()
             self._show_table_message("Provider not available.")
+            return
+        if self._provider_meta.get("status") not in ("authenticated",):
+            self._right_stack.setCurrentWidget(self._unauthed_view)
             return
 
         load_key = f"rt:_all:{self._current_region}"
@@ -1878,6 +1884,9 @@ class ProviderViewWidget(QWidget):
                 break
 
     def _load_analysis(self, key: str) -> None:
+        if self._provider_meta.get("status") not in ("authenticated",):
+            self._right_stack.setCurrentWidget(self._unauthed_view)
+            return
         titles = {
             "cost":          "💰 Cost Summary",
             "audit":         "🛡  Security Audit",
