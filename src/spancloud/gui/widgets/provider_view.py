@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -1116,6 +1120,7 @@ class ProviderViewWidget(QWidget):
         self._selected_resource: Resource | None = None
         self._current_analysis_key: str | None = None
         self._total_resource_count: int = 0
+        self._loaded_resources: list[Resource] = []
         self._build()
 
     def _build(self) -> None:
@@ -1318,6 +1323,30 @@ class ProviderViewWidget(QWidget):
         self._count_label = QLabel("")
         self._count_label.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px; padding-left: 10px;")
         sh.addWidget(self._count_label)
+        sh.addStretch()
+        self._export_btn = QPushButton("⬇ Export")
+        self._export_btn.setEnabled(False)
+        self._export_btn.setFixedHeight(28)
+        self._export_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {TEXT_MUTED};
+                border: 1px solid {BORDER_SUBTLE};
+                border-radius: 4px;
+                padding: 0 10px;
+                font-size: 12px;
+            }}
+            QPushButton:enabled {{
+                color: {TEXT_PRIMARY};
+                border-color: #3b4261;
+            }}
+            QPushButton:enabled:hover {{
+                background: #1f2335;
+                border-color: {ACCENT_BLUE};
+            }}
+        """)
+        self._export_btn.clicked.connect(self._export_resources)
+        sh.addWidget(self._export_btn)
         v.addWidget(search_bar)
 
         self._table = QTreeWidget()
@@ -1738,6 +1767,8 @@ class ProviderViewWidget(QWidget):
         load_key = f"rt:{rt}:{self._current_region}"
         self._current_load_key = load_key
 
+        self._loaded_resources = []
+        self._export_btn.setEnabled(False)
         self._total_resource_count = 0
         self._count_label.setText("")
         self._table.setSortingEnabled(False)
@@ -1806,6 +1837,8 @@ class ProviderViewWidget(QWidget):
     def _on_resources_loaded(self, resources: list[Resource], key: str) -> None:
         if key != self._current_load_key:
             return
+        self._loaded_resources = resources
+        self._export_btn.setEnabled(bool(resources))
         self._table.clear()
         self._table.setSortingEnabled(False)
         for r in resources:
@@ -1829,11 +1862,73 @@ class ProviderViewWidget(QWidget):
     def _on_load_error(self, error: str, key: str) -> None:
         if key != self._current_load_key:
             return
+        self._loaded_resources = []
+        self._export_btn.setEnabled(False)
         self._total_resource_count = 0
         self._count_label.setText("")
         self._table.clear()
         msg, color = _friendly_error(error)
         self._show_table_message(msg, color)
+
+    def _export_resources(self) -> None:
+        """Open the export dialog and write resources to a user-chosen file."""
+        if not self._loaded_resources:
+            return
+
+        from spancloud.core.export import to_csv, to_json, to_yaml
+
+        # --- Format picker dialog ---
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Export Resources")
+        dlg.setFixedWidth(340)
+        v = QVBoxLayout(dlg)
+        v.setSpacing(12)
+        v.setContentsMargins(20, 16, 20, 16)
+
+        v.addWidget(QLabel(f"Export {len(self._loaded_resources)} resource(s)"))
+
+        fmt_label = QLabel("Format:")
+        fmt_combo = QComboBox()
+        fmt_combo.addItems(["JSON", "CSV", "YAML"])
+        v.addWidget(fmt_label)
+        v.addWidget(fmt_combo)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        v.addWidget(buttons)
+
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        fmt_index = fmt_combo.currentIndex()
+        fmt_name, formatter, ext = [
+            ("json", to_json, ".json"),
+            ("csv",  to_csv,  ".csv"),
+            ("yaml", to_yaml, ".yaml"),
+        ][fmt_index]
+
+        provider_name = self._provider_meta.get("name", "spancloud")
+        rt = (self._current_rt or "resources").replace("_", "-")
+        default_name = f"{provider_name}-{rt}-export{ext}"
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Export",
+            default_name,
+            f"{fmt_name.upper()} Files (*{ext});;All Files (*)",
+        )
+        if not path:
+            return
+
+        try:
+            from pathlib import Path
+            Path(path).write_text(formatter(self._loaded_resources))
+        except Exception as exc:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Export Failed", str(exc))
 
     def _show_table_message(self, msg: str, color: str = TEXT_MUTED) -> None:
         item = QTreeWidgetItem([msg])
