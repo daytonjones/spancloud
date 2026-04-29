@@ -288,6 +288,8 @@ class _AuthWorker(QThread):
             self._log(f"Using project: {existing_project}", "info")
             if hasattr(self._provider, "_auth"):
                 self._provider._auth.set_project(existing_project)  # type: ignore[attr-defined]
+            _persist_gcp_project(existing_project)
+            await _set_gcp_quota_project(existing_project)
             return True
 
         # No project set — authenticate the provider now so we can use the SDK
@@ -337,6 +339,7 @@ class _AuthWorker(QThread):
             if hasattr(self._provider, "_auth"):
                 self._provider._auth.set_project(projects[0])  # type: ignore[attr-defined]
             _persist_gcp_project(projects[0])
+            await _set_gcp_quota_project(projects[0])
             return True
 
         # Multiple projects — hand off to the dialog for user selection
@@ -352,6 +355,9 @@ class _AuthWorker(QThread):
             self._provider._auth.set_project(project_id)  # type: ignore[attr-defined]
         _persist_gcp_project(project_id)
         self._log("Saved to ~/.config/spancloud/gcp.env", "dim")
+
+        await _set_gcp_quota_project(project_id)
+        self._log("ADC quota project configured.", "dim")
         return True
 
     # ------------------------------------------------------------------
@@ -619,6 +625,19 @@ class _AuthWorker(QThread):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+async def _set_gcp_quota_project(project_id: str) -> None:
+    """Set the ADC quota project to suppress 'quota exceeded' / 'API not enabled' errors."""
+    def _run() -> None:
+        try:
+            subprocess.run(
+                ["gcloud", "auth", "application-default", "set-quota-project", project_id],
+                capture_output=True, timeout=15,
+            )
+        except Exception:
+            pass
+    await asyncio.to_thread(_run)
+
 
 def _persist_gcp_project(project_id: str) -> None:
     import os

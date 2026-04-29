@@ -686,6 +686,14 @@ async def _run_oci_metrics(resource: Resource, auth: object) -> str:
         rm = await OCIMonitoringAnalyzer(auth).get_instance_metrics(  # type: ignore[arg-type]
             resource.id, region=resource.region or None
         )
+        if not getattr(rm, "metrics", None):
+            return (
+                f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+                f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+                f'<br><br><span style="color:{C["muted"]};">No metrics data returned for this instance.<br><br>'
+                f'OCI Monitoring requires the <b>Monitoring plugin</b> to be enabled on the instance:<br>'
+                f'OCI Console → Compute → Instances → [instance] → Oracle Cloud Agent → Monitoring</span></div>'
+            )
         return _format_provider_metrics(resource, rm, "OCI Monitoring")
     except Exception as exc:
         return (

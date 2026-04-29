@@ -349,6 +349,7 @@ class ResourceTypeSidebar(Vertical):
         super().__init__()
         self._provider = provider
         self._gcp_selectors_loaded: bool = False
+        self._gcp_all_projects: list[dict] = []  # full list for org-based filtering
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -515,15 +516,20 @@ class ResourceTypeSidebar(Vertical):
             success = await self._provider.authenticate()
             if success:
                 profile = ""
-                if hasattr(self._provider, "_auth") and hasattr(
-                    self._provider._auth, "active_profile"
-                ):
-                    profile = f" ({self._provider._auth.active_profile})"
+                auth = getattr(self._provider, "_auth", None)
+                # active_profile (AWS) or profile property (OCI)
+                profile_val = (
+                    getattr(auth, "active_profile", None)
+                    or getattr(auth, "profile", None)
+                    or ""
+                )
+                if profile_val:
+                    profile = f" ({profile_val})"
                     try:
                         select = self.query_one(
                             f"#profile-select-{self._provider.name}", Select
                         )
-                        select.value = self._provider._auth.active_profile
+                        select.value = profile_val
                     except Exception:
                         pass
                 status.update(f"[green]authenticated[/green]{profile}")
@@ -593,6 +599,8 @@ class ResourceTypeSidebar(Vertical):
             proj_select.disabled = True
             return
 
+        self._gcp_all_projects = projects  # cache for org filtering
+
         options = [
             (
                 f"{p['project_id']}" + (f"  — {p['name']}" if p["name"] != p["project_id"] else ""),
@@ -650,19 +658,16 @@ class ResourceTypeSidebar(Vertical):
     def _filter_projects_by_org(self, org_id: str) -> None:
         """Filter the project Select to only show projects from the given org."""
         import contextlib
-        auth = getattr(self._provider, "_auth", None)
-        if auth is None:
+        if not self._gcp_all_projects:
             return
         try:
             proj_select = self.query_one(f"#project-select-{self._provider.name}", Select)
         except Exception:
             return
-        all_projects = getattr(auth, "_cached_projects", [])
-        if not all_projects:
-            return
-        filtered = [p for p in all_projects if not org_id or p.get("org_id", "") == org_id]
-        if not filtered:
-            filtered = all_projects
+        filtered = [
+            p for p in self._gcp_all_projects
+            if not org_id or p.get("org_id", "") == org_id
+        ] or self._gcp_all_projects
         options = [
             (
                 f"{p['project_id']}" + (f"  — {p['name']}" if p["name"] != p["project_id"] else ""),
