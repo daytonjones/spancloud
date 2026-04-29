@@ -56,12 +56,26 @@ class GCPCostAnalyzer:
         """
         project = self._auth.project_id
         if not project:
+            # Fall back to ADC default project or GOOGLE_CLOUD_PROJECT env var
+            import os
+            project = os.environ.get("GOOGLE_CLOUD_PROJECT", "") or os.environ.get("GCLOUD_PROJECT", "")
+            if not project:
+                try:
+                    import google.auth
+                    _, project = google.auth.default()
+                    project = project or ""
+                except Exception:
+                    pass
+        if not project:
             return CostSummary(
                 provider="gcp",
                 period_start=date.today() - timedelta(days=period_days),
                 period_end=date.today(),
                 notes="No GCP project configured.",
             )
+        # Cache it back so subsequent calls don't need to re-detect
+        if project and not self._auth.project_id:
+            self._auth.set_project(project)
 
         today = date.today()
         start = today - timedelta(days=period_days)
