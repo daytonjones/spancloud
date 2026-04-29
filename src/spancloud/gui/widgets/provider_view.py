@@ -1726,6 +1726,12 @@ class ProviderViewWidget(QWidget):
             except Exception:
                 projects = []
             active = getattr(auth, "project_id", "") or ""
+            # If no project is selected yet but projects exist, auto-select the first
+            if not active and projects:
+                first = projects[0].get("project_id", "")
+                if first:
+                    auth.set_project(first)
+                    active = first
             return orgs, projects, active
 
         worker = AsyncWorker(_load())

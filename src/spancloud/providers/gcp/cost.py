@@ -184,7 +184,7 @@ class GCPCostAnalyzer:
             if not table:
                 return None
 
-            logger.warning("GCP cost: querying BigQuery table %s", table)
+            logger.debug("GCP cost: querying BigQuery table %s", table)
             try:
                 query = f"""
                     SELECT
