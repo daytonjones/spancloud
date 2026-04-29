@@ -47,9 +47,12 @@ class GCPAuth:
         try:
             credentials, project = await asyncio.to_thread(google.auth.default)
             self._credentials = credentials
-            # Prefer explicit project from settings, fall back to ADC project.
+            # Prefer explicit project from settings, then ADC project, then gcloud config.
             settings = get_settings().gcp
             self._project_id = settings.project_id or project or ""
+
+            if not self._project_id:
+                self._project_id = await asyncio.to_thread(self._detect_gcloud_project)
 
             if not self._project_id:
                 logger.warning(
@@ -69,6 +72,38 @@ class GCPAuth:
                 "Or set SPANCLOUD_GCP_PROJECT_ID in your environment."
             )
             return False
+
+    @staticmethod
+    def _detect_gcloud_project() -> str:
+        """Read the active project from gcloud config file or CLI."""
+        import configparser, os, subprocess
+        # 1. Parse ~/.config/gcloud/configurations/config_<active>
+        try:
+            base = os.path.expanduser("~/.config/gcloud")
+            active = "default"
+            try:
+                active = open(f"{base}/active_config").read().strip()
+            except Exception:
+                pass
+            cp = configparser.ConfigParser()
+            cp.read(f"{base}/configurations/config_{active}")
+            project = cp.get("core", "project", fallback="")
+            if project:
+                return project
+        except Exception:
+            pass
+        # 2. Ask the gcloud binary directly (works regardless of config path)
+        try:
+            result = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                capture_output=True, text=True, timeout=5,
+            )
+            project = result.stdout.strip()
+            if project and project != "(unset)":
+                return project
+        except Exception:
+            pass
+        return ""
 
     def set_project(self, project_id: str) -> None:
         """Switch the active GCP project for subsequent calls.

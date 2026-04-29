@@ -671,6 +671,29 @@ async def _run_do_metrics(resource: Resource, auth: object) -> str:
         )
 
 
+async def _run_oci_metrics(resource: Resource, auth: object) -> str:
+    C = {"title": "#7aa2f7", "warn": "#e0af68", "muted": "#565f89"}
+    rt = resource.resource_type.value
+    if rt != "compute":
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">📊 Metrics</span>'
+            f'<br><br><span style="color:{C["warn"]};">ℹ OCI Monitoring metrics are available for compute instances. '
+            f'Select an instance in the resource table.</span></div>'
+        )
+    from spancloud.providers.oci.monitoring import OCIMonitoringAnalyzer
+    try:
+        rm = await OCIMonitoringAnalyzer(auth).get_instance_metrics(  # type: ignore[arg-type]
+            resource.id, region=resource.region or None
+        )
+        return _format_provider_metrics(resource, rm, "OCI Monitoring")
+    except Exception as exc:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'Could not fetch OCI metrics: {exc}</div>'
+        )
+
+
 async def _run_gcp_metrics(resource: Resource, auth: object) -> str:
     C = {"title": "#7aa2f7", "warn": "#e0af68"}
     rt = resource.resource_type.value
@@ -1162,6 +1185,8 @@ async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | N
             return await _run_vultr_metrics(resource, auth)
         if name == "digitalocean":
             return await _run_do_metrics(resource, auth)
+        if name == "oci":
+            return await _run_oci_metrics(resource, auth)
         return (
             f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
             f'Metrics are not available for {name} {resource.resource_type.value} resources.</div>'
@@ -1726,6 +1751,12 @@ class ProviderViewWidget(QWidget):
             except Exception:
                 projects = []
             active = getattr(auth, "project_id", "") or ""
+            # If no project is selected yet but projects exist, auto-select the first
+            if not active and projects:
+                first = projects[0].get("project_id", "")
+                if first:
+                    auth.set_project(first)
+                    active = first
             return orgs, projects, active
 
         worker = AsyncWorker(_load())

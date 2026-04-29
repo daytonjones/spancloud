@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from spancloud.core.resource import Resource, ResourceState, ResourceType
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.oci._retry import OCI_RETRY, OCI_RETRY_SLOW
 
 if TYPE_CHECKING:
     from spancloud.providers.oci.auth import OCIAuth
@@ -29,7 +29,7 @@ class OCIFunctionsResources:
     def __init__(self, auth: OCIAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=0.5)
+    @OCI_RETRY
     async def list_functions(self, region: str | None = None) -> list[Resource]:
         """List all Oracle Functions applications and their functions."""
         raw = await asyncio.to_thread(self._sync_list, region)

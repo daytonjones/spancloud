@@ -23,6 +23,7 @@ from spancloud.cli.commands.gui import launch_gui
 from spancloud.cli.commands.tui import launch_tui
 from spancloud.cli.commands.unused import unused_app
 from spancloud.cli.commands.vultr_storage import vultr_app
+from spancloud.cli.commands.permissions import show_permissions
 
 console = Console()
 
@@ -49,6 +50,7 @@ app.add_typer(profile_app, name="profile", help="AWS profile management for mult
 app.add_typer(config_app, name="config", help="Manage Spancloud configuration.")
 app.add_typer(status_app, name="status", help="Show authentication status for all providers.")
 app.add_typer(vultr_app, name="vultr", help="Vultr storage details.")
+app.command("permissions")(show_permissions)
 
 
 @app.command()

@@ -45,6 +45,14 @@ def retry_with_backoff(
     """
 
     def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+        # Build a stable label once at decoration time: "provider :: func_name"
+        module = func.__module__ or ""
+        parts = module.split(".")
+        if len(parts) >= 3 and parts[0] == "spancloud" and parts[1] == "providers":
+            _label = f"{parts[2]} :: {func.__name__}"
+        else:
+            _label = func.__name__
+
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             last_exception: Exception | None = None
@@ -59,11 +67,17 @@ def retry_with_backoff(
                         raise
 
                     if attempt == max_retries:
+                        exc_info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else None
+                        if exc_info:
+                            parts = [str(exc_info.get("status", "")), exc_info.get("code", ""), exc_info.get("message", "")]
+                            exc_str = " | ".join(p for p in parts if p)
+                        else:
+                            exc_str = str(exc)
                         logger.error(
                             "All %d retries exhausted for %s: %s",
                             max_retries,
-                            func.__name__,
-                            exc,
+                            _label,
+                            exc_str,
                         )
                         raise
 
@@ -71,13 +85,21 @@ def retry_with_backoff(
                     if jitter:
                         delay = delay * (0.5 + random.random() * 0.5)  # noqa: S311
 
+                    # For dict-style exceptions (OCI), log only the key fields
+                    exc_info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else None
+                    if exc_info:
+                        parts = [str(exc_info.get("status", "")), exc_info.get("code", ""), exc_info.get("message", "")]
+                        exc_str = " | ".join(p for p in parts if p)
+                    else:
+                        exc_str = str(exc)
+
                     logger.warning(
                         "Retry %d/%d for %s after %.1fs: %s",
                         attempt + 1,
                         max_retries,
-                        func.__name__,
+                        _label,
                         delay,
-                        exc,
+                        exc_str,
                     )
                     await asyncio.sleep(delay)
 

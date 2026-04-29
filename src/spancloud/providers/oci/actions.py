@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.oci._retry import OCI_RETRY, OCI_RETRY_SLOW
 
 if TYPE_CHECKING:
     from spancloud.providers.oci.auth import OCIAuth
@@ -76,7 +76,7 @@ class InstanceActions:
             "shape": getattr(inst, "shape", "") or "",
         }
 
-    @retry_with_backoff(max_retries=2, base_delay=1.0)
+    @OCI_RETRY
     async def execute(
         self,
         action: ActionVerb,

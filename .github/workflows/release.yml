@@ -1,0 +1,89 @@
+name: Release to PyPI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    # PyPI Trusted Publisher — no API token needed once configured on pypi.org.
+    # Go to: pypi.org → spancloud project → Manage → Publishing → Add publisher
+    #   Publisher: GitHub Actions
+    #   Owner:     daytonjones
+    #   Repo:      spancloud
+    #   Workflow:  release.yml
+    #   Environment: (leave blank)
+    environment: release
+    permissions:
+      contents: write   # create git tags + GitHub Releases
+      id-token: write   # OIDC token for PyPI Trusted Publisher
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so we can inspect existing tags
+
+      # ── Read version ───────────────────────────────────────────────────────
+      - name: Read version from pyproject.toml
+        id: ver
+        run: |
+          VERSION=$(python3 -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
+
+      # ── Guard: skip if this version was already released ───────────────────
+      - name: Check whether tag already exists
+        id: tag_check
+        run: |
+          TAG="v${{ steps.ver.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q "$TAG"; then
+            echo "Tag $TAG already exists — skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Tag ────────────────────────────────────────────────────────────────
+      - name: Create and push tag
+        if: steps.tag_check.outputs.skip == 'false'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.ver.outputs.version }}"
+          git push origin "v${{ steps.ver.outputs.version }}"
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Set up Python
+        if: steps.tag_check.outputs.skip == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and sdist
+        if: steps.tag_check.outputs.skip == 'false'
+        run: |
+          pip install build
+          python -m build
+
+      # ── Publish ────────────────────────────────────────────────────────────
+      - name: Publish to PyPI
+        if: steps.tag_check.outputs.skip == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      # ── GitHub Release ─────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        if: steps.tag_check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.ver.outputs.version }}" dist/* \
+            --title "spancloud v${{ steps.ver.outputs.version }}" \
+            --generate-notes

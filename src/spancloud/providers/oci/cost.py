@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.oci._retry import OCI_RETRY, OCI_RETRY_SLOW
 
 if TYPE_CHECKING:
     from spancloud.providers.oci.auth import OCIAuth
@@ -27,7 +27,7 @@ class OCICostAnalyzer:
     def __init__(self, auth: OCIAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @OCI_RETRY_SLOW
     async def get_cost_summary(self, period_days: int = 30) -> CostSummary:
         today = date.today()
         start = today - timedelta(days=period_days)
@@ -52,6 +52,14 @@ class OCICostAnalyzer:
             )
 
         total = sum((sc.cost for sc in by_service), Decimal("0"))
+        notes: str = ""
+        if total == Decimal("0") and not by_service:
+            notes = (
+                "No billable usage found for this period. This may mean:\n"
+                "  • The tenancy is on the Always Free tier with no paid resources\n"
+                "  • Cost data requires 'read usage-reports in tenancy' IAM policy\n"
+                "  • Usage API may have a 24h delay for recent charges"
+            )
         return CostSummary(
             provider="oci",
             period_start=start,
@@ -61,6 +69,7 @@ class OCICostAnalyzer:
             by_service=by_service,
             daily_costs=daily,
             account_id=self._auth.config.get("tenancy", ""),
+            notes=notes,
         )
 
     def _sync_query(

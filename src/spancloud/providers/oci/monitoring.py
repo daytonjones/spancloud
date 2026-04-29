@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.oci._retry import OCI_RETRY, OCI_RETRY_SLOW
 
 if TYPE_CHECKING:
     from spancloud.providers.oci.auth import OCIAuth
@@ -60,7 +60,7 @@ class OCIMonitoringAnalyzer:
     def __init__(self, auth: OCIAuth) -> None:
         self._auth = auth
 
-    @retry_with_backoff(max_retries=2, base_delay=2.0)
+    @OCI_RETRY_SLOW
     async def list_alert_policies(self) -> list[AlertInfo]:
         return await asyncio.to_thread(self._sync_list)
 
@@ -105,7 +105,7 @@ class OCIMonitoringAnalyzer:
             combiner=combiner or "—",
         )
 
-    @retry_with_backoff(max_retries=2, base_delay=1.0)
+    @OCI_RETRY
     async def get_instance_metrics(
         self,
         instance_id: str,

@@ -114,6 +114,7 @@ class MainWindow(QMainWindow):
             # AWS profile reads, etc.) before exec() can race with Qt's own
             # startup and cause an intermittent flash-and-exit on Linux.
             QTimer.singleShot(200, self._start_auth_checks)
+            QTimer.singleShot(3000, self._check_for_update)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -401,6 +402,24 @@ class MainWindow(QMainWindow):
                     worker.start()
                     self._auth_workers.append(worker)
 
+    def _check_for_update(self) -> None:
+        import spancloud as _sc
+        from spancloud.gui.async_worker import AsyncWorker
+        from spancloud.utils.version_check import get_latest_pypi_version, is_newer
+
+        def _on_result(latest: str | None) -> None:
+            if latest and is_newer(latest, _sc.__version__):
+                self._status_label.setText(
+                    f"⬆  Spancloud v{latest} available — pip install --upgrade spancloud"
+                )
+                self._status_label.setStyleSheet("color: #e0af68;")
+            self._update_worker = None
+
+        self._update_worker = AsyncWorker(get_latest_pypi_version())
+        self._update_worker.result_ready.connect(_on_result)
+        self._update_worker.error_occurred.connect(lambda _: setattr(self, "_update_worker", None))
+        self._update_worker.start()
+
     def _on_about(self) -> None:
         import spancloud as _sc
         from PySide6.QtWidgets import QMessageBox
@@ -421,7 +440,8 @@ class MainWindow(QMainWindow):
 
 def main(mock: bool = False) -> None:
     import threading
-    from spancloud.utils.logging import get_logger as _get_logger
+    from spancloud.utils.logging import get_logger as _get_logger, setup_logging
+    setup_logging("WARNING")  # installs googleapiclient filter and rich handler
     _log = _get_logger(__name__)
 
     # Log unhandled exceptions on the main thread instead of silently dying.

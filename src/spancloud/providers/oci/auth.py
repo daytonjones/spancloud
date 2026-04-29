@@ -28,6 +28,7 @@ class OCIAuth:
         self._region: str = ""
         self._tenancy_name: str = ""
         self._user_email: str = ""
+        self._auth_warned: bool = False  # deduplicate 401 warning across resource types
 
     @property
     def profile(self) -> str:
@@ -57,7 +58,14 @@ class OCIAuth:
             return
         settings = get_settings().oci
         self._config_file = os.path.expanduser(settings.config_file)
-        self._profile = self._profile or settings.profile or "DEFAULT"
+        # Read profile from env directly — os.environ may have been updated
+        # by _persist_profile() after the Settings object was cached.
+        self._profile = (
+            self._profile
+            or os.environ.get("SPANCLOUD_OCI_PROFILE", "")
+            or settings.profile
+            or "DEFAULT"
+        )
         self._compartment_id = self._compartment_id or settings.compartment_id
 
         import oci
@@ -89,11 +97,26 @@ class OCIAuth:
             )
             return True
         except Exception as exc:
-            logger.warning("OCI authentication failed: %s", exc)
+            # Format OCI ServiceError dicts concisely
+            info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else None
+            if info:
+                msg = f"{info.get('status', '')} {info.get('code', '')} — {info.get('message', '')}"
+            else:
+                msg = str(exc)
+            logger.warning(
+                "OCI authentication failed (profile '%s'): %s\n"
+                "  → Check your API key fingerprint in OCI Console: "
+                "Profile → API Keys",
+                self._profile, msg,
+            )
             return False
 
     def _sync_verify(self) -> dict[str, str]:
-        """Load config, then resolve tenancy + user metadata."""
+        """Load config, then resolve tenancy + user metadata.
+
+        Raises ServiceError/AuthError if the API key is invalid so that
+        verify() correctly returns False instead of silently swallowing the error.
+        """
         import oci
 
         self._ensure_loaded()
@@ -103,18 +126,19 @@ class OCIAuth:
         user_ocid = self._config.get("user", "")
 
         info: dict[str, str] = {}
-        try:
-            tenancy = identity.get_tenancy(tenancy_ocid).data
-            info["tenancy_name"] = getattr(tenancy, "name", "") or ""
-        except Exception:
-            pass
+
+        # get_tenancy is the canonical liveness check — let it raise on auth failure
+        tenancy = identity.get_tenancy(tenancy_ocid).data
+        info["tenancy_name"] = getattr(tenancy, "name", "") or ""
+
         try:
             user = identity.get_user(user_ocid).data
             info["user_email"] = (
                 getattr(user, "email", "") or getattr(user, "name", "") or ""
             )
         except Exception:
-            pass
+            pass  # user details are supplementary; tenancy check above is enough
+
         return info
 
     async def get_identity(self) -> dict[str, str]:
