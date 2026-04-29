@@ -45,6 +45,14 @@ def retry_with_backoff(
     """
 
     def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+        # Build a stable label once at decoration time: "provider :: func_name"
+        module = func.__module__ or ""
+        parts = module.split(".")
+        if len(parts) >= 3 and parts[0] == "spancloud" and parts[1] == "providers":
+            _label = f"{parts[2]} :: {func.__name__}"
+        else:
+            _label = func.__name__
+
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             last_exception: Exception | None = None
@@ -62,7 +70,7 @@ def retry_with_backoff(
                         logger.error(
                             "All %d retries exhausted for %s: %s",
                             max_retries,
-                            func.__name__,
+                            _label,
                             exc,
                         )
                         raise
@@ -75,7 +83,7 @@ def retry_with_backoff(
                         "Retry %d/%d for %s after %.1fs: %s",
                         attempt + 1,
                         max_retries,
-                        func.__name__,
+                        _label,
                         delay,
                         exc,
                     )
