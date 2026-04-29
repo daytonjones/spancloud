@@ -37,6 +37,7 @@ class SpancloudApp(App):  # type: ignore[type-arg]
         Binding("r", "refresh", "Refresh"),
         Binding("?", "toggle_help", "Help"),
         Binding("a", "about", "About"),
+        Binding("S", "app_settings", "Settings"),
     ]
 
     SCREENS = {
@@ -54,6 +55,11 @@ class SpancloudApp(App):  # type: ignore[type-arg]
     def on_mount(self) -> None:
         """Push the dashboard screen on startup."""
         _set_terminal_title("Spancloud :: Overview")
+        # Apply persisted theme
+        import os
+        saved_theme = os.environ.get("SPANCLOUD_TUI_THEME", "")
+        if saved_theme and saved_theme in self.available_themes:
+            self.theme = saved_theme
         if self._mock:
             from spancloud.providers.mock import build_mock_providers
             from spancloud.core.registry import registry
@@ -117,6 +123,11 @@ class SpancloudApp(App):  # type: ignore[type-arg]
             title="Keyboard Shortcuts",
             timeout=10,
         )
+
+    def action_app_settings(self) -> None:
+        """Open global app settings (providers + theme)."""
+        from spancloud.tui.screens.app_settings import AppSettingsScreen
+        self.push_screen(AppSettingsScreen(current_theme=self.theme))
 
     def action_about(self) -> None:
         """Show the About dialog."""

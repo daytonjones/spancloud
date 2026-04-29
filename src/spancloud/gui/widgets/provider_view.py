@@ -1092,6 +1092,81 @@ async def _run_aws_metrics(resource: Resource, auth: object) -> str:
 
 
 # ---------------------------------------------------------------------------
+async def _run_alerts_html(name: str, auth: object) -> str:
+    """Fetch monitoring alerts/alarms and return an HTML string."""
+    C = {"title": "#7aa2f7", "ok": "#9ece6a", "warn": "#e0af68",
+         "err": "#f7768e", "muted": "#565f89", "label": "#7dcfff"}
+
+    def _wrap(body: str) -> str:
+        return (
+            f'<div style="font-family:monospace;font-size:12px;padding:12px;color:#c0caf5;">'
+            f'<span style="color:{C["title"]};font-size:14px;font-weight:bold;">🔔 Monitoring Alerts</span>'
+            f'<br><br>{body}</div>'
+        )
+
+    if name == "vultr":
+        return _wrap(f'<span style="color:{C["muted"]};">Vultr has no public monitoring alerts API.</span>')
+
+    try:
+        if name == "aws":
+            from spancloud.providers.aws.cloudwatch import CloudWatchAnalyzer
+            alarms = await CloudWatchAnalyzer(auth).list_alarms()  # type: ignore[arg-type]
+            if not alarms:
+                return _wrap(f'<span style="color:{C["ok"]};">✓ No CloudWatch alarms found.</span>')
+            state_colors = {"ALARM": C["err"], "OK": C["ok"], "INSUFFICIENT_DATA": C["warn"]}
+            rows = "".join(
+                f'<tr>'
+                f'<td style="color:{state_colors.get(a.state, C["muted"])};padding:3px 12px 3px 0;white-space:nowrap;">{a.state}</td>'
+                f'<td style="padding:3px 12px 3px 0;">{a.name}</td>'
+                f'<td style="color:{C["muted"]};padding:3px 0;">{a.namespace}/{a.metric_name} {a.threshold}</td>'
+                f'</tr>'
+                for a in alarms
+            )
+            return _wrap(
+                f'<span style="color:{C["muted"]};">CloudWatch Alarms — {len(alarms)}</span><br><br>'
+                f'<table cellspacing="0">{rows}</table>'
+            )
+
+        # Policy-based providers (GCP, DO, Azure, OCI)
+        if name == "gcp":
+            from spancloud.providers.gcp.monitoring import CloudMonitoringAnalyzer
+            analyzer = CloudMonitoringAnalyzer(auth)  # type: ignore[arg-type]
+            title = "Cloud Monitoring Alert Policies"
+        elif name == "digitalocean":
+            from spancloud.providers.digitalocean.monitoring import DigitalOceanMonitoringAnalyzer
+            analyzer = DigitalOceanMonitoringAnalyzer(auth)  # type: ignore[arg-type]
+            title = "DigitalOcean Alert Policies"
+        elif name == "azure":
+            from spancloud.providers.azure.monitoring import AzureMonitoringAnalyzer
+            analyzer = AzureMonitoringAnalyzer(auth)  # type: ignore[arg-type]
+            title = "Azure Metric Alerts"
+        elif name == "oci":
+            from spancloud.providers.oci.monitoring import OCIMonitoringAnalyzer
+            analyzer = OCIMonitoringAnalyzer(auth)  # type: ignore[arg-type]
+            title = "OCI Monitoring Alarms"
+        else:
+            return _wrap(f'<span style="color:{C["muted"]};">Alerts not available for {name}.</span>')
+
+        alerts = await analyzer.list_alert_policies()
+        if not alerts:
+            return _wrap(f'<span style="color:{C["ok"]};">✓ No alert policies found.</span>')
+
+        rows = "".join(
+            f'<tr>'
+            f'<td style="color:{C["ok"] if a.enabled else C["muted"]};padding:3px 10px 3px 0;">{"●" if a.enabled else "○"}</td>'
+            f'<td style="padding:3px 12px 3px 0;">{a.display_name or a.name}</td>'
+            f'<td style="color:{C["muted"]};padding:3px 0;">{a.combiner}</td>'
+            f'</tr>'
+            for a in alerts
+        )
+        return _wrap(
+            f'<span style="color:{C["muted"]};">{title} — {len(alerts)}</span><br><br>'
+            f'<table cellspacing="0">{rows}</table>'
+        )
+    except Exception as exc:
+        return _wrap(f'<span style="color:{C["err"]};">Could not fetch alerts: {exc}</span>')
+
+
 # Analyzer factory — mirrors TUI's _run_cost / _run_audit / _run_unused
 # ---------------------------------------------------------------------------
 
@@ -1179,7 +1254,7 @@ async def _run_analysis(provider: BaseProvider, key: str, resource: Resource | N
     if key == "relationships":
         return await _run_relationships_html(name, auth)
     if key == "alerts":
-        return "  No active alerts — all systems nominal ✓\n"
+        return await _run_alerts_html(name, auth)
     if key == "metrics":
         if resource is None:
             return _metrics_no_selection_html()

@@ -772,7 +772,7 @@ class ResourceContentArea(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Input(
-            placeholder="\U0001f50d Search resources (name, type, region)...",
+            placeholder="\U0001f50d Search resources (name, type, region) or tag:key=value...",
             id="search-input",
         )
         yield Static("", id="status-bar")
@@ -1088,26 +1088,48 @@ class ResourceContentArea(Vertical):
             )
 
     def _apply_filter(self, query: str) -> None:
-        """Filter the table by search query."""
+        """Filter the table by search query or tag:key=value syntax."""
         if not query:
             self._filtered = list(self._resources)
-        else:
-            q = query.lower()
-            self._filtered = [
-                r for r in self._resources
-                if q in r.name.lower()
-                or q in r.resource_type.value.lower()
-                or q in r.region.lower()
-                or q in r.metadata.get("resource_subtype", "").lower()
-                or q in r.state.value.lower()
-                or any(q in v.lower() for v in r.metadata.values())
-                or any(q in f"{k}{v}".lower() for k, v in r.tags.items())
-            ]
+            self._populate_table(self._filtered)
+            self._update_status(
+                f"{len(self._filtered):,} resource(s)"
+                " | [dim]click row for details | / search | tag:key=val to filter tags[/dim]"
+            )
+            return
 
+        # Parse tag filters: "tag:env=prod" or mixed "web tag:env=prod"
+        tag_pairs: list[tuple[str, str]] = []
+        text_parts: list[str] = []
+        for part in query.split():
+            if part.startswith("tag:") and "=" in part:
+                k, _, v = part[4:].partition("=")
+                tag_pairs.append((k.lower(), v.lower()))
+            else:
+                text_parts.append(part.lower())
+        text_q = " ".join(text_parts)
+
+        def _matches(r: "Resource") -> bool:
+            rtags = {k.lower(): v.lower() for k, v in (r.tags or {}).items()}
+            if tag_pairs:
+                if not all(rtags.get(k, "") == v for k, v in tag_pairs):
+                    return False
+            if text_q:
+                return (
+                    text_q in r.name.lower()
+                    or text_q in r.resource_type.value.lower()
+                    or text_q in r.region.lower()
+                    or text_q in r.metadata.get("resource_subtype", "").lower()
+                    or text_q in r.state.value.lower()
+                    or any(text_q in v.lower() for v in r.metadata.values())
+                )
+            return True
+
+        self._filtered = [r for r in self._resources if _matches(r)]
         self._populate_table(self._filtered)
         self._update_status(
             f"{len(self._filtered):,} of {len(self._resources):,} resource(s)"
-            + (f" matching '{query}'" if query else "")
+            + f" matching '{query}'"
             + " | [dim]click row for details | / to search[/dim]"
         )
 
