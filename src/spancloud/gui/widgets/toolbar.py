@@ -40,6 +40,7 @@ class AppToolbar(QWidget):
     refresh_clicked = Signal()
     settings_clicked = Signal()
     about_clicked = Signal()
+    quit_clicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -111,6 +112,16 @@ class AppToolbar(QWidget):
         self._about_btn = self._icon_button("ℹ", "About")
         self._about_btn.clicked.connect(self.about_clicked)
         layout.addWidget(self._about_btn)
+
+        # Subtle separator before quit
+        div2 = QFrame()
+        div2.setFrameShape(QFrame.Shape.VLine)
+        div2.setStyleSheet(f"color: {BORDER_SUBTLE}; margin: 12px 6px;")
+        layout.addWidget(div2)
+
+        self._quit_btn = self._icon_button("✕", "Quit  (Ctrl+Q)")
+        self._quit_btn.clicked.connect(self.quit_clicked)
+        layout.addWidget(self._quit_btn)
 
     def _icon_button(self, icon: str, tooltip: str) -> QPushButton:
         btn = QPushButton(icon)

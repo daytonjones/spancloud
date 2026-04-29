@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import importlib.resources as pkg_resources
 
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import Qt
 from PySide6.QtCore import QByteArray, QSettings, QTimer
@@ -128,6 +128,9 @@ class MainWindow(QMainWindow):
         self._toolbar.refresh_clicked.connect(self._on_refresh)
         self._toolbar.settings_clicked.connect(self._on_settings)
         self._toolbar.about_clicked.connect(self._on_about)
+        self._toolbar.quit_clicked.connect(self.close)
+
+        QShortcut(QKeySequence("Ctrl+Q"), self).activated.connect(self.close)
         root.addWidget(self._toolbar)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
