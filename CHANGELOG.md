@@ -7,36 +7,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.1.6] — 2026-04-30
+
 ### Added
-- GUI: Monitoring Alerts panel now fetches live data (AWS CloudWatch, GCP, Azure, DO, OCI); was a stub
-- GUI: GCP auth dialog shows project picker when multiple projects exist; auto-selects single project; manual text entry fallback
+- GUI: Monitoring Alerts panel now fetches live data (AWS CloudWatch, GCP, Azure, DO, OCI); was previously a hardcoded stub
+- GUI: GCP auth dialog shows project picker when multiple projects exist; auto-selects if only one; manual text entry fallback when listing fails
 - GUI: Quit button (✕) in toolbar and `Ctrl+Q` shortcut
-- TUI: `tag:key=value` filter syntax in search bar (AND logic; can mix with text: `web tag:env=prod`)
+- GUI: Tag filter input (`🏷 tag:key=value`) alongside text search — AND logic for multiple pairs
+- GUI: OCI Monitoring metrics panel explains the Monitoring plugin requirement when data is empty
+- TUI: `tag:key=value` filter syntax in search bar (can mix with text: `web tag:env=prod`)
 - TUI: Global App Settings screen (`S` key) — provider enable/disable and theme selection (9 built-in Textual themes, persisted across sessions)
 - TUI: OCI profile name shown in sidebar status label after auth
-- TUI: Azure subscription picker in sidebar (same as GUI)
-- TUI: GCP org selector filters project list when ≥2 orgs accessible
-- GCP: reads project from `gcloud config` when ADC doesn't carry one; auto-sets quota project after project selection to prevent API-not-enabled errors
-- GCP: BigQuery billing export dataset auto-discovered (no longer requires specific dataset name)
-- GCP: `PERMISSION_DENIED` 403 errors mapped to specific IAM role guidance per service
-- OCI: `_retry.py` — 401/404 treated as permanent (no retries); one concise warning per session
-- OCI: metrics panel explains Monitoring plugin requirement when data is empty
-- OCI: verify() actually validates credentials (no longer silently succeeds with expired key)
+- TUI: Azure subscription picker in sidebar
+- TUI: GCP org selector now filters project list correctly
+- TUI: Monitoring Alerts fetches real data for all providers (was already implemented; now matches GUI)
+- GCP: project read from `gcloud config` when ADC doesn't carry one; quota project auto-set after selection to prevent API-not-enabled errors
+- GCP: BigQuery billing export dataset auto-discovered by scanning all datasets (no longer requires a specific dataset name)
+- GCP: `PERMISSION_DENIED` 403 errors mapped to specific IAM role guidance per service (Compute, BigQuery, Cloud Billing, etc.)
+- GCP: GCE metadata server timeout warnings suppressed on non-GCE machines
+- OCI: 401/404 treated as permanent errors (no retries); single concise warning per session instead of one per resource type
+- OCI: `verify()` now actually validates credentials — no longer silently succeeds with an expired API key
 - CLI: `spancloud permissions [provider]` — print required IAM roles per provider
 - CLI: `spancloud about` — version, providers, license, links
 - CLI: `spancloud status` — authentication status table for all providers
-- Shell completion: `spancloud --install-completion` (bash, zsh, fish)
-- Startup version check: GUI (status bar) and TUI (notify banner) alert when a newer PyPI release is available
-- Retry log messages now include provider name: `azure :: get_cost_summary` instead of just `get_cost_summary`
-- README: Required Permissions section with per-provider IAM role tables
-- CI/CD: GitHub Actions workflow auto-tags, builds, and publishes to PyPI on merge to main
+- Shell completion: `spancloud --install-completion` (bash, zsh, fish) — documented in README Installation section
+- Startup version check: GUI (amber status bar) and TUI (15 s notify banner) alert when a newer PyPI release is available
+- Retry log messages now include provider name (`azure :: get_cost_summary`) instead of bare function name
+- CI/CD: GitHub Actions workflow auto-tags, builds, and publishes to PyPI on every merge to main
+- CHANGELOG.md added to repository
 
 ### Fixed
-- GCP org filter in TUI (`_filter_projects_by_org`) was referencing a non-existent `auth._cached_projects`; now stored on the sidebar widget
-- `spancloud status` was crashing with `AttributeError: 'ProviderRegistry' has no attribute 'all'`
-- GCE metadata server timeout warnings (up to 9 s) suppressed on non-GCE machines
-- `google.auth` quota-project `UserWarning` suppressed
-- OCI error log no longer dumps full multi-line dict; shows concise `status | code | message`
+- TUI App Settings crash: two widgets shared `id="section-label"`; Textual requires unique IDs
+- GCP org project filter in TUI was referencing non-existent `auth._cached_projects`; projects now cached on the sidebar widget
+- `spancloud status` crashed with `AttributeError: 'ProviderRegistry' has no attribute 'all'`
+- `google.auth` quota-project `UserWarning` suppressed (was printed on every GCP API call)
+- OCI error messages no longer dump full multi-line dict; show concise `status | code | message`
+- README: "seven providers" corrected to "six implemented providers" throughout; Alibaba removed from CLI help text
 
 ---
 
