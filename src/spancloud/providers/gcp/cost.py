@@ -14,8 +14,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from googleapiclient.discovery import build
-
 from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
 from spancloud.utils.logging import get_logger
 from spancloud.providers.gcp._retry import GCP_RETRY_SLOW
@@ -105,23 +103,34 @@ class GCPCostAnalyzer:
         )
 
     async def _get_billing_info(self, project: str) -> dict[str, Any]:
-        """Get billing account info for the project."""
-        def _call() -> dict[str, Any]:
-            service = build(
-                "cloudbilling", "v1",
-                credentials=self._auth.credentials,
-                cache_discovery=False,
-            )
+        """Get billing account info for the project via direct HTTP (avoids googleapiclient logging)."""
+        import httpx
+
+        async def _call() -> dict[str, Any]:
             try:
-                return service.projects().getBillingInfo(
-                    name=f"projects/{project}"
-                ).execute()
+                # Refresh credentials if needed
+                creds = self._auth.credentials
+                if hasattr(creds, "token") and not creds.valid:
+                    import google.auth.transport.requests
+                    creds.refresh(google.auth.transport.requests.Request())
+                token = getattr(creds, "token", None)
+                if not token:
+                    return {}
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get(
+                        f"https://cloudbilling.googleapis.com/v1/projects/{project}/billingInfo",
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    if resp.status_code == 200:
+                        return resp.json()
+                    logger.debug("Cloud Billing API %d for project %s", resp.status_code, project)
+                    return {}
             except Exception as exc:
                 logger.debug("Could not fetch billing info: %s", exc)
                 return {}
 
         async with _BILLING_LIMITER:
-            return await asyncio.to_thread(_call)
+            return await _call()
 
     async def _try_bigquery_export(
         self, project: str, start: date, end: date
