@@ -22,19 +22,10 @@ class _GoogleApiFilter(logging.Filter):
         "PERMISSION_DENIED",
     )
 
-    _spancloud_logger = logging.getLogger("spancloud.gcp")
-
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
-        if not any(m in msg for m in self._SUPPRESS):
-            return True
-        if "PERMISSION_DENIED" in msg:
-            self._spancloud_logger.warning(
-                "GCP permission denied — your account may be missing an IAM role "
-                "for a resource it tried to access. Check GCP Console → IAM & Admin."
-            )
-        # accessNotConfigured / SERVICE_DISABLED are handled in _retry.py
-        return False
+        # All suppressed cases are re-logged with better messages by _retry.py
+        return not any(m in msg for m in self._SUPPRESS)
 
 
 def setup_logging(level: str = "INFO") -> None:
