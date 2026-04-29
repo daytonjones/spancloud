@@ -8,19 +8,33 @@ from rich.logging import RichHandler
 
 
 class _GoogleApiFilter(logging.Filter):
-    """Suppress googleapiclient HTTP warnings for permanent GCP errors.
+    """Suppress and reformat googleapiclient HTTP 403 warnings.
 
-    The google-api-python-client library logs "Encountered 403 Forbidden with
-    reason accessNotConfigured" at WARNING for APIs not enabled in a project.
-    We already handle this gracefully in our retry logic, so suppress the
-    redundant library-level log.
+    The google-api-python-client library logs bare "Encountered 403 Forbidden
+    with reason X" messages that contain no actionable detail. We suppress
+    these and let our own code emit friendlier messages with guidance.
     """
 
-    _SUPPRESS = ("accessNotConfigured", "SERVICE_DISABLED", "has not been used in project")
+    _SUPPRESS = (
+        "accessNotConfigured",
+        "SERVICE_DISABLED",
+        "has not been used in project",
+        "PERMISSION_DENIED",
+    )
+
+    _spancloud_logger = logging.getLogger("spancloud.gcp")
 
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
-        return not any(m in msg for m in self._SUPPRESS)
+        if not any(m in msg for m in self._SUPPRESS):
+            return True
+        if "PERMISSION_DENIED" in msg:
+            self._spancloud_logger.warning(
+                "GCP permission denied — your account may be missing an IAM role "
+                "for a resource it tried to access. Check GCP Console → IAM & Admin."
+            )
+        # accessNotConfigured / SERVICE_DISABLED are handled in _retry.py
+        return False
 
 
 def setup_logging(level: str = "INFO") -> None:

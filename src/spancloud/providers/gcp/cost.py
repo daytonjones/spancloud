@@ -133,7 +133,15 @@ class GCPCostAnalyzer:
             """Scan all datasets in the project for a billing export table."""
             try:
                 datasets = list(bq_client.list_datasets())
-            except Exception:
+            except Exception as exc:
+                if "PERMISSION_DENIED" in str(exc) or "403" in str(exc):
+                    logger.warning(
+                        "BigQuery permission denied for project '%s'. "
+                        "Grant your account the following roles in GCP Console → IAM & Admin:\n"
+                        "  • roles/bigquery.jobUser  (on the project)\n"
+                        "  • roles/bigquery.dataViewer  (on the billing export dataset)",
+                        project,
+                    )
                 return None
             for ds in datasets:
                 try:
