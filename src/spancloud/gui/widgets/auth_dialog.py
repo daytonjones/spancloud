@@ -108,6 +108,9 @@ class _AuthWorker(QThread):
             success = await self._auth_aws()
         elif name == "gcp":
             success = await self._auth_gcp()
+            # GCP phase 1 done — waiting for project selection; don't emit auth_done.
+            if self._phase == "gcp_awaiting_project":
+                return
         elif name == "vultr":
             success = await self._auth_vultr()
         elif name == "digitalocean":
