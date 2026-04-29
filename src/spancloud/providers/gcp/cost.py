@@ -56,14 +56,29 @@ class GCPCostAnalyzer:
         """
         project = self._auth.project_id
         if not project:
-            # Fall back to ADC default project or GOOGLE_CLOUD_PROJECT env var
-            import os
+            import os, configparser
+            # 1. Environment variables
             project = os.environ.get("GOOGLE_CLOUD_PROJECT", "") or os.environ.get("GCLOUD_PROJECT", "")
+            # 2. ADC default project
             if not project:
                 try:
                     import google.auth
                     _, project = google.auth.default()
                     project = project or ""
+                except Exception:
+                    pass
+            # 3. gcloud CLI active config (~/.config/gcloud/configurations/config_*)
+            if not project:
+                try:
+                    gcloud_base = os.path.expanduser("~/.config/gcloud")
+                    active = "default"
+                    try:
+                        active = open(f"{gcloud_base}/active_config").read().strip()
+                    except Exception:
+                        pass
+                    cp = configparser.ConfigParser()
+                    cp.read(f"{gcloud_base}/configurations/config_{active}")
+                    project = cp.get("core", "project", fallback="")
                 except Exception:
                     pass
         if not project:
