@@ -290,25 +290,47 @@ class _AuthWorker(QThread):
                 self._provider._auth.set_project(existing_project)  # type: ignore[attr-defined]
             return True
 
-        # No project set — list available projects and ask user to pick
+        # No project set — authenticate the provider now so we can use the SDK
+        # to list projects (more reliable than `gcloud projects list` which
+        # requires the gcloud CLI config, not just ADC credentials).
         self._log("Fetching available GCP projects…", "dim")
+        projects: list[str] = []
 
-        def _list_projects() -> list[str]:
-            r = subprocess.run(
-                ["gcloud", "projects", "list", "--format=value(projectId)"],
-                capture_output=True, text=True, timeout=30,
-            )
-            return [p.strip() for p in r.stdout.strip().splitlines() if p.strip()]
+        if hasattr(self._provider, "_auth"):
+            try:
+                auth = self._provider._auth  # type: ignore[attr-defined]
+                # Reset cached config so fresh ADC credentials are picked up
+                auth._config = {}
+                auth._credentials = None
+                await self._provider.authenticate()
+                raw = await auth.list_accessible_projects()
+                projects = [p["project_id"] for p in raw if p.get("project_id")]
+            except Exception as exc:
+                self._log(f"SDK project list failed: {exc}", "dim")
 
-        projects = await asyncio.to_thread(_list_projects)
+        # Fallback: try the gcloud CLI (works when gcloud config exists)
+        if not projects:
+            def _list_via_cli() -> list[str]:
+                r = subprocess.run(
+                    ["gcloud", "projects", "list", "--format=value(projectId)"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                return [p.strip() for p in r.stdout.strip().splitlines() if p.strip()]
+            try:
+                projects = await asyncio.to_thread(_list_via_cli)
+            except Exception:
+                pass
 
         if not projects:
+            # Can't list projects — ask the user to type the project ID
             self._log(
-                "No GCP projects found. Create one at console.cloud.google.com\n"
-                "or set SPANCLOUD_GCP_PROJECT_ID in your environment.",
+                "Could not list projects automatically.\n"
+                "Enter your GCP project ID below, then click Set Project.",
                 "warning",
             )
-            return True  # auth itself succeeded; project can be set later
+            self._phase = "gcp_awaiting_project"
+            self.gcp_projects_ready.emit([])   # empty list = show text input mode
+            return False
 
         if len(projects) == 1:
             self._log(f"Auto-selected project: {projects[0]}", "info")
@@ -644,6 +666,7 @@ class AuthDialog(QDialog):
         self._worker: _AuthWorker | None = None
         self._azure_subs: list[dict] = []
         self._gcp_projects: list[str] = []
+        self._gcp_phase2: bool = False
 
         self.setWindowTitle(f"Connect — {provider.display_name}")
         self.setMinimumWidth(540)
@@ -880,9 +903,15 @@ class AuthDialog(QDialog):
     # Slot: Connect button
     # ------------------------------------------------------------------
     def _on_connect(self) -> None:
-        # GCP phase 2: user selected a project
-        if self._gcp_projects and not self._gcp_project_combo.isHidden():
-            project_id = self._gcp_project_combo.currentText().strip()
+        # GCP phase 2: user selected from combo or typed project ID
+        if self._gcp_phase2:
+            if not self._gcp_project_combo.isHidden():
+                project_id = self._gcp_project_combo.currentText().strip()
+            else:
+                project_id = self._api_key_input.text().strip()
+            if not project_id:
+                return
+            self._gcp_phase2 = False
             worker = _AuthWorker(self._provider)
             self._start_worker(worker)
             worker.start_gcp_phase2(project_id)
@@ -935,13 +964,22 @@ class AuthDialog(QDialog):
 
     def _on_gcp_projects_ready(self, projects: list[str]) -> None:
         self._gcp_projects = projects
-        self._gcp_project_combo.clear()
-        for p in projects:
-            self._gcp_project_combo.addItem(p)
-        self._gcp_project_combo.show()
+        self._gcp_phase2 = True
+        if projects:
+            self._gcp_project_combo.clear()
+            for p in projects:
+                self._gcp_project_combo.addItem(p)
+            self._gcp_project_combo.show()
+            self._api_key_input.hide()
+            self._log("\nSelect a project above, then click Set Project.", "info")
+        else:
+            # Manual entry mode — reuse the API key input as a plain text field
+            self._api_key_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self._api_key_input.setPlaceholderText("GCP project ID (e.g. my-project-123)")
+            self._api_key_input.show()
+            self._gcp_project_combo.hide()
         self._btn_connect.setEnabled(True)
-        self._btn_connect.setText("Select Project")
-        self._log("\nSelect a project above, then click Select Project.", "info")
+        self._btn_connect.setText("Set Project")
 
     def _on_azure_subs_ready(self, subs: list[dict]) -> None:
         self._azure_subs = subs
