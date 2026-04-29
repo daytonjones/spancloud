@@ -52,6 +52,14 @@ class OCICostAnalyzer:
             )
 
         total = sum((sc.cost for sc in by_service), Decimal("0"))
+        notes: str = ""
+        if total == Decimal("0") and not by_service:
+            notes = (
+                "No billable usage found for this period. This may mean:\n"
+                "  • The tenancy is on the Always Free tier with no paid resources\n"
+                "  • Cost data requires 'read usage-reports in tenancy' IAM policy\n"
+                "  • Usage API may have a 24h delay for recent charges"
+            )
         return CostSummary(
             provider="oci",
             period_start=start,
@@ -61,6 +69,7 @@ class OCICostAnalyzer:
             by_service=by_service,
             daily_costs=daily,
             account_id=self._auth.config.get("tenancy", ""),
+            notes=notes,
         )
 
     def _sync_query(
