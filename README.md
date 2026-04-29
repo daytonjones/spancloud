@@ -6,7 +6,7 @@
 [![GitHub watchers](https://img.shields.io/github/watchers/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/watchers)
 [![GitHub issues](https://img.shields.io/github/issues/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/issues)
 [![GitHub license](https://img.shields.io/github/license/daytonjones/spancloud?style=flat-square)](https://github.com/daytonjones/spancloud/blob/main/LICENSE)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/spancloud)
+![Pepy Total Downloads](https://img.shields.io/pepy/dt/spancloud)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=D7FF64)](https://docs.astral.sh/ruff/)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue?style=flat-square)](https://mypy-lang.org/)
