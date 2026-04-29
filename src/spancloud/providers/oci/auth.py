@@ -90,7 +90,18 @@ class OCIAuth:
             )
             return True
         except Exception as exc:
-            logger.warning("OCI authentication failed: %s", exc)
+            # Format OCI ServiceError dicts concisely
+            info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else None
+            if info:
+                msg = f"{info.get('status', '')} {info.get('code', '')} — {info.get('message', '')}"
+            else:
+                msg = str(exc)
+            logger.warning(
+                "OCI authentication failed (profile '%s'): %s\n"
+                "  → Check your API key fingerprint in OCI Console: "
+                "Profile → API Keys",
+                self._profile, msg,
+            )
             return False
 
     def _sync_verify(self) -> dict[str, str]:
