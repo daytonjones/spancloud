@@ -375,6 +375,89 @@ spancloud auth logout vultr
 spancloud auth logout digitalocean
 ```
 
+## Required Permissions
+
+Spancloud is read-only — it never creates, modifies, or deletes resources (lifecycle actions like start/stop are explicit opt-in CLI commands). The minimum permissions needed are **read access** to the services you want to browse.
+
+Run `spancloud permissions [provider]` to print this reference in the terminal.
+
+### AWS
+
+Attach the AWS-managed **`ReadOnlyAccess`** policy to your IAM user/role for full coverage, or use these scoped policies:
+
+| Policy | Covers |
+|--------|--------|
+| `AmazonEC2ReadOnlyAccess` | Compute (EC2), VPC, security groups, load balancers |
+| `AmazonS3ReadOnlyAccess` | Storage (S3) |
+| `AmazonRDSReadOnlyAccess` | Databases (RDS/Aurora) |
+| `AWSLambdaReadOnlyAccess` | Serverless (Lambda) |
+| `AmazonEKSReadPolicy` | Containers (EKS) |
+| `CloudWatchReadOnlyAccess` | Metrics and CloudWatch alarms |
+| `AmazonRoute53ReadOnlyAccess` | DNS (Route 53) |
+| `IAMReadOnlyAccess` | IAM users, roles, policies |
+| `AWSBillingReadOnlyAccess` | Cost data (Cost Explorer) |
+
+### GCP
+
+The simplest option is **`roles/viewer`** at the project level. For least-privilege, grant these individually via GCP Console → IAM & Admin:
+
+| Role | Service |
+|------|---------|
+| `roles/compute.viewer` | Compute Engine (VMs) |
+| `roles/storage.objectViewer` | Cloud Storage |
+| `roles/cloudsql.viewer` | Cloud SQL |
+| `roles/container.viewer` | Google Kubernetes Engine |
+| `roles/run.viewer` | Cloud Run |
+| `roles/cloudfunctions.viewer` | Cloud Functions |
+| `roles/dns.reader` | Cloud DNS |
+| `roles/monitoring.viewer` | Cloud Monitoring |
+| `roles/resourcemanager.projectViewer` | Project / org listing |
+| `roles/billing.viewer` | Cloud Billing |
+| `roles/bigquery.dataViewer` + `roles/bigquery.jobUser` | Cost data (BigQuery billing export) |
+
+> **Note:** Cost data requires BigQuery billing export to be enabled (GCP Console → Billing → Billing export → BigQuery export). The BigQuery roles above are needed to query the exported data.
+
+### Azure
+
+Assign the **`Reader`** role at the subscription scope — this covers all resource discovery.
+
+For cost data, also assign **`Cost Management Reader`** at the subscription scope.
+
+Both can be set in Azure Portal → Subscriptions → [your subscription] → Access control (IAM) → Add role assignment.
+
+### DigitalOcean
+
+Generate a Personal Access Token at `https://cloud.digitalocean.com/account/api/tokens` with **read** scope.
+
+> **Note:** Cost and billing data requires the token owner to have the **Billing** team role in the DigitalOcean organisation. Tokens belonging to Member accounts return 403 on billing endpoints.
+
+### Vultr
+
+Generate an API key at `https://my.vultr.com/settings/#settingsapi`. The key needs at minimum:
+- **Read** access on Servers, Bare Metal, Block Storage, Object Storage
+- **Read** access on Billing (for cost data)
+
+### Oracle Cloud (OCI)
+
+The simplest policy (applied in OCI Console → Identity → Policies):
+
+```
+Allow group SpancloudUsers to read all-resources in tenancy
+```
+
+Or scope it per service:
+
+```
+Allow group SpancloudUsers to read instances in tenancy
+Allow group SpancloudUsers to read buckets in tenancy
+Allow group SpancloudUsers to read volumes in tenancy
+Allow group SpancloudUsers to read autonomous-databases in tenancy
+Allow group SpancloudUsers to read clusters in tenancy
+Allow group SpancloudUsers to read load-balancers in tenancy
+Allow group SpancloudUsers to read dns in tenancy
+Allow group SpancloudUsers to read usage-reports in tenancy
+```
+
 ## Configuration
 
 Spancloud reads configuration from environment variables prefixed with `SPANCLOUD_`:
