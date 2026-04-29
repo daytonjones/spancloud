@@ -37,7 +37,7 @@ class AppSettingsScreen(ModalScreen[bool]):
         padding: 1 2;
     }
     #settings-title { text-align: center; padding: 0 0 1 0; }
-    #section-label {
+    .section-label {
         color: $accent;
         text-style: bold;
         padding: 1 0 0 0;
@@ -74,7 +74,7 @@ class AppSettingsScreen(ModalScreen[bool]):
             yield Static("[bold cyan]App Settings[/bold cyan]", id="settings-title")
 
             # ── Theme ──────────────────────────────────────────────────────
-            yield Static("Theme", id="section-label")
+            yield Static("Theme", classes="section-label")
             with Horizontal(id="theme-row"):
                 yield Label("Select theme:", id="theme-label")
                 yield Select(
@@ -85,7 +85,7 @@ class AppSettingsScreen(ModalScreen[bool]):
                 )
 
             # ── Providers ──────────────────────────────────────────────────
-            yield Static("Providers", id="section-label")
+            yield Static("Providers", classes="section-label")
             yield Static(
                 "[dim]Disabled providers are hidden from tabs. Takes effect on restart.[/dim]"
             )
