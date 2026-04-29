@@ -129,6 +129,22 @@ class GCPCostAnalyzer:
             logger.debug("google-cloud-bigquery not installed — skipping BQ export check")
             return None
 
+        def _find_billing_table(bq_client: "bigquery.Client") -> str | None:
+            """Scan all datasets in the project for a billing export table."""
+            try:
+                datasets = list(bq_client.list_datasets())
+            except Exception:
+                return None
+            for ds in datasets:
+                try:
+                    tables = list(bq_client.list_tables(ds.dataset_id))
+                except Exception:
+                    continue
+                for t in tables:
+                    if t.table_id.startswith("gcp_billing_export_v1"):
+                        return f"{project}.{ds.dataset_id}.{t.table_id}"
+            return None
+
         def _query() -> tuple[list[DailyCost], list[ServiceCost], Decimal] | None:
             try:
                 bq_client = bigquery.Client(
@@ -138,60 +154,60 @@ class GCPCostAnalyzer:
             except Exception:
                 return None
 
-            # Standard export table pattern
-            # Users may export to various datasets; try common conventions
-            for dataset in ("billing_export", "cloud_billing_export", "billing"):
-                table = f"{project}.{dataset}.gcp_billing_export_v1*"
-                try:
-                    query = f"""
-                        SELECT
-                            DATE(usage_start_time) as usage_date,
-                            service.description as service_name,
-                            SUM(cost) as cost
-                        FROM `{table}`
-                        WHERE DATE(usage_start_time) >= @start_date
-                          AND DATE(usage_start_time) < @end_date
-                          AND project.id = @project_id
-                        GROUP BY usage_date, service_name
-                        ORDER BY usage_date
-                    """
-                    job_config = bigquery.QueryJobConfig(
-                        query_parameters=[
-                            bigquery.ScalarQueryParameter("start_date", "DATE", start),
-                            bigquery.ScalarQueryParameter("end_date", "DATE", end),
-                            bigquery.ScalarQueryParameter("project_id", "STRING", project),
-                        ]
-                    )
-                    results = bq_client.query(query, job_config=job_config).result()
+            table = _find_billing_table(bq_client)
+            if not table:
+                logger.debug("No BigQuery billing export table found in project %s", project)
+                return None
 
-                    daily_map: dict[date, Decimal] = {}
-                    service_map: dict[str, Decimal] = {}
-                    total = Decimal("0.00")
-
-                    for row in results:
-                        day = row.usage_date
-                        svc = row.service_name
-                        cost = Decimal(str(row.cost))
-
-                        daily_map[day] = daily_map.get(day, Decimal("0")) + cost
-                        service_map[svc] = service_map.get(svc, Decimal("0")) + cost
-                        total += cost
-
-                    daily = [
-                        DailyCost(date=d, cost=c.quantize(Decimal("0.01")))
-                        for d, c in sorted(daily_map.items())
+            logger.debug("Using BigQuery billing export table: %s", table)
+            try:
+                query = f"""
+                    SELECT
+                        DATE(usage_start_time) as usage_date,
+                        service.description as service_name,
+                        SUM(cost) as cost
+                    FROM `{table}`
+                    WHERE DATE(usage_start_time) >= @start_date
+                      AND DATE(usage_start_time) < @end_date
+                      AND project.id = @project_id
+                    GROUP BY usage_date, service_name
+                    ORDER BY usage_date
+                """
+                job_config = bigquery.QueryJobConfig(
+                    query_parameters=[
+                        bigquery.ScalarQueryParameter("start_date", "DATE", start),
+                        bigquery.ScalarQueryParameter("end_date", "DATE", end),
+                        bigquery.ScalarQueryParameter("project_id", "STRING", project),
                     ]
-                    services = [
-                        ServiceCost(service=s, cost=c.quantize(Decimal("0.01")))
-                        for s, c in service_map.items()
-                        if c > Decimal("0.00")
-                    ]
-                    return daily, services, total.quantize(Decimal("0.01"))
+                )
+                results = bq_client.query(query, job_config=job_config).result()
 
-                except Exception:
-                    continue  # Try next dataset name
+                daily_map: dict[date, Decimal] = {}
+                service_map: dict[str, Decimal] = {}
+                total = Decimal("0.00")
 
-            return None
+                for row in results:
+                    day = row.usage_date
+                    svc = row.service_name
+                    cost = Decimal(str(row.cost))
+                    daily_map[day] = daily_map.get(day, Decimal("0")) + cost
+                    service_map[svc] = service_map.get(svc, Decimal("0")) + cost
+                    total += cost
+
+                daily = [
+                    DailyCost(date=d, cost=c.quantize(Decimal("0.01")))
+                    for d, c in sorted(daily_map.items())
+                ]
+                services = [
+                    ServiceCost(service=s, cost=c.quantize(Decimal("0.01")))
+                    for s, c in service_map.items()
+                    if c > Decimal("0.00")
+                ]
+                return daily, services, total.quantize(Decimal("0.01"))
+
+            except Exception as exc:
+                logger.debug("BigQuery billing query failed: %s", exc)
+                return None
 
         async with _BILLING_LIMITER:
             result = await asyncio.to_thread(_query)

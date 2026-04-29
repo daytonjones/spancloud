@@ -58,6 +58,7 @@ dependencies = [
     "azure-mgmt-subscription>=3.1.1",
     "keyring>=25.0.0",
     "cryptography>=44.0.0",
+    "google-cloud-bigquery>=3.0.0",
     "oci>=2.130.0",
     # Alibaba Cloud — TODO: coming in a future release
     # "alibabacloud-tea-openapi>=0.3.0",
