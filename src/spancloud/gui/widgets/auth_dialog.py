@@ -55,9 +55,10 @@ _LOG_COLORS: dict[str, str] = {
 class _AuthWorker(QThread):
     """Run the async auth flow for one provider in a background thread."""
 
-    log_line         = Signal(str, str)   # (text, level)
-    auth_done        = Signal(bool)       # True = authenticated successfully
-    azure_subs_ready = Signal(list)       # list[dict] — triggers Phase 2 UI
+    log_line           = Signal(str, str)   # (text, level)
+    auth_done          = Signal(bool)       # True = authenticated successfully
+    azure_subs_ready   = Signal(list)       # list[dict] — triggers Phase 2 UI
+    gcp_projects_ready = Signal(list)       # list[str]  — triggers project picker
 
     def __init__(
         self,
@@ -72,11 +73,17 @@ class _AuthWorker(QThread):
         self._phase = "auth"
         self._azure_subs: list[dict] = []
         self._azure_sub_idx = 0
+        self._gcp_project_id: str = ""
 
     def start_azure_phase2(self, subs: list[dict], sub_idx: int) -> None:
         self._azure_subs = subs
         self._azure_sub_idx = sub_idx
         self._phase = "azure_subscription"
+        self.start()
+
+    def start_gcp_phase2(self, project_id: str) -> None:
+        self._gcp_project_id = project_id
+        self._phase = "gcp_project"
         self.start()
 
     def _log(self, text: str, level: str = "normal") -> None:
@@ -95,6 +102,8 @@ class _AuthWorker(QThread):
 
         if self._phase == "azure_subscription":
             success = await self._azure_select_subscription()
+        elif self._phase == "gcp_project":
+            success = await self._gcp_set_project()
         elif name == "aws":
             success = await self._auth_aws()
         elif name == "gcp":
@@ -253,10 +262,72 @@ class _AuthWorker(QThread):
             for line in output.strip().split("\n"):
                 if line.strip():
                     self._log(line, "dim")
-            return rc == 0
+            if rc != 0:
+                return False
         except subprocess.TimeoutExpired:
             self._log("Login timed out (2 minutes).", "warning")
             return False
+
+        # Check if a project is already configured
+        existing_project = ""
+        try:
+            r = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                capture_output=True, text=True, timeout=5,
+            )
+            p = r.stdout.strip()
+            if p and p != "(unset)":
+                existing_project = p
+        except Exception:
+            pass
+
+        if existing_project:
+            self._log(f"Using project: {existing_project}", "info")
+            if hasattr(self._provider, "_auth"):
+                self._provider._auth.set_project(existing_project)  # type: ignore[attr-defined]
+            return True
+
+        # No project set — list available projects and ask user to pick
+        self._log("Fetching available GCP projects…", "dim")
+
+        def _list_projects() -> list[str]:
+            r = subprocess.run(
+                ["gcloud", "projects", "list", "--format=value(projectId)"],
+                capture_output=True, text=True, timeout=30,
+            )
+            return [p.strip() for p in r.stdout.strip().splitlines() if p.strip()]
+
+        projects = await asyncio.to_thread(_list_projects)
+
+        if not projects:
+            self._log(
+                "No GCP projects found. Create one at console.cloud.google.com\n"
+                "or set SPANCLOUD_GCP_PROJECT_ID in your environment.",
+                "warning",
+            )
+            return True  # auth itself succeeded; project can be set later
+
+        if len(projects) == 1:
+            self._log(f"Auto-selected project: {projects[0]}", "info")
+            if hasattr(self._provider, "_auth"):
+                self._provider._auth.set_project(projects[0])  # type: ignore[attr-defined]
+            _persist_gcp_project(projects[0])
+            return True
+
+        # Multiple projects — hand off to the dialog for user selection
+        self._log(f"Found {len(projects)} projects — please select one.", "info")
+        self._phase = "gcp_awaiting_project"
+        self.gcp_projects_ready.emit(projects)
+        return False  # phase 2 will emit auth_done
+
+    async def _gcp_set_project(self) -> bool:
+        project_id = self._gcp_project_id
+        self._log(f"Selected project: {project_id}", "info")
+        if hasattr(self._provider, "_auth"):
+            self._provider._auth.set_project(project_id)  # type: ignore[attr-defined]
+        _persist_gcp_project(project_id)
+        self._log("Saved to ~/.config/spancloud/gcp.env", "dim")
+        return True
 
     # ------------------------------------------------------------------
     # Vultr
@@ -524,6 +595,15 @@ class _AuthWorker(QThread):
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _persist_gcp_project(project_id: str) -> None:
+    import os
+    from spancloud.config import get_settings
+
+    env_path = get_settings().ensure_config_dir() / "gcp.env"
+    env_path.write_text(f"SPANCLOUD_GCP_PROJECT_ID={project_id}\n")
+    os.environ["SPANCLOUD_GCP_PROJECT_ID"] = project_id
+
+
 def _persist_aws_profile(profile: str) -> None:
     import os
     from spancloud.config import get_settings
@@ -560,6 +640,7 @@ class AuthDialog(QDialog):
         self._provider = provider
         self._worker: _AuthWorker | None = None
         self._azure_subs: list[dict] = []
+        self._gcp_projects: list[str] = []
 
         self.setWindowTitle(f"Connect — {provider.display_name}")
         self.setMinimumWidth(540)
@@ -670,6 +751,11 @@ class AuthDialog(QDialog):
         self._sub_combo = QComboBox()
         self._sub_combo.hide()
         root.addWidget(self._sub_combo)
+
+        # GCP project picker (hidden until projects are loaded)
+        self._gcp_project_combo = QComboBox()
+        self._gcp_project_combo.hide()
+        root.addWidget(self._gcp_project_combo)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
@@ -791,6 +877,14 @@ class AuthDialog(QDialog):
     # Slot: Connect button
     # ------------------------------------------------------------------
     def _on_connect(self) -> None:
+        # GCP phase 2: user selected a project
+        if self._gcp_projects and not self._gcp_project_combo.isHidden():
+            project_id = self._gcp_project_combo.currentText().strip()
+            worker = _AuthWorker(self._provider)
+            self._start_worker(worker)
+            worker.start_gcp_phase2(project_id)
+            return
+
         # Azure phase 2: user selected a subscription
         if self._azure_subs and not self._sub_combo.isHidden():
             idx = self._sub_combo.currentIndex()
@@ -811,6 +905,7 @@ class AuthDialog(QDialog):
         worker.log_line.connect(self._on_log_line)
         worker.auth_done.connect(self._on_auth_done)
         worker.azure_subs_ready.connect(self._on_azure_subs_ready)
+        worker.gcp_projects_ready.connect(self._on_gcp_projects_ready)
         self._btn_connect.setEnabled(False)
         self._btn_connect.setText("Connecting…")
 
@@ -834,6 +929,16 @@ class AuthDialog(QDialog):
         else:
             self._btn_connect.setEnabled(True)
             self._btn_connect.setText("Retry")
+
+    def _on_gcp_projects_ready(self, projects: list[str]) -> None:
+        self._gcp_projects = projects
+        self._gcp_project_combo.clear()
+        for p in projects:
+            self._gcp_project_combo.addItem(p)
+        self._gcp_project_combo.show()
+        self._btn_connect.setEnabled(True)
+        self._btn_connect.setText("Select Project")
+        self._log("\nSelect a project above, then click Select Project.", "info")
 
     def _on_azure_subs_ready(self, subs: list[dict]) -> None:
         self._azure_subs = subs
