@@ -3,28 +3,38 @@
 from __future__ import annotations
 
 import logging
+import warnings
 
 from rich.logging import RichHandler
 
 
 class _GoogleApiFilter(logging.Filter):
-    """Suppress and reformat googleapiclient HTTP 403 warnings.
+    """Suppress noisy google-api / google-auth library warnings.
 
-    The google-api-python-client library logs bare "Encountered 403 Forbidden
-    with reason X" messages that contain no actionable detail. We suppress
-    these and let our own code emit friendlier messages with guidance.
+    Covers:
+    - googleapiclient 403s (accessNotConfigured, PERMISSION_DENIED, etc.)
+      — re-logged with actionable guidance by our retry/cost modules.
+    - google.auth GCE metadata server timeouts — expected on non-GCE machines;
+      our own 'GCP authentication failed' message is the actionable one.
+    - google.auth 'No project ID could be determined' — our GCPAuth warning
+      covers this with provider-specific guidance.
     """
 
     _SUPPRESS = (
+        # googleapiclient 403 variants (re-logged by our code)
         "accessNotConfigured",
         "SERVICE_DISABLED",
         "has not been used in project",
         "PERMISSION_DENIED",
+        # google.auth GCE metadata noise on non-GCE machines
+        "Compute Engine Metadata server unavailable",
+        "Authentication failed using Compute Engine",
+        # google.auth project-detection noise (our GCPAuth warning covers it)
+        "No project ID could be determined",
     )
 
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
-        # All suppressed cases are re-logged with better messages by _retry.py
         return not any(m in msg for m in self._SUPPRESS)
 
 
@@ -46,9 +56,25 @@ def setup_logging(level: str = "INFO") -> None:
             )
         ],
     )
-    # Silence redundant googleapiclient HTTP warnings we already handle
-    logging.getLogger("googleapiclient.http").addFilter(_GoogleApiFilter())
-    logging.getLogger("googleapiclient.discovery").addFilter(_GoogleApiFilter())
+    # Silence redundant google library warnings — our code emits better ones
+    _f = _GoogleApiFilter()
+    for logger_name in (
+        "googleapiclient.http",
+        "googleapiclient.discovery",
+        "google.auth.compute_engine._metadata",
+        "google.auth._default",
+        "google.auth.transport.requests",
+    ):
+        logging.getLogger(logger_name).addFilter(_f)
+
+    # Suppress the quota-project UserWarning from google.auth._default
+    # (a warnings.warn call, not logging — needs a separate filter)
+    warnings.filterwarnings(
+        "ignore",
+        message=".*quota project.*",
+        category=UserWarning,
+        module="google.auth.*",
+    )
 
 
 def get_logger(name: str) -> logging.Logger:
