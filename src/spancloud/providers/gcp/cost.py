@@ -73,18 +73,26 @@ class GCPCostAnalyzer:
         billing_account = billing_info.get("billingAccountName", "")
 
         # Try BigQuery billing export
-        bq_costs = await self._try_bigquery_export(project, start, today)
+        bq_result = await self._try_bigquery_export(project, start, today)
 
-        if bq_costs:
-            return bq_costs
+        if isinstance(bq_result, CostSummary):
+            return bq_result
 
-        # Fallback: return billing account info with guidance
-        note = (
-            "Detailed cost data requires BigQuery billing export. "
-            "Set up standard billing export in the GCP Console:\n"
-            "  Billing → Billing export → BigQuery export → Enable\n"
-            "Once enabled, cost data will be available within 24-48 hours."
-        )
+        if bq_result == "permission_denied":
+            note = (
+                "BigQuery permission denied — cost data could not be retrieved.\n\n"
+                "Grant your account these roles in GCP Console → IAM & Admin:\n"
+                "  • roles/bigquery.jobUser  (on the project)\n"
+                "  • roles/bigquery.dataViewer  (on the billing export dataset)"
+            )
+        else:
+            # None — export not configured
+            note = (
+                "Detailed cost data requires BigQuery billing export. "
+                "Set up standard billing export in the GCP Console:\n"
+                "  Billing → Billing export → BigQuery export → Enable\n"
+                "Once enabled, cost data will be available within 24-48 hours."
+            )
         if billing_account:
             note = f"Billing account: {billing_account}\n\n{note}"
 
@@ -117,11 +125,13 @@ class GCPCostAnalyzer:
 
     async def _try_bigquery_export(
         self, project: str, start: date, end: date
-    ) -> CostSummary | None:
+    ) -> "CostSummary | None | str":
         """Attempt to query BigQuery billing export for cost data.
 
-        Looks for the standard billing export dataset/table naming convention.
-        Returns None if BigQuery export is not available.
+        Returns:
+            CostSummary on success.
+            "permission_denied" string sentinel when IAM roles are missing.
+            None when BigQuery export is not configured.
         """
         try:
             from google.cloud import bigquery
@@ -129,19 +139,13 @@ class GCPCostAnalyzer:
             logger.debug("google-cloud-bigquery not installed — skipping BQ export check")
             return None
 
-        def _find_billing_table(bq_client: "bigquery.Client") -> str | None:
+        def _find_billing_table(bq_client: "bigquery.Client") -> "str | None":
             """Scan all datasets in the project for a billing export table."""
             try:
                 datasets = list(bq_client.list_datasets())
             except Exception as exc:
                 if "PERMISSION_DENIED" in str(exc) or "403" in str(exc):
-                    logger.warning(
-                        "BigQuery permission denied for project '%s'. "
-                        "Grant your account the following roles in GCP Console → IAM & Admin:\n"
-                        "  • roles/bigquery.jobUser  (on the project)\n"
-                        "  • roles/bigquery.dataViewer  (on the billing export dataset)",
-                        project,
-                    )
+                    raise PermissionError("bigquery") from exc
                 return None
             for ds in datasets:
                 try:
@@ -162,7 +166,7 @@ class GCPCostAnalyzer:
             except Exception:
                 return None
 
-            table = _find_billing_table(bq_client)
+            table = _find_billing_table(bq_client)  # may raise PermissionError
             if not table:
                 logger.debug("No BigQuery billing export table found in project %s", project)
                 return None
@@ -213,12 +217,24 @@ class GCPCostAnalyzer:
                 ]
                 return daily, services, total.quantize(Decimal("0.01"))
 
+            except PermissionError:
+                raise  # propagate so _try_bigquery_export can return the sentinel
             except Exception as exc:
                 logger.debug("BigQuery billing query failed: %s", exc)
                 return None
 
-        async with _BILLING_LIMITER:
-            result = await asyncio.to_thread(_query)
+        try:
+            async with _BILLING_LIMITER:
+                result = await asyncio.to_thread(_query)
+        except PermissionError:
+            logger.warning(
+                "BigQuery permission denied for project '%s'. "
+                "Grant your account these roles in GCP Console → IAM & Admin:\n"
+                "  • roles/bigquery.jobUser  (on the project)\n"
+                "  • roles/bigquery.dataViewer  (on the billing export dataset)",
+                project,
+            )
+            return "permission_denied"
 
         if result is None:
             return None
