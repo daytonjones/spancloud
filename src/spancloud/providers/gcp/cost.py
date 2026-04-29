@@ -155,15 +155,19 @@ class GCPCostAnalyzer:
             except Exception as exc:
                 if "PERMISSION_DENIED" in str(exc) or "403" in str(exc):
                     raise PermissionError("bigquery") from exc
+                logger.warning("BigQuery list_datasets failed: %s", exc)
                 return None
+            logger.debug("BigQuery datasets found: %s", [ds.dataset_id for ds in datasets])
             for ds in datasets:
                 try:
                     tables = list(bq_client.list_tables(ds.dataset_id))
-                except Exception:
+                except Exception as exc:
+                    logger.debug("BigQuery list_tables failed for %s: %s", ds.dataset_id, exc)
                     continue
                 for t in tables:
                     if t.table_id.startswith("gcp_billing_export_v1"):
                         return f"{project}.{ds.dataset_id}.{t.table_id}"
+            logger.warning("No gcp_billing_export_v1* table found in any dataset in project %s", project)
             return None
 
         def _query() -> tuple[list[DailyCost], list[ServiceCost], Decimal] | None:
@@ -172,15 +176,15 @@ class GCPCostAnalyzer:
                     project=project,
                     credentials=self._auth.credentials,
                 )
-            except Exception:
+            except Exception as exc:
+                logger.warning("BigQuery Client creation failed: %s", exc)
                 return None
 
             table = _find_billing_table(bq_client)  # may raise PermissionError
             if not table:
-                logger.debug("No BigQuery billing export table found in project %s", project)
                 return None
 
-            logger.debug("Using BigQuery billing export table: %s", table)
+            logger.warning("GCP cost: querying BigQuery table %s", table)
             try:
                 query = f"""
                     SELECT
@@ -229,7 +233,7 @@ class GCPCostAnalyzer:
             except PermissionError:
                 raise  # propagate so _try_bigquery_export can return the sentinel
             except Exception as exc:
-                logger.debug("BigQuery billing query failed: %s", exc)
+                logger.warning("BigQuery billing query failed: %s", exc)
                 return None
 
         try:
