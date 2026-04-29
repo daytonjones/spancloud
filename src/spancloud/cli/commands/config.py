@@ -13,7 +13,7 @@ config_app = typer.Typer(help="Manage Spancloud configuration.", no_args_is_help
 @config_app.command("sidebar")
 def manage_sidebar(
     provider_name: str = typer.Argument(
-        help="Provider (aws, gcp, vultr, digitalocean, azure, oci, alibaba)."
+        help="Provider (aws, gcp, vultr, digitalocean, azure, oci)."
     ),
     add: str | None = typer.Option(
         None, "--add", help="Add a service to the sidebar by name."

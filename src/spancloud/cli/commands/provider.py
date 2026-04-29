@@ -39,7 +39,7 @@ def list_providers() -> None:
 @provider_app.command("status")
 def provider_status(
     name: str = typer.Argument(
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba."
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci."
     ),
 ) -> None:
     """Check authentication status and details for a provider."""

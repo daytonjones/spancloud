@@ -19,7 +19,7 @@ cost_app = typer.Typer(help="Analyze cloud costs and spending.", no_args_is_help
 @cost_app.command("show")
 def show_cost(
     provider_name: str = typer.Argument(
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba."
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci."
     ),
     days: int = typer.Option(30, "--days", "-d", help="Number of days to analyze."),
     profile: str | None = typer.Option(

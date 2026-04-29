@@ -18,7 +18,7 @@ unused_app = typer.Typer(help="Find unused and idle cloud resources.", no_args_i
 @unused_app.command("scan")
 def scan_unused(
     provider_name: str = typer.Argument(
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba."
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci."
     ),
     region: str | None = typer.Option(None, "--region", "-r", help="Region to scan."),
     stopped_days: int = typer.Option(

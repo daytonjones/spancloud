@@ -18,7 +18,7 @@ audit_app = typer.Typer(help="Run security audits on cloud infrastructure.", no_
 @audit_app.command("run")
 def run_audit(
     provider_name: str = typer.Argument(
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba."
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci."
     ),
     region: str | None = typer.Option(None, "--region", "-r", help="Region to scan."),
     profile: str | None = typer.Option(

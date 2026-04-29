@@ -42,7 +42,7 @@ def _parse_tags(tag_list: list[str] | None) -> dict[str, str] | None:
 @resource_app.command("list")
 def list_resources(
     provider_name: str = typer.Argument(
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba."
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci."
     ),
     resource_type: str = typer.Argument(
         help="Resource type: compute, storage, network, database, serverless, "

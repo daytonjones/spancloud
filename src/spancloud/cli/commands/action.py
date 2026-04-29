@@ -27,7 +27,7 @@ def _run_action(
     """Common logic for all resource actions."""
     provider = registry.get(provider_name)
     if not provider or provider_name not in (
-        "aws", "gcp", "vultr", "digitalocean", "azure", "oci", "alibaba"
+        "aws", "gcp", "vultr", "digitalocean", "azure", "oci"
     ):
         console.print(
             f"[yellow]Resource actions not available for '{provider_name}'.[/yellow]"
@@ -262,7 +262,7 @@ def start_instance(
     ),
     provider_name: str = typer.Option(
         "aws", "--provider", "-p",
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba.",
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci.",
     ),
     region: str | None = typer.Option(
         None, "--region", "-r",
@@ -281,7 +281,7 @@ def stop_instance(
     ),
     provider_name: str = typer.Option(
         "aws", "--provider", "-p",
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba.",
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci.",
     ),
     region: str | None = typer.Option(
         None, "--region", "-r",
@@ -300,7 +300,7 @@ def reboot_instance(
     ),
     provider_name: str = typer.Option(
         "aws", "--provider", "-p",
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba.",
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci.",
     ),
     region: str | None = typer.Option(
         None, "--region", "-r",
@@ -319,7 +319,7 @@ def terminate_instance(
     ),
     provider_name: str = typer.Option(
         "aws", "--provider", "-p",
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba.",
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci.",
     ),
     region: str | None = typer.Option(
         None, "--region", "-r",

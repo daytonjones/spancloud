@@ -213,7 +213,7 @@ spancloud map show aws --resource i-0abc123def  # Relationships for one resource
 spancloud map show gcp --region us-central1     # GCP relationships
 
 # --- Resource actions (start / stop / reboot / terminate) ---
-# All seven providers support start/stop/reboot. Only AWS supports terminate.
+# All six implemented providers support start/stop/reboot. Only AWS supports terminate.
 spancloud action start i-0abc123 --region us-east-1
 spancloud action start my-vm -p gcp --region us-central1-a
 spancloud action stop <droplet-id> -p digitalocean
@@ -246,7 +246,7 @@ spancloud monitor metrics 12345 -p gcp --region us-central1-a # GCE metrics
 ```
 
 All `cost show`, `audit run`, `unused scan`, `map show`, and `resource list`
-commands accept any of the seven provider names, so the examples above with
+commands accept any of the six provider names, so the examples above with
 `aws` swap in `gcp` / `vultr` / `digitalocean` / `azure` / `oci`
 with identical flags.
 
@@ -590,7 +590,7 @@ src/spancloud/
 
 ## Roadmap
 
-All seven providers now have full feature parity across resource discovery,
+All six implemented providers now have full feature parity across resource discovery,
 cost, audit, unused detection, relationships, monitoring alerts, and
 lifecycle actions. The matrix below captures the current state:
 

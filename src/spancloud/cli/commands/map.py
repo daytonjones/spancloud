@@ -19,7 +19,7 @@ map_app = typer.Typer(help="Map relationships between cloud resources.", no_args
 @map_app.command("show")
 def show_map(
     provider_name: str = typer.Argument(
-        help="Provider: aws, gcp, vultr, digitalocean, azure, oci, alibaba."
+        help="Provider: aws, gcp, vultr, digitalocean, azure, oci."
     ),
     region: str | None = typer.Option(None, "--region", "-r", help="Region to scan."),
     resource_id: str | None = typer.Option(
