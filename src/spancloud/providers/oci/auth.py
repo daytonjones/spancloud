@@ -28,6 +28,7 @@ class OCIAuth:
         self._region: str = ""
         self._tenancy_name: str = ""
         self._user_email: str = ""
+        self._auth_warned: bool = False  # deduplicate 401 warning across resource types
 
     @property
     def profile(self) -> str:
@@ -93,7 +94,11 @@ class OCIAuth:
             return False
 
     def _sync_verify(self) -> dict[str, str]:
-        """Load config, then resolve tenancy + user metadata."""
+        """Load config, then resolve tenancy + user metadata.
+
+        Raises ServiceError/AuthError if the API key is invalid so that
+        verify() correctly returns False instead of silently swallowing the error.
+        """
         import oci
 
         self._ensure_loaded()
@@ -103,18 +108,19 @@ class OCIAuth:
         user_ocid = self._config.get("user", "")
 
         info: dict[str, str] = {}
-        try:
-            tenancy = identity.get_tenancy(tenancy_ocid).data
-            info["tenancy_name"] = getattr(tenancy, "name", "") or ""
-        except Exception:
-            pass
+
+        # get_tenancy is the canonical liveness check — let it raise on auth failure
+        tenancy = identity.get_tenancy(tenancy_ocid).data
+        info["tenancy_name"] = getattr(tenancy, "name", "") or ""
+
         try:
             user = identity.get_user(user_ocid).data
             info["user_email"] = (
                 getattr(user, "email", "") or getattr(user, "name", "") or ""
             )
         except Exception:
-            pass
+            pass  # user details are supplementary; tenancy check above is enough
+
         return info
 
     async def get_identity(self) -> dict[str, str]:

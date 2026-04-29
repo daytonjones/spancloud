@@ -11,13 +11,18 @@ _PERMANENT_CODES = {"NotAuthenticated", "NotAuthorized", "InvalidParameter", "No
 _PERMANENT_STATUSES = {401, 404}
 
 
+_warned_401: bool = False  # module-level dedup flag
+
+
 def _is_permanent_oci_error(exc: Exception) -> bool:
     """Return True for errors that will never succeed on retry."""
+    global _warned_401
     info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else {}
     status = info.get("status", 0)
     code = info.get("code", "")
     if status in _PERMANENT_STATUSES or code in _PERMANENT_CODES:
-        if status == 401 or code == "NotAuthenticated":
+        if (status == 401 or code == "NotAuthenticated") and not _warned_401:
+            _warned_401 = True
             _logger.warning(
                 "OCI authentication rejected (401). Check that your API key in "
                 "~/.oci/config is current and the system clock is correct "
