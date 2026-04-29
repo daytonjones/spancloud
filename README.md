@@ -48,6 +48,12 @@ spancloud --tui    # Launch TUI instead
 spancloud --help   # Show all CLI commands
 ```
 
+**Shell completion** (bash, zsh, fish) — run once after install, then restart your shell:
+
+```bash
+spancloud --install-completion
+```
+
 ## Quick Start
 
 ### Desktop GUI
