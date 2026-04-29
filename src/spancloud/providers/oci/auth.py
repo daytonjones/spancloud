@@ -58,7 +58,14 @@ class OCIAuth:
             return
         settings = get_settings().oci
         self._config_file = os.path.expanduser(settings.config_file)
-        self._profile = self._profile or settings.profile or "DEFAULT"
+        # Read profile from env directly — os.environ may have been updated
+        # by _persist_profile() after the Settings object was cached.
+        self._profile = (
+            self._profile
+            or os.environ.get("SPANCLOUD_OCI_PROFILE", "")
+            or settings.profile
+            or "DEFAULT"
+        )
         self._compartment_id = self._compartment_id or settings.compartment_id
 
         import oci
