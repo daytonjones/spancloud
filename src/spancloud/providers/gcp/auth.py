@@ -75,9 +75,9 @@ class GCPAuth:
 
     @staticmethod
     def _detect_gcloud_project() -> str:
-        """Read the active project from the gcloud CLI config file."""
-        import configparser
-        import os
+        """Read the active project from gcloud config file or CLI."""
+        import configparser, os, subprocess
+        # 1. Parse ~/.config/gcloud/configurations/config_<active>
         try:
             base = os.path.expanduser("~/.config/gcloud")
             active = "default"
@@ -87,9 +87,23 @@ class GCPAuth:
                 pass
             cp = configparser.ConfigParser()
             cp.read(f"{base}/configurations/config_{active}")
-            return cp.get("core", "project", fallback="")
+            project = cp.get("core", "project", fallback="")
+            if project:
+                return project
         except Exception:
-            return ""
+            pass
+        # 2. Ask the gcloud binary directly (works regardless of config path)
+        try:
+            result = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                capture_output=True, text=True, timeout=5,
+            )
+            project = result.stdout.strip()
+            if project and project != "(unset)":
+                return project
+        except Exception:
+            pass
+        return ""
 
     def set_project(self, project_id: str) -> None:
         """Switch the active GCP project for subsequent calls.

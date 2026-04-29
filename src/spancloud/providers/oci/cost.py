@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from spancloud.analysis.models import CostSummary, DailyCost, ServiceCost
 from spancloud.utils.logging import get_logger
-from spancloud.utils.retry import retry_with_backoff
+from spancloud.providers.oci._retry import OCI_RETRY as retry_with_backoff
 
 if TYPE_CHECKING:
     from spancloud.providers.oci.auth import OCIAuth

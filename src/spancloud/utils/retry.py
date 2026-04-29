@@ -67,11 +67,17 @@ def retry_with_backoff(
                         raise
 
                     if attempt == max_retries:
+                        exc_info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else None
+                        if exc_info:
+                            parts = [str(exc_info.get("status", "")), exc_info.get("code", ""), exc_info.get("message", "")]
+                            exc_str = " | ".join(p for p in parts if p)
+                        else:
+                            exc_str = str(exc)
                         logger.error(
                             "All %d retries exhausted for %s: %s",
                             max_retries,
                             _label,
-                            exc,
+                            exc_str,
                         )
                         raise
 
@@ -79,13 +85,21 @@ def retry_with_backoff(
                     if jitter:
                         delay = delay * (0.5 + random.random() * 0.5)  # noqa: S311
 
+                    # For dict-style exceptions (OCI), log only the key fields
+                    exc_info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else None
+                    if exc_info:
+                        parts = [str(exc_info.get("status", "")), exc_info.get("code", ""), exc_info.get("message", "")]
+                        exc_str = " | ".join(p for p in parts if p)
+                    else:
+                        exc_str = str(exc)
+
                     logger.warning(
                         "Retry %d/%d for %s after %.1fs: %s",
                         attempt + 1,
                         max_retries,
                         _label,
                         delay,
-                        exc,
+                        exc_str,
                     )
                     await asyncio.sleep(delay)
 

@@ -22,7 +22,7 @@ async def _show_status() -> None:
     import spancloud.providers  # noqa: F401 — triggers auto-registration
     from spancloud.core.registry import registry
 
-    providers = list(registry.all())
+    providers = registry.list_providers()
 
     # Check auth for all providers concurrently
     async def _check(provider):  # type: ignore[no-untyped-def]
