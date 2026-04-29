@@ -117,9 +117,10 @@ class SpancloudApp(App):  # type: ignore[type-arg]
             "Up / Down — navigate sidebar items\n"
             "Enter — load resource type or run analysis\n"
             "Click row — view resource details\n"
-            "/ — search/filter resources\n"
+            "/ — search/filter (supports tag:key=value)\n"
+            "e — export current table to JSON / CSV / YAML\n"
             "Escape — close detail panel or search\n"
-            "[r] Refresh  [a] About  [q] Quit",
+            "[S] Settings  [r] Refresh  [a] About  [q] Quit",
             title="Keyboard Shortcuts",
             timeout=10,
         )

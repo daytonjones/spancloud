@@ -70,7 +70,7 @@ spancloud --tui         # Launch TUI instead
 
 The desktop GUI provides a native Qt6 window with:
 
-- **Full-width toolbar** — icon, app name, current context breadcrumb, refresh and settings buttons
+- **Full-width toolbar** — icon, app name, current context breadcrumb, refresh, settings, about, and quit (✕) buttons; `Ctrl+Q` also quits
 - **Resizable sidebar** — provider list with colour-coded connection status dots; drag the splitter handle to adjust width
 - **Overview dashboard** — provider cards in a 3-column grid showing live resource count, connection state, and a colour-coded breakdown bar by resource type
 - **Per-provider view** — inner nav sidebar with RESOURCES (Compute, Storage, …) and ANALYSIS (Cost Summary, Security Audit, Unused Resources, Relationships, Monitoring Alerts) sections, each with resource count badges
@@ -81,7 +81,8 @@ The desktop GUI provides a native Qt6 window with:
 - **Analysis panels** — cost breakdown, security findings, unused resources, monitoring alerts, all fetched live from the provider API
 - **Settings dialog** — toggle providers on/off; choose from 5 built-in themes (Tokyo Night, Dark, Dracula, Solarized Dark, Light)
 - **Status bar** — active context on the left, total provider/resource count on the right
-- **Region / profile / project selectors** — switch AWS region or profile, GCP project inline without relaunching
+- **Region / profile / project / subscription selectors** — switch AWS region or profile, GCP project, Azure subscription, or OCI profile inline without relaunching
+- **Tag filter** — filter the resource table by tag (`env=prod team=api`) alongside the text search; AND logic for multiple pairs
 - **Demo mode** — run `spancloud --mock` to explore with realistic sample data, no credentials needed; works in both GUI (`spancloud gui --mock`) and TUI (`spancloud --tui --mock`)
 
 #### Screenshots
@@ -109,14 +110,17 @@ The TUI provides:
 - **Resource type sidebar** — emoji-labeled resource types + analysis tools, click or Enter to load
 - **Resource detail panel** — click any row to see full metadata, tags, and state in a bottom panel
 - **State-colored rows** — green=running, red=stopped, yellow=pending, dim=terminated
-- **Search/filter** — press `/` to search across name, type, region, metadata; filters live as you type
-- **Export** — `e` on any loaded table writes JSON / CSV / YAML to disk
-- **Analysis views** — cost summary, security audit, unused resources, relationships, and monitoring alerts inline per provider
-- **Settings screen** — click the Settings sidebar item to pick which resource types appear; matches `spancloud config sidebar`
-- **Provider enable/disable** — `spancloud config providers` (or the settings screen) hides tabs you don't use
+- **Azure subscription picker** — dropdown on the Azure tab to switch between subscriptions without re-logging in
+- **GCP org + project pickers** — dropdowns on the GCP tab; org selector appears when multiple orgs are accessible
+- **OCI profile picker** — dropdown on the OCI tab populated from `~/.oci/config`
+- **Search/filter** — press `/` to search across name, type, region, metadata; also supports `tag:key=value` syntax to filter by resource tags
+- **Export** — `e` on any loaded table writes JSON / CSV / YAML to disk; success notification shows the full resolved path
+- **Analysis views** — cost summary, security audit, unused resources, relationships, and monitoring alerts (live from provider APIs) inline per provider
+- **Sidebar settings** — click the Settings sidebar item to pick which resource types appear per provider; matches `spancloud config sidebar`
+- **App settings** — press `S` to open global settings: enable/disable provider tabs and select a theme (Tokyo Night, Dracula, Nord, Gruvbox, Catppuccin, Solarized, and more); theme persists across sessions
 - **Animated progress** — slow analysis runs show a spinner + elapsed timer so you know Vultr / large Azure subs are still working
 - **Auth modals** — click any unauthenticated provider tile on the Overview tab to log in; Vultr / DO save tokens to the OS keychain for the next session
-- **Keyboard navigation** — Tab/Shift+Tab providers, Up/Down sidebar, Enter to load, `/` search, `e` export, Escape close, `?` help, `q` quit
+- **Keyboard navigation** — Tab/Shift+Tab providers, Up/Down sidebar, Enter to load, `/` search, `e` export, `S` settings, `a` about, Escape close, `?` help, `q` quit
 - **Mouse support** — click sidebar items, table rows, dropdowns, search input
 
 #### Terminal Setup
@@ -187,8 +191,12 @@ spancloud resource list aws compute --export json
 spancloud resource list aws compute --export csv -o ec2.csv
 spancloud resource list gcp compute --export yaml
 
-# Show version
+# Show version / about
 spancloud version
+spancloud about                                  # version, providers, license, links
+
+# Show authentication status for all providers
+spancloud status
 
 # Cost analysis (--profile for multi-account)
 spancloud cost show aws                         # 30-day cost summary with daily trend
