@@ -9,6 +9,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.7] — 2026-05-06
+
+### Added
+- GUI: "🔑 Reconnect" button permanently visible in every provider's nav sidebar — re-opens the auth dialog mid-session without restarting
+- GUI: Auth errors detected during resource load (expired token, `InvalidGrantException`, `NoCredentialsError`) now automatically switch back to the unauthed view instead of showing a cryptic error
+
+### Fixed
+- GCP: `RefreshError: Reauthentication is needed` was not treated as permanent by the retry decorator, causing 3 retry attempts × every parallel API call at startup — now fails immediately with one clean warning per session
+- GCP: `AuthMetadataPluginCallback raised exception!` ERROR tracebacks from `grpc._plugin_wrapping` (one per gRPC-based API — GKE, Cloud Run, Cloud Functions) are now suppressed; the single "credentials have expired" warning from our retry code is sufficient
+- GCP Cloud Run: `'int' object has no attribute 'name'` crash in `list_services` — proto enum fields (`ingress`, `launch_stage`, `Condition.State`) can arrive as raw ints depending on protobuf/proto-plus version; fixed with `_safe_name()` / `_state_int()` helpers
+- AWS: SSO token-refresh tracebacks (`InvalidGrantException`, `TokenRetrievalError`, `Refreshing temporary credentials failed`) from `botocore.tokens` and `botocore.credentials` suppressed — our existing "AWS authentication failed" warning is the actionable message
+- CLI/TUI/GUI: gRPC C++ fork-handler INFO messages (`I0506 ... fork_posix.cc`) written directly to stderr suppressed via `GRPC_VERBOSITY=ERROR` set at startup
+
+---
+
 ## [0.1.6] — 2026-04-30
 
 ### Added
