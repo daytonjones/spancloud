@@ -50,6 +50,11 @@ class _GoogleApiFilter(logging.Filter):
         "Authentication failed using Compute Engine",
         # google.auth project-detection noise (our GCPAuth warning covers it)
         "No project ID could be determined",
+        # grpc._plugin_wrapping ERROR when ADC token expired — our _retry.py
+        # logs a single clean "credentials have expired" warning instead
+        "AuthMetadataPluginCallback",
+        # google.auth RefreshError propagated via grpc transport
+        "Reauthentication is needed",
     )
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -80,7 +85,7 @@ def setup_logging(level: str = "INFO") -> None:
     for logger_name in ("botocore.tokens", "botocore.credentials"):
         logging.getLogger(logger_name).addFilter(_bf)
 
-    # Silence redundant google library warnings — our code emits better ones
+    # Silence redundant google library and gRPC auth warnings — our code emits better ones
     _f = _GoogleApiFilter()
     for logger_name in (
         "googleapiclient.http",
@@ -88,6 +93,10 @@ def setup_logging(level: str = "INFO") -> None:
         "google.auth.compute_engine._metadata",
         "google.auth._default",
         "google.auth.transport.requests",
+        # gRPC Python wrapper logs AuthMetadataPluginCallback errors with full
+        # tracebacks when ADC tokens expire; our _retry.py emits a clean warning
+        "grpc._plugin_wrapping",
+        "grpc",
     ):
         logging.getLogger(logger_name).addFilter(_f)
 

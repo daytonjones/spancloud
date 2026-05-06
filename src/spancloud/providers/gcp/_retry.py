@@ -43,8 +43,23 @@ _IAM_ROLE_MAP: list[tuple[str, str, str]] = [
 _URL_RE = re.compile(r"requesting (https://[^\s\"']+)")
 
 
+_PERMANENT_AUTH_MARKERS = (
+    "Reauthentication is needed",
+    "Please run `gcloud auth application-default login`",
+)
+
+
 def _is_permanent_gcp_error(exc: Exception) -> bool:
     msg = str(exc)
+
+    # Expired ADC token — retrying never helps; user must re-login interactively.
+    # Treat as permanent so we fail on the first attempt (no backoff noise).
+    if any(marker in msg for marker in _PERMANENT_AUTH_MARKERS):
+        _logger.warning(
+            "GCP credentials have expired — run: gcloud auth application-default login"
+        )
+        return True
+
     if not any(marker in msg for marker in _PERMANENT_403_MARKERS):
         return False
 
