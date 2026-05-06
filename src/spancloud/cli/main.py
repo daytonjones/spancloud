@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+import os
+
+# gRPC C++ emits fork-handler INFO messages directly to stderr when Python
+# forks subprocesses.  Setting GRPC_VERBOSITY=ERROR before the first import
+# of any google-cloud library suppresses those.
+os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+os.environ.setdefault("GRPC_TRACE", "")
+
 import typer
 from rich.console import Console
 

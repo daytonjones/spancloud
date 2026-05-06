@@ -17,8 +17,32 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# Cloud Run conditions determine state — the service itself doesn't have a simple status enum.
-# We inspect the terminal_condition or reconciling field.
+_CONDITION_SUCCEEDED = 1  # Condition.State.CONDITION_SUCCEEDED (proto enum int)
+_CONDITION_FAILED = 2     # Condition.State.CONDITION_FAILED
+
+
+def _safe_name(val: object, default: str = "") -> str:
+    """Return the string name of a proto enum value, even when it arrives as a raw int."""
+    if not val:
+        return default
+    if hasattr(val, "name"):
+        return val.name  # type: ignore[attr-defined]
+    try:
+        return str(int(val))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return str(val)
+
+
+def _state_int(val: object) -> int:
+    """Return the integer value of a proto enum state field."""
+    if val is None:
+        return 0
+    if hasattr(val, "value"):
+        return int(val.value)  # type: ignore[arg-type]
+    try:
+        return int(val)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0
 
 
 class CloudRunResources:
@@ -120,8 +144,8 @@ class CloudRunResources:
                 "cpu": cpu,
                 "max_instances": max_instances,
                 "min_instances": min_instances,
-                "ingress": svc.ingress.name if svc.ingress else "",
-                "launch_stage": svc.launch_stage.name if svc.launch_stage else "",
+                "ingress": _safe_name(svc.ingress),
+                "launch_stage": _safe_name(svc.launch_stage),
                 "resource_subtype": "cloud_run_service",
             },
         )
@@ -137,15 +161,16 @@ class CloudRunResources:
 
         terminal = svc.terminal_condition
         if terminal:
-            if terminal.state and terminal.state.name == "CONDITION_SUCCEEDED":
+            s = _state_int(terminal.state)
+            if s == _CONDITION_SUCCEEDED:
                 return ResourceState.RUNNING
-            if terminal.state and terminal.state.name == "CONDITION_FAILED":
+            if s == _CONDITION_FAILED:
                 return ResourceState.ERROR
 
         # Fallback: check conditions list
         for condition in svc.conditions or []:
             if condition.type_ == "Ready":
-                if condition.state and condition.state.name == "CONDITION_SUCCEEDED":
+                if _state_int(condition.state) == _CONDITION_SUCCEEDED:
                     return ResourceState.RUNNING
                 return ResourceState.PENDING
 

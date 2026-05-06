@@ -8,6 +8,25 @@ import warnings
 from rich.logging import RichHandler
 
 
+class _BotocoreFilter(logging.Filter):
+    """Suppress botocore SSO token-refresh noise.
+
+    botocore emits WARNING + full traceback for every region when an SSO token
+    has expired. Our AWS auth code catches the underlying exception and emits a
+    single clean 'AWS authentication failed' message, so these are redundant.
+    """
+
+    _SUPPRESS = (
+        "SSO token refresh attempt failed",
+        "Refreshing temporary credentials failed",
+        "Token has expired and refresh failed",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(m in msg for m in self._SUPPRESS)
+
+
 class _GoogleApiFilter(logging.Filter):
     """Suppress noisy google-api / google-auth library warnings.
 
@@ -56,6 +75,11 @@ def setup_logging(level: str = "INFO") -> None:
             )
         ],
     )
+    # Silence redundant botocore SSO noise — our AWS auth emits a single clean message
+    _bf = _BotocoreFilter()
+    for logger_name in ("botocore.tokens", "botocore.credentials"):
+        logging.getLogger(logger_name).addFilter(_bf)
+
     # Silence redundant google library warnings — our code emits better ones
     _f = _GoogleApiFilter()
     for logger_name in (

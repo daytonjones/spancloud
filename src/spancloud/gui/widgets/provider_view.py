@@ -1403,6 +1403,25 @@ class ProviderViewWidget(QWidget):
         settings_btn.clicked.connect(self._open_sidebar_settings)
         self._nav_layout.addWidget(settings_btn)
 
+        reconnect_btn = QPushButton("🔑  Reconnect")
+        reconnect_btn.setFlat(True)
+        reconnect_btn.setStyleSheet(f"""
+            QPushButton {{
+                color: {TEXT_MUTED};
+                font-size: 11px;
+                text-align: left;
+                padding: 6px 16px;
+                border: none;
+            }}
+            QPushButton:hover {{
+                color: {TEXT_PRIMARY};
+                background: rgba(255,255,255,0.05);
+            }}
+        """)
+        reconnect_btn.setToolTip("Re-authenticate this provider")
+        reconnect_btn.clicked.connect(self.auth_requested.emit)
+        self._nav_layout.addWidget(reconnect_btn)
+
         self._rebuild_rt_buttons()
         return nav
 
@@ -2087,6 +2106,24 @@ class ProviderViewWidget(QWidget):
         self._total_resource_count = 0
         self._count_label.setText("")
         self._table.clear()
+
+        # Detect expired / invalid credentials and surface the reconnect view
+        _auth_error_signals = (
+            "TokenRetrievalError",
+            "Token has expired",
+            "InvalidGrantException",
+            "NoCredentialsError",
+            "ExpiredToken",
+            "AuthFailure",
+            "not authenticated",
+            "authentication failed",
+            "credentials could not be refreshed",
+        )
+        if any(s.lower() in error.lower() for s in _auth_error_signals):
+            self._provider_meta["status"] = "unauthenticated"
+            self._right_stack.setCurrentWidget(self._unauthed_view)
+            return
+
         msg, color = _friendly_error(error)
         self._show_table_message(msg, color)
 
